@@ -22,7 +22,7 @@ docker run --rm -p 3000:3000 -e COMPLIANCE_API_PROXY_TARGET=http://host.docker.i
 
 For a Linux host running the Go backend in Docker, set `COMPLIANCE_API_PROXY_TARGET` to the backend service URL on the Docker network, for example `http://compliantly-go:8080`.
 
-For customer deployments where the frontend and backend run on different hosts, use [docs/split-deployment.md](docs/split-deployment.md) and `docker-compose.frontend.yml`.
+For a same-host Docker pilot, `docker-compose.frontend.yml` defaults to `http://host.docker.internal:8080`. For customer deployments where the frontend and backend run on different hosts, use [docs/split-deployment.md](docs/split-deployment.md) and set the mTLS environment variables explicitly.
 
 ## Backend mTLS
 

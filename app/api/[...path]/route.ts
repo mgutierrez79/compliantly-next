@@ -25,7 +25,8 @@ const HOP_BY_HOP_HEADERS = new Set([
 let cachedTLSOptions: https.RequestOptions | null | undefined
 
 function apiProxyTarget(): URL {
-  return new URL(process.env.COMPLIANCE_API_PROXY_TARGET ?? 'http://127.0.0.1:8080')
+  const target = process.env.COMPLIANCE_API_PROXY_TARGET?.trim() || 'http://127.0.0.1:8080'
+  return new URL(target)
 }
 
 function apiProxyTLSOptions(): https.RequestOptions | null {
@@ -91,17 +92,30 @@ function filteredResponseHeaders(upstreamHeaders: http.IncomingHttpHeaders): Hea
 }
 
 async function proxy(request: NextRequest, context: RouteContext): Promise<Response> {
-  const targetBase = apiProxyTarget()
+  let targetBase: URL
+  try {
+    targetBase = apiProxyTarget()
+  } catch (error) {
+    return proxyConfigError('invalid upstream target', error)
+  }
   const { path = [] } = await context.params
   const targetPath = `/${path.map(encodeURIComponent).join('/')}`
   const targetURL = new URL(targetPath, targetBase)
   targetURL.search = request.nextUrl.search
+  if (targetURL.protocol !== 'http:' && targetURL.protocol !== 'https:') {
+    return proxyConfigError('unsupported upstream protocol', new Error(targetURL.protocol))
+  }
 
   const method = request.method.toUpperCase()
   const hasBody = method !== 'GET' && method !== 'HEAD'
   const body = hasBody ? Buffer.from(await request.arrayBuffer()) : null
   const headers = filteredRequestHeaders(request, body ? body.length : null)
-  const tlsOptions = targetURL.protocol === 'https:' ? apiProxyTLSOptions() : null
+  let tlsOptions: https.RequestOptions | null = null
+  try {
+    tlsOptions = targetURL.protocol === 'https:' ? apiProxyTLSOptions() : null
+  } catch (error) {
+    return proxyConfigError('upstream TLS configuration failed', error)
+  }
 
   return new Promise<Response>((resolve) => {
     const client = targetURL.protocol === 'https:' ? https : http
@@ -141,6 +155,16 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     if (body && body.length) upstream.write(body)
     upstream.end()
   })
+}
+
+function proxyConfigError(detail: string, error: unknown): Response {
+  return Response.json(
+    {
+      detail,
+      message: error instanceof Error ? error.message : String(error),
+    },
+    { status: 502 },
+  )
 }
 
 export function GET(request: NextRequest, context: RouteContext) {

@@ -10,6 +10,22 @@ browser -> https://app.example.com -> Next.js frontend -> https://api.internal.e
 
 The browser only reaches the Next.js frontend. The Next.js `/api/*` route proxies requests to the Go backend and presents the frontend client certificate for mTLS.
 
+## Single Pilot Host
+
+When the Go backend and Next.js frontend run on the same Docker host, the frontend Compose file defaults to the host gateway:
+
+```sh
+docker compose -f docker-compose.frontend.yml up -d --build
+curl -fsS http://127.0.0.1:3000/api/v1/health
+```
+
+Override the target only if needed:
+
+```sh
+COMPLIANCE_API_PROXY_TARGET=http://192.0.2.10:8080 \
+docker compose -f docker-compose.frontend.yml up -d --build
+```
+
 ## Frontend Host
 
 Copy the frontend client certificate, frontend client key, and backend server CA into a local secrets directory:
@@ -26,6 +42,9 @@ Start the frontend container:
 
 ```sh
 COMPLIANCE_API_PROXY_TARGET=https://api.internal.example.com:8080 \
+COMPLIANCE_API_PROXY_CLIENT_CERT_FILE=/run/secrets/compliantly/frontend-client.crt \
+COMPLIANCE_API_PROXY_CLIENT_KEY_FILE=/run/secrets/compliantly/frontend-client.key \
+COMPLIANCE_API_PROXY_CA_FILE=/run/secrets/compliantly/backend-ca.crt \
 COMPLIANCE_API_PROXY_SERVER_NAME=api.internal.example.com \
 COMPLIANCE_FRONTEND_TLS_DIR=./secrets \
 docker compose -f docker-compose.frontend.yml up -d --build

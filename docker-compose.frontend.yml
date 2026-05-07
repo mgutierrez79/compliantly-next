@@ -7,12 +7,14 @@ services:
     ports:
       - "${COMPLIANCE_FRONTEND_PORT:-3000}:3000"
     environment:
-      COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-https://api.internal.example.com:8080}
-      COMPLIANCE_API_PROXY_CLIENT_CERT_FILE: /run/secrets/compliantly/frontend-client.crt
-      COMPLIANCE_API_PROXY_CLIENT_KEY_FILE: /run/secrets/compliantly/frontend-client.key
-      COMPLIANCE_API_PROXY_CA_FILE: /run/secrets/compliantly/backend-ca.crt
-      COMPLIANCE_API_PROXY_SERVER_NAME: ${COMPLIANCE_API_PROXY_SERVER_NAME:-api.internal.example.com}
-      COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY: "0"
+      COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-http://host.docker.internal:8080}
+      COMPLIANCE_API_PROXY_CLIENT_CERT_FILE: ${COMPLIANCE_API_PROXY_CLIENT_CERT_FILE:-}
+      COMPLIANCE_API_PROXY_CLIENT_KEY_FILE: ${COMPLIANCE_API_PROXY_CLIENT_KEY_FILE:-}
+      COMPLIANCE_API_PROXY_CA_FILE: ${COMPLIANCE_API_PROXY_CA_FILE:-}
+      COMPLIANCE_API_PROXY_SERVER_NAME: ${COMPLIANCE_API_PROXY_SERVER_NAME:-}
+      COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY: ${COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY:-0}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - type: bind
         source: ${COMPLIANCE_FRONTEND_TLS_DIR:-./secrets}
