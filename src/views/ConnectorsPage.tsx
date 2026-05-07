@@ -710,8 +710,8 @@ const buildDefaultEventMapping = (kind: ConnectorEventKind): ConnectorEventMappi
 
 const buildPaloAltoDefaultMappings = () =>
   PALO_ALTO_DEFAULT_EVENT_MAPPINGS.map((mapping) => ({ ...mapping }))
-const buildDefaultPaloAltoCluster = (): PaloAltoClusterConfig => ({
-  name: 'cluster-1',
+const buildDefaultPaloAltoCluster = (name = 'cluster-1'): PaloAltoClusterConfig => ({
+  name,
   active_url: '',
   passive_url: '',
   description: '',
@@ -735,7 +735,7 @@ const buildDefaultPaloAltoInstance = (
   log_max: 200,
   log_since_hours: 168,
   log_since_time: '',
-  clusters: [buildDefaultPaloAltoCluster()],
+  clusters: [buildDefaultPaloAltoCluster(`${name}-cluster-1`)],
   event_mappings: buildPaloAltoDefaultMappings(),
 })
 const buildVeeamEnterpriseManagerDefaultMappings = () =>
@@ -2030,9 +2030,10 @@ export function ConnectorsPage() {
           const items: PaloAltoConnectorInstance[] = (result.items ?? []).map((item) => ({
             ...item,
             ha_only_logs: item.ha_only_logs ?? true,
-            clusters: (item.clusters?.length ? item.clusters : [buildDefaultPaloAltoCluster()]).map(
-              (cluster) => ({
+            clusters: (item.clusters?.length ? item.clusters : [buildDefaultPaloAltoCluster(`${item.name}-cluster-1`)]).map(
+              (cluster, index) => ({
                 ...cluster,
+                name: cluster.name?.trim() || `${item.name}-cluster-${index + 1}`,
                 active_asset_id: cluster.active_asset_id ?? '',
                 passive_asset_id: cluster.passive_asset_id ?? '',
               }),
@@ -4627,8 +4628,9 @@ export function ConnectorsPage() {
 
   function addPaloAltoCluster() {
     if (!currentPaloAlto) return
+    const nextIndex = currentPaloAlto.clusters.length + 1
     updatePaloAltoInstance(currentPaloAlto.name, {
-      clusters: [...currentPaloAlto.clusters, buildDefaultPaloAltoCluster()],
+      clusters: [...currentPaloAlto.clusters, buildDefaultPaloAltoCluster(`${currentPaloAlto.name}-cluster-${nextIndex}`)],
     })
   }
 
@@ -7312,8 +7314,17 @@ export function ConnectorsPage() {
             <Button onClick={addPaloAltoInstance}>Add instance</Button>
           </div>
           {currentPaloAlto ? (
-            <div className="mt-4 space-y-4">
+            <div key={`palo-alto-editor-${currentPaloAlto.name}`} className="mt-4 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Instance name</Label>
+                  <input
+                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                    value={currentPaloAlto.name}
+                    readOnly
+                    autoComplete="off"
+                  />
+                </div>
                 <AssetSelect
                   value={currentPaloAlto.asset_id}
                   onChange={(value) =>
@@ -7329,6 +7340,7 @@ export function ConnectorsPage() {
                   <select
                     className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                     value={currentPaloAlto.auth_mode ?? 'api_key'}
+                    autoComplete="off"
                     onChange={(e) =>
                       updatePaloAltoInstance(currentPaloAlto.name, {
                         auth_mode: e.target.value as PaloAltoAuthMode,
@@ -7365,6 +7377,7 @@ export function ConnectorsPage() {
                     <input
                       className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                       value={currentPaloAlto.api_key ?? ''}
+                      autoComplete="new-password"
                       onChange={(e) =>
                         updatePaloAltoInstance(currentPaloAlto.name, { api_key: e.target.value })
                       }
@@ -7381,6 +7394,7 @@ export function ConnectorsPage() {
                       <input
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={currentPaloAlto.username ?? ''}
+                        autoComplete="off"
                         onChange={(e) =>
                           updatePaloAltoInstance(currentPaloAlto.name, { username: e.target.value })
                         }
@@ -7396,6 +7410,7 @@ export function ConnectorsPage() {
                         type="password"
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={currentPaloAlto.password ?? ''}
+                        autoComplete="new-password"
                         onChange={(e) =>
                           updatePaloAltoInstance(currentPaloAlto.name, { password: e.target.value })
                         }
@@ -7458,6 +7473,7 @@ export function ConnectorsPage() {
                       min={1}
                       className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                       value={currentPaloAlto.log_max ?? 200}
+                      autoComplete="off"
                       onChange={(e) =>
                         updatePaloAltoInstance(currentPaloAlto.name, {
                           log_max: Number(e.target.value || 0),
@@ -7475,6 +7491,7 @@ export function ConnectorsPage() {
                       min={0}
                       className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                       value={currentPaloAlto.log_since_hours ?? 168}
+                      autoComplete="off"
                       onChange={(e) =>
                         updatePaloAltoInstance(currentPaloAlto.name, {
                           log_since_hours: Number(e.target.value || 0),
@@ -7491,6 +7508,7 @@ export function ConnectorsPage() {
                       type="datetime-local"
                       className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                       value={currentPaloAlto.log_since_time ?? ''}
+                      autoComplete="off"
                       onChange={(e) =>
                         updatePaloAltoInstance(currentPaloAlto.name, {
                           log_since_time: e.target.value,
@@ -7651,7 +7669,10 @@ export function ConnectorsPage() {
                 {currentPaloAlto.clusters.length ? (
                   <div className="space-y-4">
                     {currentPaloAlto.clusters.map((cluster, index) => (
-                      <div key={`palo-alto-cluster-${index}`} className="rounded-lg border border-[#274266] p-3">
+                      <div
+                        key={`palo-alto-cluster-${currentPaloAlto.name}-${index}`}
+                        className="rounded-lg border border-[#274266] p-3"
+                      >
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
@@ -7661,6 +7682,7 @@ export function ConnectorsPage() {
                             <input
                               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                               value={cluster.name ?? ''}
+                              autoComplete="off"
                               onChange={(e) => updatePaloAltoCluster(index, { name: e.target.value })}
                               placeholder="Primary DC"
                             />
@@ -7673,6 +7695,7 @@ export function ConnectorsPage() {
                             <input
                               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                               value={cluster.active_url ?? ''}
+                              autoComplete="off"
                               onChange={(e) => updatePaloAltoCluster(index, { active_url: e.target.value })}
                               placeholder="10.0.0.10 or https://fw-active.example.com"
                             />
@@ -7693,6 +7716,7 @@ export function ConnectorsPage() {
                             <input
                               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                               value={cluster.passive_url ?? ''}
+                              autoComplete="off"
                               onChange={(e) => updatePaloAltoCluster(index, { passive_url: e.target.value })}
                               placeholder="10.0.0.11 or https://fw-passive.example.com"
                             />
@@ -7713,6 +7737,7 @@ export function ConnectorsPage() {
                             <input
                               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                               value={cluster.description ?? ''}
+                              autoComplete="off"
                               onChange={(e) => updatePaloAltoCluster(index, { description: e.target.value })}
                               placeholder="Active/passive pair in DC1"
                             />
