@@ -1,0 +1,20 @@
+services:
+  compliantly-next:
+    build:
+      context: .
+    image: compliantly-next:pilot
+    restart: unless-stopped
+    ports:
+      - "${COMPLIANCE_FRONTEND_PORT:-3000}:3000"
+    environment:
+      COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-https://api.internal.example.com:8080}
+      COMPLIANCE_API_PROXY_CLIENT_CERT_FILE: /run/secrets/compliantly/frontend-client.crt
+      COMPLIANCE_API_PROXY_CLIENT_KEY_FILE: /run/secrets/compliantly/frontend-client.key
+      COMPLIANCE_API_PROXY_CA_FILE: /run/secrets/compliantly/backend-ca.crt
+      COMPLIANCE_API_PROXY_SERVER_NAME: ${COMPLIANCE_API_PROXY_SERVER_NAME:-api.internal.example.com}
+      COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY: "0"
+    volumes:
+      - type: bind
+        source: ${COMPLIANCE_FRONTEND_TLS_DIR:-./secrets}
+        target: /run/secrets/compliantly
+        read_only: true

@@ -14,6 +14,7 @@ test-results/
 .env
 .env.*
 !.env.example
+secrets/
 
 # OS / editor
 .DS_Store
