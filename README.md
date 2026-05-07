@@ -11,7 +11,7 @@ npm run dev
 
 Default UI URL is `http://localhost:3000`.
 
-Set `NEXT_PUBLIC_API_BASE_URL` to the Go backend base URL. During local development, the default app settings use `/api`, and `next.config.ts` proxies `/api/*` to `NEXT_PUBLIC_API_BASE_URL` or `COMPLIANCE_API_PROXY_TARGET`.
+Keep `NEXT_PUBLIC_API_BASE_URL=/api` when the UI should use the built-in server-side proxy. Set `COMPLIANCE_API_PROXY_TARGET` to the Go backend base URL.
 
 ## Docker
 
@@ -21,3 +21,19 @@ docker run --rm -p 3000:3000 -e COMPLIANCE_API_PROXY_TARGET=http://host.docker.i
 ```
 
 For a Linux host running the Go backend in Docker, set `COMPLIANCE_API_PROXY_TARGET` to the backend service URL on the Docker network, for example `http://compliantly-go:8080`.
+
+## Backend mTLS
+
+The `/api/*` proxy can present a client certificate to the Go backend. Mount the frontend client certificate/key and backend CA into the container, then set:
+
+```powershell
+docker run --rm -p 3000:3000 `
+  -e COMPLIANCE_API_PROXY_TARGET=https://compliantly-go:8080 `
+  -e COMPLIANCE_API_PROXY_CLIENT_CERT_FILE=/run/secrets/compliantly-frontend.crt `
+  -e COMPLIANCE_API_PROXY_CLIENT_KEY_FILE=/run/secrets/compliantly-frontend.key `
+  -e COMPLIANCE_API_PROXY_CA_FILE=/run/secrets/compliantly-backend-ca.crt `
+  -e COMPLIANCE_API_PROXY_SERVER_NAME=compliantly-go `
+  compliantly-next
+```
+
+Use `COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY=1` only for short-lived local testing with throwaway certificates.
