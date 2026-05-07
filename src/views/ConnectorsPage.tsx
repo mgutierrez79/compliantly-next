@@ -399,6 +399,14 @@ function normalizeInstanceNames(values: Array<string | null | undefined>): strin
   return uniqueSorted(names)
 }
 
+function connectorInstanceSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 const CONNECTOR_CATEGORIES: Record<string, string> = {
   service_now: 'ITSM / CMDB',
   glpi: 'ITSM / CMDB',
@@ -1121,14 +1129,35 @@ export function ConnectorsPage() {
     return selected.includes(base)
   }, [selected])
   const veeamEnterpriseManagerEnabled = selected.includes('veeam_enterprise_manager')
+  const configuredPaloAltoHealthNames = useMemo(
+    () =>
+      new Set(
+        paloAltoConfigs
+          .map((item) => connectorInstanceSlug(item.name))
+          .filter(Boolean)
+          .map((instance) => `palo_alto:${instance}`),
+      ),
+    [paloAltoConfigs],
+  )
   const configuredHealth = useMemo(() => {
-    const items = (data?.connectors ?? []).filter((c) => isEnabledConnectorName(c.name))
+    const items = (data?.connectors ?? [])
+      .filter((c) => isEnabledConnectorName(c.name))
+      .filter((c) => {
+        const normalized = c.name.toLowerCase()
+        if (normalized === 'palo_alto') {
+          return false
+        }
+        if (normalized.startsWith('palo_alto:')) {
+          return configuredPaloAltoHealthNames.has(normalized)
+        }
+        return true
+      })
     const hasPaloInstances = items.some((c) => c.name.startsWith('palo_alto:'))
     if (hasPaloInstances) {
       return items.filter((c) => c.name !== 'palo_alto')
     }
     return items
-  }, [data?.connectors, isEnabledConnectorName])
+  }, [configuredPaloAltoHealthNames, data?.connectors, isEnabledConnectorName])
   const filteredHealth = useMemo(() => {
     const normalize = (value: unknown) => String(value ?? '').toLowerCase()
     const filtered = configuredHealth.filter((c) => {
