@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Button, Card, ErrorBox, HelpTip, Label, PageTitle, Textarea } from '../components/Ui'
 import { ApiError, apiJson } from '../lib/api'
 
@@ -414,9 +415,17 @@ export function FrameworksPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <PageTitle>Regulations</PageTitle>
-        <HelpTip text={'Enable or disable regulations for new compliance runs. Requires admin access to save.'} />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <PageTitle>Regulations</PageTitle>
+          <HelpTip text={'Enable or disable regulations for new compliance runs. Requires admin access to save.'} />
+        </div>
+        <Link
+          href="/control-mappings"
+          className="rounded-md border border-[#274266] bg-[#12233d] px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-[#18365f]"
+        >
+          Control mappings
+        </Link>
       </div>
       <p className="text-sm text-slate-400">
         Select which regulations are active. Changes affect new runs and reports, not past history.
