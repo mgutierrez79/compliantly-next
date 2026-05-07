@@ -47,15 +47,29 @@ type PowerStoreVmStatus = {
   derived_from_source?: string | null
   replication_volumes?: { id?: string | null; name?: string | null; status?: string | null; state?: string | null }[]
 }
+type ConnectorLastError = { timestamp?: string | null; message?: string | null } | string
+type ConnectorPartialFailure = { timestamp?: string | null; message?: string | null } | string
+type ConnectorValidationIssue = { message?: string | null; detail?: string | null; field?: string | null } | string
 type ConnectorStatus = {
   name: string
+  label?: string
+  category?: string
   status?: string
   last_run?: string | null
   last_success?: string | null
-  last_error?: { timestamp: string; message: string } | null
+  last_error?: ConnectorLastError | null
   success_count?: number
   failure_count?: number
+  partial_failure_count?: number
+  partial_failures?: ConnectorPartialFailure[]
+  total_runs?: number
+  last_duration_seconds?: number | null
+  last_validation?: string | null
   validation_issue_count?: number
+  validation_issues?: ConnectorValidationIssue[]
+  last_provenance?: string | null
+  provenance_input_hashes?: number
+  success_rate?: number | null
   ha_configured?: boolean
   ha_status?: string | null
   change_detected?: boolean
@@ -1051,6 +1065,73 @@ const CONNECTOR_STATUS_CACHE_KEY = 'connectors_page_status_cache_v1'
 const CONNECTOR_FORCE_REFRESH_TS_KEY = 'connectors_page_force_refresh_ts_v1'
 const CONNECTOR_FORCE_REFRESH_INTERVAL_MS = 2 * 60 * 1000
 
+const healthText = (value: unknown) => {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
+
+const healthNumber = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+const healthBool = (value: unknown) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', 'yes', '1', 'ok', 'healthy'].includes(normalized)) return true
+    if (['false', 'no', '0', 'error', 'failed'].includes(normalized)) return false
+  }
+  return undefined
+}
+
+const healthIssueText = (value: unknown) => {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return ''
+  const row = value as Record<string, unknown>
+  return (
+    healthText(row.message) ||
+    healthText(row.detail) ||
+    healthText(row.field) ||
+    Object.entries(row)
+      .filter(([, item]) => item !== null && item !== undefined && healthText(item))
+      .map(([key, item]) => `${key}: ${healthText(item)}`)
+      .join(', ')
+  )
+}
+
+const healthErrorText = (value: ConnectorLastError | null | undefined) => healthIssueText(value)
+
+const healthTimeLabel = (value: string | null | undefined) => {
+  const text = healthText(value)
+  return text || '-'
+}
+
+const healthCountLabel = (value: unknown) => {
+  const number = healthNumber(value)
+  return number === null ? '0' : String(Math.trunc(number))
+}
+
+const healthDurationLabel = (value: unknown) => {
+  const seconds = healthNumber(value)
+  if (seconds === null) return '-'
+  if (seconds < 1) return `${Math.round(seconds * 1000)}ms`
+  if (seconds < 60) return `${seconds.toFixed(1)}s`
+  return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
+}
+
+const healthStateClass = (ok: boolean | undefined) => {
+  if (ok === true) return 'bg-emerald-500/20 text-emerald-200'
+  if (ok === false) return 'bg-amber-500/20 text-amber-200'
+  return 'bg-slate-500/20 text-slate-200'
+}
+
 export function ConnectorsPage() {
   const [data, setData] = useState<ConnectorsResponse | null>(() => {
     if (typeof window === 'undefined') return null
@@ -1268,7 +1349,7 @@ export function ConnectorsPage() {
       }
       if (
         healthFilters.category &&
-        !normalize(connectorCategory(c.name)).includes(healthFilters.category.toLowerCase())
+        !normalize(c.category ?? connectorCategory(c.name)).includes(healthFilters.category.toLowerCase())
       ) {
         return false
       }
@@ -1284,11 +1365,24 @@ export function ConnectorsPage() {
       }
       if (
         healthFilters.validation &&
-        !normalize(c.validation_issue_count).includes(healthFilters.validation.toLowerCase())
+        !normalize(
+          [
+            c.validation_issue_count,
+            ...(c.validation_issues ?? []).map((issue) => healthIssueText(issue)),
+          ].join(' '),
+        ).includes(healthFilters.validation.toLowerCase())
       ) {
         return false
       }
-      const alertText = (c.alerts ?? []).map((alert) => alert.key).join(' ')
+      const alertText = [
+        ...(c.alerts ?? []).flatMap((alert) => [alert.key, alert.message, alert.level]),
+        c.ha_status,
+        c.sla?.ha_status,
+        c.sla?.freshness_ok,
+        c.sla?.provenance_ok,
+        ...(c.partial_failures ?? []).map((item) => healthIssueText(item)),
+        healthErrorText(c.last_error),
+      ].join(' ')
       if (healthFilters.signals && !normalize(alertText).includes(healthFilters.signals.toLowerCase())) {
         return false
       }
@@ -1316,7 +1410,7 @@ export function ConnectorsPage() {
         return ((a.alerts?.length ?? 0) - (b.alerts?.length ?? 0)) * direction
       }
       if (healthSortKey === 'category') {
-        return connectorCategory(a.name).localeCompare(connectorCategory(b.name)) * direction
+        return String(a.category ?? connectorCategory(a.name)).localeCompare(String(b.category ?? connectorCategory(b.name))) * direction
       }
       const aValue = String((a as Record<string, unknown>)[healthSortKey] ?? '').toLowerCase()
       const bValue = String((b as Record<string, unknown>)[healthSortKey] ?? '').toLowerCase()
@@ -1325,7 +1419,7 @@ export function ConnectorsPage() {
   }, [configuredHealth, healthFilters, healthSortKey, healthSortDir])
   const groupedHealth = useMemo(() => {
     return filteredHealth.reduce<Record<string, ConnectorStatus[]>>((acc, connector) => {
-      const category = connectorCategory(connector.name)
+      const category = connector.category ?? connectorCategory(connector.name)
       acc[category] = acc[category] || []
       acc[category].push(connector)
       return acc
@@ -8042,13 +8136,34 @@ export function ConnectorsPage() {
                               },
                             ]
                           : []
-                    const showHaStatus =
-                      connector.name.startsWith('palo_alto') || connector.name.startsWith('dell_datadomain')
+                    const sla = connector.sla ?? {}
+                    const slaOverallOk = healthBool(sla.overall_ok)
+                    const freshnessOk = healthBool(sla.freshness_ok)
+                    const provenanceOk = healthBool(sla.provenance_ok)
+                    const ageHours = healthNumber(sla.age_hours)
+                    const freshnessHours = healthNumber(sla.freshness_hours)
+                    const provenanceHashes =
+                      healthNumber(sla.provenance_input_hashes) ??
+                      connector.provenance_input_hashes ??
+                      connector.input_hash_count ??
+                      0
+                    const partialFailures = connector.partial_failures ?? []
+                    const validationIssues = connector.validation_issues ?? []
+                    const lastErrorText = healthErrorText(connector.last_error)
                     const haConfigured =
-                    typeof connector.ha_configured === 'boolean' ? connector.ha_configured : undefined
-                  const haStatus =
-                    connector.ha_status ?? (haConfigured === false ? 'not_configured' : 'unknown')
-                  const haLabel = haConfigured === false ? 'HA not configured' : `HA ${haStatus}`
+                      typeof connector.ha_configured === 'boolean'
+                        ? connector.ha_configured
+                        : healthBool(sla.ha_configured)
+                    const haStatus =
+                      connector.ha_status ??
+                      (healthText(sla.ha_status) || (haConfigured === false ? 'not_configured' : 'unknown'))
+                    const showHaStatus =
+                      haConfigured !== undefined ||
+                      haStatus !== 'unknown' ||
+                      connector.name.startsWith('palo_alto') ||
+                      connector.name.startsWith('powerstore') ||
+                      connector.name.startsWith('dell_datadomain')
+                    const haLabel = haConfigured === false ? 'HA not configured' : `HA ${haStatus}`
                   return (
                     <div key={connector.name} className="rounded-md border border-[#1f365a] bg-[#0b1524] p-3">
                       <button
@@ -8163,28 +8278,143 @@ export function ConnectorsPage() {
                           {showHaStatus ? (
                             <div>
                               <div className="text-[11px] uppercase text-slate-400">HA status</div>
-                              <div className="mt-1">{haStatus}</div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <span className={`rounded px-2 py-0.5 text-[11px] ${haBadgeClass(haStatus, haConfigured)}`}>
+                                  {haLabel}
+                                </span>
+                                <span className="text-slate-300">
+                                  configured: {haConfigured === undefined ? 'unknown' : haConfigured ? 'yes' : 'no'}
+                                </span>
+                              </div>
                             </div>
                           ) : null}
+                          <div>
+                            <div className="text-[11px] uppercase text-slate-400">SLA overall</div>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(slaOverallOk)}`}>
+                                overall {slaOverallOk === undefined ? 'unknown' : slaOverallOk ? 'ok' : 'check'}
+                              </span>
+                              <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(freshnessOk)}`}>
+                                freshness {freshnessOk === undefined ? 'unknown' : freshnessOk ? 'ok' : 'stale'}
+                              </span>
+                              <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(provenanceOk)}`}>
+                                provenance {provenanceOk === undefined ? 'unknown' : provenanceOk ? 'ok' : 'missing'}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase text-slate-400">Freshness</div>
+                            <div className="mt-1">
+                              age {ageHours === null ? 'n/a' : `${ageHours}h`}
+                              {freshnessHours === null ? '' : ` / target ${freshnessHours}h`}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase text-slate-400">Provenance hashes</div>
+                            <div className="mt-1">{healthCountLabel(provenanceHashes)}</div>
+                          </div>
                           <div>
                             <div className="text-[11px] uppercase text-slate-400">Success / Fail</div>
                             <div className="mt-1">
                               {successCount}/{failureCount}
+                              {connector.partial_failure_count ? ` / partial ${connector.partial_failure_count}` : ''}
                             </div>
                           </div>
                           <div>
                             <div className="text-[11px] uppercase text-slate-400">Validation issues</div>
-                            <div className="mt-1">{connector.validation_issue_count ?? 0}</div>
+                            <div className="mt-1">{connector.validation_issue_count ?? validationIssues.length}</div>
+                            {connector.last_validation ? (
+                              <div className="mt-1 font-mono text-[11px] text-slate-400">
+                                {connector.last_validation}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase text-slate-400">Last run</div>
+                            <div className="mt-1 font-mono">{healthTimeLabel(connector.last_run)}</div>
+                            <div className="mt-1 text-slate-400">
+                              duration {healthDurationLabel(connector.last_duration_seconds)}
+                            </div>
                           </div>
                           <div>
                             <div className="text-[11px] uppercase text-slate-400">Last success</div>
-                            <div className="mt-1 font-mono">{connector.last_success ?? '-'}</div>
+                            <div className="mt-1 font-mono">{healthTimeLabel(connector.last_success)}</div>
                           </div>
+                          <div>
+                            <div className="text-[11px] uppercase text-slate-400">Last provenance</div>
+                            <div className="mt-1 font-mono">{healthTimeLabel(connector.last_provenance)}</div>
+                          </div>
+                          {lastErrorText ? (
                             <div className="sm:col-span-2 lg:col-span-3">
-                              <div className="text-[11px] uppercase text-slate-400">Signals</div>
-                              {alerts.length ? (
+                              <div className="text-[11px] uppercase text-slate-400">Last error</div>
+                              <div className="mt-1 rounded border border-rose-500/30 bg-rose-500/10 p-2 text-rose-100">
+                                {lastErrorText}
+                              </div>
+                            </div>
+                          ) : null}
+                          {validationIssues.length ? (
+                            <div className="sm:col-span-2 lg:col-span-3">
+                              <div className="text-[11px] uppercase text-slate-400">Validation details</div>
+                              <div className="mt-1 space-y-1">
+                                {validationIssues.slice(0, 5).map((issue, index) => (
+                                  <div
+                                    key={`${connector.name}-validation-${index}`}
+                                    className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100"
+                                  >
+                                    {healthIssueText(issue)}
+                                  </div>
+                                ))}
+                                {validationIssues.length > 5 ? (
+                                  <span className="text-[11px] text-slate-400">
+                                    +{validationIssues.length - 5} more
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          {partialFailures.length ? (
+                            <div className="sm:col-span-2 lg:col-span-3">
+                              <div className="text-[11px] uppercase text-slate-400">Partial failures</div>
+                              <div className="mt-1 space-y-1">
+                                {partialFailures.slice(0, 5).map((failure, index) => (
+                                  <div
+                                    key={`${connector.name}-partial-${index}`}
+                                    className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100"
+                                  >
+                                    {healthIssueText(failure)}
+                                  </div>
+                                ))}
+                                {partialFailures.length > 5 ? (
+                                  <span className="text-[11px] text-slate-400">
+                                    +{partialFailures.length - 5} more
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          {connector.change_detected ? (
+                            <div className="sm:col-span-2 lg:col-span-3">
+                              <div className="text-[11px] uppercase text-slate-400">Source changes</div>
+                              <div className="mt-1 text-slate-200">
+                                {connector.last_change_count ?? connector.last_change_keys?.length ?? 0} change(s)
+                                {connector.last_change_at ? ` at ${connector.last_change_at}` : ''}
+                              </div>
+                              {connector.last_change_keys?.length ? (
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                  {alerts.map((alert, index) => (
+                                  {connector.last_change_keys.slice(0, 8).map((key) => (
+                                    <span key={`${connector.name}-change-${key}`} className="rounded bg-slate-500/20 px-2 py-0.5 text-[11px] text-slate-200">
+                                      {key}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          <div className="sm:col-span-2 lg:col-span-3">
+                            <div className="text-[11px] uppercase text-slate-400">Signals</div>
+                            {alerts.length ? (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {alerts.map((alert, index) => (
                                   <span
                                     key={`${connector.name}-${alert.key}-${index}`}
                                     title={alert.message}
@@ -8194,10 +8424,10 @@ export function ConnectorsPage() {
                                   </span>
                                 ))}
                               </div>
-                              ) : (
-                                <span className="mt-1 inline-block text-xs text-slate-300">ok</span>
-                              )}
-                            </div>
+                            ) : (
+                              <span className="mt-1 inline-block text-xs text-slate-300">ok</span>
+                            )}
+                          </div>
                             {connector.name.startsWith('veeam_enterprise_manager') ? (
                               <div className="sm:col-span-2 lg:col-span-3">
                                 <div className="text-[11px] uppercase text-slate-400">
