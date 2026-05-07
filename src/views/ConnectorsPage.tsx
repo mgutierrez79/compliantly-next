@@ -347,7 +347,7 @@ type DellDataDomainConnectorInstance = {
   verify_tls: boolean
   event_mappings: ConnectorEventMapping[]
 }
-type PaloAltoConnectorConfigList = { items: PaloAltoConnectorInstance[] }
+type PaloAltoConnectorConfigList = { items?: PaloAltoConnectorInstance[] }
 type DellDataDomainConnectorConfigList = { items: DellDataDomainConnectorInstance[] }
 type DnacConnectorConfig = {
   asset_id?: string | null
@@ -2027,6 +2027,7 @@ export function ConnectorsPage() {
       try {
         const result = await apiJson<PaloAltoConnectorConfigList>('/config/connectors/palo_alto')
         if (!cancelled) {
+          const hasSavedItems = Object.prototype.hasOwnProperty.call(result, 'items')
           const items: PaloAltoConnectorInstance[] = (result.items ?? []).map((item) => ({
             ...item,
             ha_only_logs: item.ha_only_logs ?? true,
@@ -2041,10 +2042,10 @@ export function ConnectorsPage() {
             event_mappings: item.event_mappings ?? [],
             log_since_time: item.log_since_time ?? '',
           }))
-          if (items.length) {
+          if (hasSavedItems) {
             setPaloAltoConfigs(items)
             setPaloAltoSelected((current) =>
-              items.find((item) => item.name === current) ? current : items[0].name,
+              items.find((item) => item.name === current) ? current : items[0]?.name ?? '',
             )
             return
           }
@@ -2981,10 +2982,11 @@ export function ConnectorsPage() {
         body: JSON.stringify({ items: paloAltoConfigs }),
       })
       const result = (await response.json()) as PaloAltoConnectorConfigList
-      setPaloAltoConfigs(result.items ?? [])
-      if (result.items?.length && !result.items.find((item) => item.name === paloAltoSelected)) {
-        setPaloAltoSelected(result.items[0].name)
-      }
+      const items = result.items ?? []
+      setPaloAltoConfigs(items)
+      setPaloAltoSelected((current) =>
+        items.find((item) => item.name === current) ? current : items[0]?.name ?? '',
+      )
       setPaloAltoMessage('Palo Alto instances saved.')
       await saveConfig()
       setSelectedConnector('')
@@ -3009,9 +3011,12 @@ export function ConnectorsPage() {
         body: JSON.stringify({ items: next }),
       })
       const result = (await response.json()) as PaloAltoConnectorConfigList
-      setPaloAltoConfigs(result.items ?? [])
-      setPaloAltoSelected(result.items?.[0]?.name ?? '')
-      setPaloAltoMessage('Palo Alto instance deleted.')
+      const items = result.items ?? []
+      setPaloAltoConfigs(items)
+      setPaloAltoSelected(items[0]?.name ?? '')
+      setPaloAltoMessage(
+        items.length ? 'Palo Alto instance deleted.' : 'Palo Alto instance deleted. No instances configured.',
+      )
     } catch (e) {
       const err = e as ApiError
       setPaloAltoMessage(`Failed to delete: ${err.message}`)
@@ -3034,9 +3039,12 @@ export function ConnectorsPage() {
         body: JSON.stringify({ items: next }),
       })
       const result = (await response.json()) as PaloAltoConnectorConfigList
-      setPaloAltoConfigs(result.items ?? [])
-      setPaloAltoSelected(result.items?.[0]?.name ?? '')
-      setPaloAltoMessage('Palo Alto instance deleted.')
+      const items = result.items ?? []
+      setPaloAltoConfigs(items)
+      setPaloAltoSelected(items[0]?.name ?? '')
+      setPaloAltoMessage(
+        items.length ? 'Palo Alto instance deleted.' : 'Palo Alto instance deleted. No instances configured.',
+      )
     } catch (e) {
       const err = e as ApiError
       setPaloAltoMessage(`Failed to delete: ${err.message}`)
