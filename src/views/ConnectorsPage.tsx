@@ -864,207 +864,6 @@ const requiresAssetBinding = (name: string) => {
   return ASSET_REQUIRED_CATEGORIES.has(category)
 }
 
-const normalizeConnectorKey = (value: string | null | undefined) => String(value ?? '').trim().toLowerCase()
-
-const vmReplicationEvidence = (vm: PowerStoreVmStatus | undefined) => {
-  if (!vm) return 0
-  const volumes = vm.replication_volumes ?? []
-  const state = String(vm.replication_state ?? '').trim().toLowerCase()
-  const hasState = Boolean(state && state !== 'unknown' && state !== 'null' && state !== 'n/a')
-  return volumes.length + (hasState ? 1 : 0)
-}
-
-const connectorEvidenceScore = (connector: ConnectorStatus | undefined) => {
-  if (!connector) return 0
-  const directVolumes = connector.replication_volumes ?? []
-  const groupedVolumes = (connector.replication_volume_groups ?? []).reduce(
-    (sum, group) => sum + (group.volumes ?? []).length,
-    0,
-  )
-  const vmEvidence = (connector.storage_vms ?? []).reduce((sum, vm) => sum + vmReplicationEvidence(vm), 0)
-  const backupEvidence = (connector.vm_last_backups ?? []).length
-  return directVolumes.length + groupedVolumes + vmEvidence + backupEvidence
-}
-
-const mergeStorageVms = (
-  previousVms: PowerStoreVmStatus[] | undefined,
-  incomingVms: PowerStoreVmStatus[] | undefined,
-) => {
-  const previous = previousVms ?? []
-  const incoming = incomingVms ?? []
-  if (!incoming.length) return previous
-  const token = (value: string | null | undefined) => String(value ?? '').trim().toLowerCase()
-  const stateRank = (value: string | null | undefined) => {
-    const normalized = token(value)
-    if (!normalized || normalized === 'unknown' || normalized === 'null' || normalized === 'n/a') return 3
-    if (['error', 'failed', 'critical', 'down', 'fault'].includes(normalized)) return 0
-    if (['degraded', 'warning', 'warn', 'partial', 'lagging', 'syncing', 'paused'].includes(normalized)) return 1
-    return 2
-  }
-  const mergeVolumes = (
-    left: { id?: string | null; name?: string | null; status?: string | null; state?: string | null }[] | undefined,
-    right: { id?: string | null; name?: string | null; status?: string | null; state?: string | null }[] | undefined,
-  ) => {
-    const merged: { id?: string | null; name?: string | null; status?: string | null; state?: string | null }[] = []
-    const seen = new Set<string>()
-    for (const volume of [...(left ?? []), ...(right ?? [])]) {
-      const idKey = token(volume.id)
-      const nameKey = token(volume.name)
-      const signature = `${idKey}|${nameKey}`
-      if ((!idKey && !nameKey) || seen.has(signature)) continue
-      seen.add(signature)
-      merged.push(volume)
-    }
-    return merged
-  }
-  const mergeVm = (base: PowerStoreVmStatus, next: PowerStoreVmStatus): PowerStoreVmStatus => {
-    const baseState = String(base.replication_state ?? '').trim()
-    const nextState = String(next.replication_state ?? '').trim()
-    const resolvedState = stateRank(nextState) < stateRank(baseState) ? nextState : baseState
-    const baseVolumeCount = Number.isFinite(Number(base.volume_count))
-      ? Math.max(0, Math.trunc(Number(base.volume_count)))
-      : 0
-    const nextVolumeCount = Number.isFinite(Number(next.volume_count))
-      ? Math.max(0, Math.trunc(Number(next.volume_count)))
-      : 0
-    const mergedVolumes = mergeVolumes(base.replication_volumes, next.replication_volumes)
-    return {
-      ...base,
-      ...next,
-      replication_state: resolvedState || next.replication_state || base.replication_state,
-      replication_volumes: mergedVolumes,
-      volume_count: Math.max(baseVolumeCount, nextVolumeCount, mergedVolumes.length),
-      derived_from_source: next.derived_from_source ?? base.derived_from_source,
-    }
-  }
-  const consolidateIncoming = (items: PowerStoreVmStatus[]): PowerStoreVmStatus[] => {
-    const rows: PowerStoreVmStatus[] = []
-    const byId = new Map<string, number>()
-    const byName = new Map<string, number>()
-    for (const vm of items) {
-      const idKey = token(vm.id)
-      const nameKey = token(vm.name)
-      let idx = idKey ? byId.get(idKey) : undefined
-      if (idx === undefined && nameKey) {
-        const idxByName = byName.get(nameKey)
-        if (idxByName !== undefined) {
-          const existingId = token(rows[idxByName]?.id)
-          if (!(existingId && idKey && existingId !== idKey)) idx = idxByName
-        }
-      }
-      if (idx === undefined) {
-        rows.push(vm)
-        idx = rows.length - 1
-      } else {
-        rows[idx] = mergeVm(rows[idx], vm)
-      }
-      const resolved = rows[idx]
-      const resolvedId = token(resolved.id) || idKey
-      const resolvedName = token(resolved.name) || nameKey
-      if (resolvedId) byId.set(resolvedId, idx)
-      if (resolvedName) byName.set(resolvedName, idx)
-    }
-    return rows
-  }
-  const consolidatedIncoming = consolidateIncoming(incoming)
-  if (!previous.length) return consolidatedIncoming
-  const previousById = new Map<string, PowerStoreVmStatus>()
-  const previousByName = new Map<string, PowerStoreVmStatus>()
-  for (const vm of previous) {
-    const idKey = token(vm.id)
-    const nameKey = token(vm.name)
-    if (idKey) previousById.set(idKey, vm)
-    if (nameKey) previousByName.set(nameKey, vm)
-  }
-  const merged: PowerStoreVmStatus[] = []
-  for (const vm of consolidatedIncoming) {
-    const idKey = token(vm.id)
-    const nameKey = token(vm.name)
-    const prevById = idKey ? previousById.get(idKey) : undefined
-    let prevByName = nameKey ? previousByName.get(nameKey) : undefined
-    if (prevByName && idKey) {
-      const prevByNameId = token(prevByName.id)
-      if (prevByNameId && prevByNameId !== idKey) prevByName = undefined
-    }
-    const prev = prevById || prevByName
-    const incomingState = String(vm.replication_state ?? '').trim()
-    const previousState = String(prev?.replication_state ?? '').trim()
-    const resolvedState = stateRank(incomingState) < stateRank(previousState) ? incomingState : previousState
-    const incomingVolumeCountRaw = Number(vm.volume_count ?? 0)
-    const previousVolumeCountRaw = Number(prev?.volume_count ?? 0)
-    const incomingVolumeCount = Number.isFinite(incomingVolumeCountRaw)
-      ? Math.max(0, Math.trunc(incomingVolumeCountRaw))
-      : 0
-    const previousVolumeCount = Number.isFinite(previousVolumeCountRaw)
-      ? Math.max(0, Math.trunc(previousVolumeCountRaw))
-      : 0
-    const mergedVolumes = mergeVolumes(prev?.replication_volumes, vm.replication_volumes)
-    merged.push({
-      ...prev,
-      ...vm,
-      replication_state: resolvedState || vm.replication_state || prev?.replication_state,
-      replication_volumes: mergedVolumes,
-      volume_count: Math.max(incomingVolumeCount, previousVolumeCount, mergedVolumes.length),
-      derived_from_source: vm.derived_from_source ?? prev?.derived_from_source,
-    })
-  }
-  return merged
-}
-
-const mergeConnectorStatusesStable = (
-  previousStatuses: ConnectorStatus[] | null,
-  incomingStatuses: ConnectorStatus[],
-): ConnectorStatus[] => {
-  if (!incomingStatuses.length) return previousStatuses ?? []
-  if (!previousStatuses?.length) return incomingStatuses
-  const previousByKey = new Map<string, ConnectorStatus>()
-  for (const status of previousStatuses) {
-    const key = normalizeConnectorKey(status.name)
-    if (key) previousByKey.set(key, status)
-  }
-  const merged: ConnectorStatus[] = []
-  const seen = new Set<string>()
-  for (const incoming of incomingStatuses) {
-    const key = normalizeConnectorKey(incoming.name)
-    const previous = key ? previousByKey.get(key) : undefined
-    if (!previous) {
-      merged.push(incoming)
-      if (key) seen.add(key)
-      continue
-    }
-    const incomingScore = connectorEvidenceScore(incoming)
-    const previousScore = connectorEvidenceScore(previous)
-    if (incomingScore === 0 && previousScore > 0) {
-      merged.push(previous)
-      if (key) seen.add(key)
-      continue
-    }
-    merged.push({
-      ...previous,
-      ...incoming,
-      replication_volumes:
-        (incoming.replication_volumes ?? []).length ? incoming.replication_volumes : previous.replication_volumes,
-      replication_volume_groups:
-        (incoming.replication_volume_groups ?? []).length
-          ? incoming.replication_volume_groups
-          : previous.replication_volume_groups,
-      vm_last_backups: (incoming.vm_last_backups ?? []).length ? incoming.vm_last_backups : previous.vm_last_backups,
-      storage_vms: mergeStorageVms(previous.storage_vms, incoming.storage_vms),
-    })
-    if (key) seen.add(key)
-  }
-  for (const previous of previousStatuses) {
-    const key = normalizeConnectorKey(previous.name)
-    if (key && seen.has(key)) continue
-    merged.push(previous)
-  }
-  return merged
-}
-
-const CONNECTOR_STATUS_CACHE_KEY = 'connectors_page_status_cache_v1'
-const CONNECTOR_FORCE_REFRESH_TS_KEY = 'connectors_page_force_refresh_ts_v1'
-const CONNECTOR_FORCE_REFRESH_INTERVAL_MS = 2 * 60 * 1000
-
 const healthText = (value: unknown) => {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value.trim()
@@ -1133,18 +932,7 @@ const healthStateClass = (ok: boolean | undefined) => {
 }
 
 export function ConnectorsPage() {
-  const [data, setData] = useState<ConnectorsResponse | null>(() => {
-    if (typeof window === 'undefined') return null
-    try {
-      const raw = window.localStorage.getItem(CONNECTOR_STATUS_CACHE_KEY)
-      if (!raw) return null
-      const parsed = JSON.parse(raw) as ConnectorsResponse
-      if (!parsed || !Array.isArray(parsed.connectors) || !parsed.connectors.length) return null
-      return parsed
-    } catch {
-      return null
-    }
-  })
+  const [data, setData] = useState<ConnectorsResponse | null>(null)
   const connectorsLoadInFlightRef = useRef(false)
   const [error, setError] = useState<ApiError | null>(null)
   const [config, setConfig] = useState<ConnectorConfigResponse | null>(null)
@@ -2034,23 +1822,6 @@ export function ConnectorsPage() {
 
   useEffect(() => {
     let cancelled = false
-    const shouldRunForcedRefresh = () => {
-      if (typeof window === 'undefined') return false
-      try {
-        const lastRun = Number(window.localStorage.getItem(CONNECTOR_FORCE_REFRESH_TS_KEY) ?? '0')
-        return !Number.isFinite(lastRun) || Date.now() - lastRun >= CONNECTOR_FORCE_REFRESH_INTERVAL_MS
-      } catch {
-        return true
-      }
-    }
-    const markForcedRefreshRun = () => {
-      if (typeof window === 'undefined') return
-      try {
-        window.localStorage.setItem(CONNECTOR_FORCE_REFRESH_TS_KEY, String(Date.now()))
-      } catch {
-        // ignore storage limits
-      }
-    }
     async function loadStatuses() {
       if (connectorsLoadInFlightRef.current) return
       connectorsLoadInFlightRef.current = true
@@ -2058,18 +1829,7 @@ export function ConnectorsPage() {
       try {
         const result = await apiJson<ConnectorsResponse>('/connectors')
         if (!cancelled) {
-          setData((previous) => {
-            const mergedConnectors = mergeConnectorStatusesStable(previous?.connectors ?? null, result.connectors ?? [])
-            const merged = { ...result, connectors: mergedConnectors }
-            if (typeof window !== 'undefined' && merged.connectors.length) {
-              try {
-                window.localStorage.setItem(CONNECTOR_STATUS_CACHE_KEY, JSON.stringify(merged))
-              } catch {
-                // ignore storage limits
-              }
-            }
-            return merged
-          })
+          setData(result)
         }
       } catch (e) {
         if (!cancelled) setError(e as ApiError)
@@ -2080,15 +1840,12 @@ export function ConnectorsPage() {
     async function boot() {
       await loadStatuses()
       if (cancelled) return
-      if (shouldRunForcedRefresh()) {
-        markForcedRefreshRun()
-        try {
-          await apiFetch('/connectors/data?refresh=true')
-        } catch {
-          // ignore refresh failures; keep latest known status view
-        }
-        if (!cancelled) await loadStatuses()
+      try {
+        await apiFetch('/connectors/data?refresh=true')
+      } catch {
+        // ignore refresh failures; keep latest persisted telemetry view
       }
+      if (!cancelled) await loadStatuses()
     }
     void boot()
     const onSnapshotRefreshed = () => {
@@ -2291,23 +2048,8 @@ export function ConnectorsPage() {
             return
           }
         }
-        let connectorList: ConnectorStatus[] = []
-        try {
-          const cachedRaw =
-            typeof window !== 'undefined' ? window.localStorage.getItem(CONNECTOR_STATUS_CACHE_KEY) : null
-          if (cachedRaw) {
-            const cachedParsed = JSON.parse(cachedRaw) as ConnectorsResponse
-            if (Array.isArray(cachedParsed?.connectors)) {
-              connectorList = cachedParsed.connectors
-            }
-          }
-        } catch {
-          // ignore cache parsing failures
-        }
-        if (!connectorList.length) {
-          const connectors = await apiJson<ConnectorsResponse>('/connectors')
-          connectorList = connectors.connectors ?? []
-        }
+        const connectors = await apiJson<ConnectorsResponse>('/connectors')
+        const connectorList = connectors.connectors ?? []
         if (cancelled) return
         const fallbackNames = connectorList
           .map((connector) => connector.name)
