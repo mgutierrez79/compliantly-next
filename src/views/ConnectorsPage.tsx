@@ -696,6 +696,34 @@ const buildDefaultEventMapping = (kind: ConnectorEventKind): ConnectorEventMappi
 
 const buildPaloAltoDefaultMappings = () =>
   PALO_ALTO_DEFAULT_EVENT_MAPPINGS.map((mapping) => ({ ...mapping }))
+const buildDefaultPaloAltoCluster = (): PaloAltoClusterConfig => ({
+  name: 'cluster-1',
+  active_url: '',
+  passive_url: '',
+  description: '',
+  active_asset_id: '',
+  passive_asset_id: '',
+})
+const buildDefaultPaloAltoInstance = (
+  name: string,
+  assetId: string,
+): PaloAltoConnectorInstance => ({
+  name,
+  asset_id: assetId,
+  auth_mode: 'api_key',
+  api_key: '',
+  username: '',
+  password: '',
+  verify_tls: true,
+  ha_only_logs: true,
+  include_system_logs: true,
+  include_config_logs: true,
+  log_max: 200,
+  log_since_hours: 168,
+  log_since_time: '',
+  clusters: [buildDefaultPaloAltoCluster()],
+  event_mappings: buildPaloAltoDefaultMappings(),
+})
 const buildVeeamEnterpriseManagerDefaultMappings = () =>
   VEEAM_ENTERPRISE_MANAGER_DEFAULT_EVENT_MAPPINGS.map((mapping) => ({ ...mapping }))
 const buildVcenterDefaultMappings = () =>
@@ -2151,11 +2179,13 @@ export function ConnectorsPage() {
           const items: PaloAltoConnectorInstance[] = (result.items ?? []).map((item) => ({
             ...item,
             ha_only_logs: item.ha_only_logs ?? true,
-            clusters: (item.clusters ?? []).map((cluster) => ({
-              ...cluster,
-              active_asset_id: cluster.active_asset_id ?? '',
-              passive_asset_id: cluster.passive_asset_id ?? '',
-            })),
+            clusters: (item.clusters?.length ? item.clusters : [buildDefaultPaloAltoCluster()]).map(
+              (cluster) => ({
+                ...cluster,
+                active_asset_id: cluster.active_asset_id ?? '',
+                passive_asset_id: cluster.passive_asset_id ?? '',
+              }),
+            ),
             event_mappings: item.event_mappings ?? [],
             log_since_time: item.log_since_time ?? '',
           }))
@@ -2192,29 +2222,7 @@ export function ConnectorsPage() {
           .filter((name): name is string => Boolean(name && name.trim()))
         if (fallbackNames.length) {
           const fallbackItems: PaloAltoConnectorInstance[] = fallbackNames.map((name) => ({
-            name,
-            asset_id: defaultAssetId,
-            auth_mode: 'api_key',
-            api_key: '',
-            username: '',
-            password: '',
-            verify_tls: true,
-            ha_only_logs: true,
-            include_system_logs: true,
-            include_config_logs: true,
-            log_max: 200,
-            log_since_hours: 168,
-            log_since_time: '',
-            clusters: [
-              {
-                name: 'cluster-1',
-                active_url: '',
-                passive_url: '',
-                description: '',
-                active_asset_id: '',
-                passive_asset_id: '',
-              },
-            ],
+            ...buildDefaultPaloAltoInstance(name, ''),
             event_mappings: [],
           }))
           setPaloAltoConfigs(fallbackItems)
@@ -2222,7 +2230,12 @@ export function ConnectorsPage() {
           setPaloAltoMessage(
             'Loaded Palo Alto instances from runtime status. Please re-enter credentials and cluster URLs, then save.',
           )
+          return
         }
+        const defaultItem = buildDefaultPaloAltoInstance('default', '')
+        setPaloAltoConfigs([defaultItem])
+        setPaloAltoSelected(defaultItem.name)
+        setPaloAltoMessage('Enter the firewall management IP address or URL, then save the Palo Alto instance.')
       } catch (e) {
         if (!cancelled) setConfigError(e as ApiError)
       }
@@ -2231,7 +2244,7 @@ export function ConnectorsPage() {
     return () => {
       cancelled = true
     }
-  }, [defaultAssetId])
+  }, [])
 
   useEffect(() => {
     if (selectedConnector !== 'palo_alto') return
@@ -3423,23 +3436,7 @@ export function ConnectorsPage() {
       setPaloAltoMessage('Instance name already exists.')
       return
     }
-    const newItem: PaloAltoConnectorInstance = {
-      name,
-      asset_id: defaultAssetId,
-      auth_mode: 'api_key',
-      api_key: '',
-      username: '',
-      password: '',
-      verify_tls: true,
-      ha_only_logs: true,
-      include_system_logs: true,
-      include_config_logs: true,
-      log_max: 200,
-      log_since_hours: 168,
-      log_since_time: '',
-      clusters: [],
-      event_mappings: buildPaloAltoDefaultMappings(),
-    }
+    const newItem = buildDefaultPaloAltoInstance(name, defaultAssetId)
     setPaloAltoConfigs((prev) => [...prev, newItem])
     setPaloAltoSelected(name)
     setPaloAltoNewName('')
@@ -4795,17 +4792,7 @@ export function ConnectorsPage() {
   function addPaloAltoCluster() {
     if (!currentPaloAlto) return
     updatePaloAltoInstance(currentPaloAlto.name, {
-      clusters: [
-        ...currentPaloAlto.clusters,
-        {
-          name: '',
-          active_url: '',
-          passive_url: '',
-          description: '',
-          active_asset_id: '',
-          passive_asset_id: '',
-        },
-      ],
+      clusters: [...currentPaloAlto.clusters, buildDefaultPaloAltoCluster()],
     })
   }
 
@@ -7818,9 +7805,12 @@ export function ConnectorsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Label>Clusters</Label>
-                    <HelpTip text={'Add one entry per active/passive firewall pair.'} />
+                    <HelpTip text={'Add one entry per active/passive firewall pair. Enter a management IP, hostname, or full URL.'} />
                   </div>
                   <Button onClick={addPaloAltoCluster}>Add cluster</Button>
+                </div>
+                <div className="text-xs text-slate-300">
+                  Enter the PAN-OS management IP/hostname or full base URL. The collector calls the PAN-OS API endpoint at /api/.
                 </div>
                 {currentPaloAlto.clusters.length ? (
                   <div className="space-y-4">
@@ -7841,14 +7831,14 @@ export function ConnectorsPage() {
                           </div>
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <Label>Active firewall URL</Label>
-                              <HelpTip text={'Management URL for the active node.'} />
+                              <Label>Active firewall IP or URL</Label>
+                              <HelpTip text={'Management IP, hostname, or URL for the active node. Plain IPs and hostnames use HTTPS.'} />
                             </div>
                             <input
                               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                               value={cluster.active_url ?? ''}
                               onChange={(e) => updatePaloAltoCluster(index, { active_url: e.target.value })}
-                              placeholder="https://fw-active.example.com"
+                              placeholder="10.0.0.10 or https://fw-active.example.com"
                             />
                           </div>
                           <AssetSelect
@@ -7861,14 +7851,14 @@ export function ConnectorsPage() {
                           />
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <Label>Passive firewall URL</Label>
-                              <HelpTip text={'Optional standby node URL.'} />
+                              <Label>Passive firewall IP or URL</Label>
+                              <HelpTip text={'Optional standby node management IP, hostname, or URL. Plain IPs and hostnames use HTTPS.'} />
                             </div>
                             <input
                               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                               value={cluster.passive_url ?? ''}
                               onChange={(e) => updatePaloAltoCluster(index, { passive_url: e.target.value })}
-                              placeholder="https://fw-passive.example.com"
+                              placeholder="10.0.0.11 or https://fw-passive.example.com"
                             />
                           </div>
                           <AssetSelect
