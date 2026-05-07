@@ -1081,6 +1081,7 @@ export function ConnectorsPage() {
   const [paloAltoTesting, setPaloAltoTesting] = useState(false)
   const [paloAltoDebugging, setPaloAltoDebugging] = useState(false)
   const [paloAltoDebug, setPaloAltoDebug] = useState<PaloAltoDebugResponse | null>(null)
+  const [paloAltoMappingsExpanded, setPaloAltoMappingsExpanded] = useState<Record<string, boolean>>({})
   const [dellDataDomainConfigs, setDellDataDomainConfigs] = useState<DellDataDomainConnectorInstance[]>([])
   const [dellDataDomainSelected, setDellDataDomainSelected] = useState('')
   const [dellDataDomainNewName, setDellDataDomainNewName] = useState('')
@@ -3283,6 +3284,7 @@ export function ConnectorsPage() {
     powerstoreConfigs.find((item) => item.name === powerstoreSelected) ?? null
   const currentPaloAlto =
     paloAltoConfigs.find((item) => item.name === paloAltoSelected) ?? null
+  const paloAltoMappingsOpen = currentPaloAlto ? !!paloAltoMappingsExpanded[currentPaloAlto.name] : false
   const currentDellDataDomain =
     dellDataDomainConfigs.find((item) => item.name === dellDataDomainSelected) ?? null
 
@@ -3297,6 +3299,7 @@ export function ConnectorsPage() {
     updatePaloAltoInstance(currentPaloAlto.name, {
       event_mappings: buildPaloAltoDefaultMappings(),
     })
+    setPaloAltoMappingsExpanded((prev) => ({ ...prev, [currentPaloAlto.name]: true }))
     setPaloAltoMessage('Default HA mappings loaded.')
   }
 
@@ -4688,6 +4691,7 @@ export function ConnectorsPage() {
       newMapping,
     ]
     updatePaloAltoInstance(currentPaloAlto.name, { event_mappings: next })
+    setPaloAltoMappingsExpanded((prev) => ({ ...prev, [currentPaloAlto.name]: true }))
   }
 
   function updatePaloAltoEventMapping(index: number, patch: Partial<PaloAltoEventMapping>) {
@@ -7560,141 +7564,6 @@ export function ConnectorsPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label>Event mappings</Label>
-                    <HelpTip text={'Map Palo Alto events into findings and scoring for this instance.'} />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={loadPaloAltoDefaultMappings}>Load defaults</Button>
-                    <Button onClick={addPaloAltoEventMapping}>Add mapping</Button>
-                  </div>
-                </div>
-                {currentPaloAlto.event_mappings?.length ? (
-                  <div className="space-y-4">
-                    {currentPaloAlto.event_mappings.map((mapping, index) => (
-                      <div key={`palo-alto-mapping-${index}`} className="rounded-lg border border-[#274266] p-3">
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Mapping name</Label>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.name ?? ''}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, { name: e.target.value })
-                              }
-                              placeholder="HA role change"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Event kind</Label>
-                            <select
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.event_kind ?? 'change_event'}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, {
-                                  event_kind: e.target.value as PaloAltoEventKind,
-                                })
-                              }
-                            >
-                              <option value="change_event">Change event</option>
-                              <option value="resilience_signal">Resilience signal</option>
-                            </select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Match field</Label>
-                            <select
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.match_field ?? 'change_type'}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, {
-                                  match_field: e.target.value as PaloAltoEventMatchField,
-                                })
-                              }
-                            >
-                              <option value="change_type">Change type</option>
-                              <option value="signal_type">Signal type</option>
-                              <option value="log_type">Log type</option>
-                              <option value="subtype">Log subtype</option>
-                              <option value="contains">Contains text</option>
-                            </select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Match value</Label>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.match_value ?? ''}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, { match_value: e.target.value })
-                              }
-                              placeholder="ha_role_change"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Finding type</Label>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.finding_type ?? ''}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, { finding_type: e.target.value })
-                              }
-                              placeholder="resilience"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Severity</Label>
-                            <select
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.severity ?? 'medium'}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, {
-                                  severity: e.target.value as PaloAltoEventMapping['severity'],
-                                })
-                              }
-                            >
-                              <option value="low">Low</option>
-                              <option value="medium">Medium</option>
-                              <option value="high">High</option>
-                              <option value="critical">Critical</option>
-                            </select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Score delta</Label>
-                            <input
-                              type="number"
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={mapping.score_delta ?? ''}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, {
-                                  score_delta: e.target.value ? Number(e.target.value) : null,
-                                })
-                              }
-                              placeholder="Optional override"
-                            />
-                          </div>
-                          <label className="flex items-center gap-2 text-sm text-slate-50">
-                            <input
-                              type="checkbox"
-                              checked={mapping.enabled ?? true}
-                              onChange={(e) =>
-                                updatePaloAltoEventMapping(index, { enabled: e.target.checked })
-                              }
-                            />
-                            Enabled
-                          </label>
-                        </div>
-                        <div className="mt-3 flex justify-end">
-                          <Button onClick={() => removePaloAltoEventMapping(index)}>Remove mapping</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-50">No event mappings configured yet.</p>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
                     <Label>Clusters</Label>
                     <HelpTip text={'Add one entry per active/passive firewall pair. Enter a management IP, hostname, or full URL.'} />
                   </div>
@@ -7789,6 +7658,161 @@ export function ConnectorsPage() {
                 ) : (
                   <p className="text-sm text-slate-50">No clusters configured yet.</p>
                 )}
+              </div>
+
+              <div className="rounded-lg border border-[#274266] bg-[#0d1a2b]/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label>Advanced event mappings</Label>
+                    <HelpTip text={'Map Palo Alto events into findings and scoring for this instance.'} />
+                    <span className="text-xs text-slate-400">
+                      {currentPaloAlto.event_mappings?.length ?? 0} configured
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-md border border-[#274266] bg-[#12233d] px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-[#18365f]"
+                    aria-expanded={paloAltoMappingsOpen}
+                    onClick={() =>
+                      setPaloAltoMappingsExpanded((prev) => ({
+                        ...prev,
+                        [currentPaloAlto.name]: !paloAltoMappingsOpen,
+                      }))
+                    }
+                  >
+                    {paloAltoMappingsOpen ? 'Hide mappings' : 'Show mappings'}
+                  </button>
+                </div>
+                {paloAltoMappingsOpen ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={loadPaloAltoDefaultMappings}>Load defaults</Button>
+                      <Button onClick={addPaloAltoEventMapping}>Add mapping</Button>
+                    </div>
+                    {currentPaloAlto.event_mappings?.length ? (
+                      <div className="space-y-4">
+                        {currentPaloAlto.event_mappings.map((mapping, index) => (
+                          <div key={`palo-alto-mapping-${currentPaloAlto.name}-${index}`} className="rounded-lg border border-[#274266] p-3">
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label>Mapping name</Label>
+                                <input
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.name ?? ''}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, { name: e.target.value })
+                                  }
+                                  placeholder="HA role change"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Event kind</Label>
+                                <select
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.event_kind ?? 'change_event'}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, {
+                                      event_kind: e.target.value as PaloAltoEventKind,
+                                    })
+                                  }
+                                >
+                                  <option value="change_event">Change event</option>
+                                  <option value="resilience_signal">Resilience signal</option>
+                                </select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Match field</Label>
+                                <select
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.match_field ?? 'change_type'}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, {
+                                      match_field: e.target.value as PaloAltoEventMatchField,
+                                    })
+                                  }
+                                >
+                                  <option value="change_type">Change type</option>
+                                  <option value="signal_type">Signal type</option>
+                                  <option value="log_type">Log type</option>
+                                  <option value="subtype">Log subtype</option>
+                                  <option value="contains">Contains text</option>
+                                </select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Match value</Label>
+                                <input
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.match_value ?? ''}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, { match_value: e.target.value })
+                                  }
+                                  placeholder="ha_role_change"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Finding type</Label>
+                                <input
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.finding_type ?? ''}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, { finding_type: e.target.value })
+                                  }
+                                  placeholder="resilience"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Severity</Label>
+                                <select
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.severity ?? 'medium'}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, {
+                                      severity: e.target.value as PaloAltoEventMapping['severity'],
+                                    })
+                                  }
+                                >
+                                  <option value="low">Low</option>
+                                  <option value="medium">Medium</option>
+                                  <option value="high">High</option>
+                                  <option value="critical">Critical</option>
+                                </select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Score delta</Label>
+                                <input
+                                  type="number"
+                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                  value={mapping.score_delta ?? ''}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, {
+                                      score_delta: e.target.value ? Number(e.target.value) : null,
+                                    })
+                                  }
+                                  placeholder="Optional override"
+                                />
+                              </div>
+                              <label className="flex items-center gap-2 text-sm text-slate-50">
+                                <input
+                                  type="checkbox"
+                                  checked={mapping.enabled ?? true}
+                                  onChange={(e) =>
+                                    updatePaloAltoEventMapping(index, { enabled: e.target.checked })
+                                  }
+                                />
+                                Enabled
+                              </label>
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <Button onClick={() => removePaloAltoEventMapping(index)}>Remove mapping</Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-50">No event mappings configured yet.</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : (
