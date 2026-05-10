@@ -2,7 +2,35 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { defaultSettings, loadSettings, saveSettings } from './settings'
 
-export type Language = 'en' | 'es' | 'fr'
+export type Language = 'en' | 'es' | 'fr' | 'de'
+
+export const SUPPORTED_LANGUAGES: Language[] = ['en', 'fr', 'es', 'de']
+
+// Names of each language presented in itself (autonyms) — what the
+// switcher shows in the dropdown so a user who only reads German can
+// find their language even when the UI is currently in English.
+export const LANGUAGE_AUTONYMS: Record<Language, string> = {
+  en: 'English',
+  fr: 'Français',
+  es: 'Español',
+  de: 'Deutsch',
+}
+
+// Cookie the Go API reads to localise report generation when the
+// request doesn't include an explicit ?lang= parameter. Synced from
+// localStorage on every language change so the user's choice persists
+// across browser sessions AND is visible to the backend on the next
+// PDF/Markdown request.
+const LANG_COOKIE = 'compliantly.lang'
+
+function syncLanguageCookie(language: Language) {
+  if (typeof document === 'undefined') return
+  const oneYearSeconds = 60 * 60 * 24 * 365
+  // SameSite=Lax matches the session cookie behaviour and lets the
+  // backend read the value during normal navigation; we don't need
+  // cross-site delivery for the language preference.
+  document.cookie = `${LANG_COOKIE}=${language}; Max-Age=${oneYearSeconds}; Path=/; SameSite=Lax`
+}
 
 type Translator = (key: string, vars?: Record<string, string | number>) => string
 
@@ -58,6 +86,34 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Refresh failed: {message}': 'Refresh failed: {message}',
     'UI language. Example: English, Espanol, Francais.': 'UI language. Example: English, Espanol, Francais.',
     'Report language code. Example: en, fr, es.': 'Report language code. Example: en, fr, es.',
+    'nav.dashboard': 'Dashboard',
+    'nav.connectors': 'Connectors',
+    'nav.evidence': 'Evidence',
+    'nav.frameworks': 'Frameworks',
+    'nav.risks': 'Risks',
+    'nav.policies': 'Policies',
+    'nav.exceptions': 'Exceptions',
+    'nav.remediation': 'Remediation',
+    'nav.incidents': 'Incidents',
+    'nav.third_parties': 'Third parties',
+    'nav.dr': 'Disaster recovery',
+    'nav.apps': 'Applications',
+    'nav.sites': 'Sites',
+    'nav.audit': 'Audit',
+    'nav.settings': 'Settings',
+    'nav.support': 'Support bundle',
+    'nav.logout': 'Sign out',
+    'login.title': 'Sign in to Attestiv',
+    'login.email_label': 'Email',
+    'login.password_label': 'Password',
+    'login.submit_button': 'Sign in',
+    'frameworks.title': 'Frameworks',
+    'frameworks.generate_report': 'Generate report',
+    'frameworks.subscribed_badge': 'Subscribed',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.loading': 'Loading...',
+    'language.switcher_label': 'Language',
   },
   es: {
     'Management Console': 'Consola de Gestion',
@@ -104,6 +160,34 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Refresh failed: {message}': 'Actualizacion fallida: {message}',
     'UI language. Example: English, Espanol, Francais.': 'Idioma de la interfaz. Ejemplo: Ingles, Espanol, Frances.',
     'Report language code. Example: en, fr, es.': 'Codigo de idioma del informe. Ejemplo: en, fr, es.',
+    'nav.dashboard': 'Panel',
+    'nav.connectors': 'Conectores',
+    'nav.evidence': 'Evidencia',
+    'nav.frameworks': 'Marcos',
+    'nav.risks': 'Riesgos',
+    'nav.policies': 'Políticas',
+    'nav.exceptions': 'Excepciones',
+    'nav.remediation': 'Remediación',
+    'nav.incidents': 'Incidentes',
+    'nav.third_parties': 'Terceros',
+    'nav.dr': 'Recuperación ante desastres',
+    'nav.apps': 'Aplicaciones',
+    'nav.sites': 'Sitios',
+    'nav.audit': 'Auditoría',
+    'nav.settings': 'Configuración',
+    'nav.support': 'Paquete de soporte',
+    'nav.logout': 'Cerrar sesión',
+    'login.title': 'Iniciar sesión en Attestiv',
+    'login.email_label': 'Correo electrónico',
+    'login.password_label': 'Contraseña',
+    'login.submit_button': 'Iniciar sesión',
+    'frameworks.title': 'Marcos',
+    'frameworks.generate_report': 'Generar informe',
+    'frameworks.subscribed_badge': 'Suscrito',
+    'common.save': 'Guardar',
+    'common.cancel': 'Cancelar',
+    'common.loading': 'Cargando...',
+    'language.switcher_label': 'Idioma',
   },
   fr: {
     'Management Console': 'Console de Gestion',
@@ -150,6 +234,108 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Refresh failed: {message}': 'Echec du rafraichissement: {message}',
     'UI language. Example: English, Espanol, Francais.': "Langue de l'interface. Exemple : Anglais, Espagnol, Francais.",
     'Report language code. Example: en, fr, es.': 'Code langue du rapport. Exemple : en, fr, es.',
+    'nav.dashboard': 'Tableau de bord',
+    'nav.connectors': 'Connecteurs',
+    'nav.evidence': 'Preuves',
+    'nav.frameworks': 'Référentiels',
+    'nav.risks': 'Risques',
+    'nav.policies': 'Politiques',
+    'nav.exceptions': 'Exceptions',
+    'nav.remediation': 'Remédiation',
+    'nav.incidents': 'Incidents',
+    'nav.third_parties': 'Tiers',
+    'nav.dr': 'Reprise après sinistre',
+    'nav.apps': 'Applications',
+    'nav.sites': 'Sites',
+    'nav.audit': 'Audit',
+    'nav.settings': 'Paramètres',
+    'nav.support': 'Paquet de support',
+    'nav.logout': 'Se déconnecter',
+    'login.title': 'Connexion à Attestiv',
+    'login.email_label': 'Adresse e-mail',
+    'login.password_label': 'Mot de passe',
+    'login.submit_button': 'Se connecter',
+    'frameworks.title': 'Référentiels',
+    'frameworks.generate_report': 'Générer le rapport',
+    'frameworks.subscribed_badge': 'Abonné',
+    'common.save': 'Enregistrer',
+    'common.cancel': 'Annuler',
+    'common.loading': 'Chargement...',
+    'language.switcher_label': 'Langue',
+  },
+  de: {
+    'Management Console': 'Verwaltungskonsole',
+    Snapshot: 'Momentaufnahme',
+    'Refresh snapshot': 'Momentaufnahme aktualisieren',
+    'Refreshing...': 'Wird aktualisiert...',
+    'Snapshot refreshed.': 'Momentaufnahme aktualisiert.',
+    Reports: 'Berichte',
+    'Auditor Portal': 'Prüferportal',
+    Executive: 'Vorstand',
+    Dashboard: 'Dashboard',
+    'Executive Brief': 'Management-Briefing',
+    'Executive View': 'Management-Ansicht',
+    'Board Readout': 'Vorstandsbericht',
+    'Policy Engine': 'Richtlinien-Engine',
+    Ingestion: 'Aufnahme',
+    Health: 'Status',
+    Evidence: 'Evidenz',
+    'Evidence Templates': 'Evidenzvorlagen',
+    Exceptions: 'Ausnahmen',
+    Analytics: 'Analytik',
+    Inventory: 'Bestand',
+    'Infrastructure Dependency': 'Infrastruktur-Abhängigkeit',
+    Regulations: 'Vorschriften',
+    Connectors: 'Konnektoren',
+    'Control Mappings': 'Kontroll-Zuordnungen',
+    'Policy Tasks': 'Richtlinien-Aufgaben',
+    'Trust Center': 'Trust Center',
+    Jobs: 'Aufgaben',
+    Settings: 'Einstellungen',
+    Save: 'Speichern',
+    'Save mappings': 'Zuordnungen speichern',
+    'Saving...': 'Wird gespeichert...',
+    Loading: 'Wird geladen',
+    'Loading control library...': 'Kontrollbibliothek wird geladen...',
+    'Loading crosswalks...': 'Querverweise werden geladen...',
+    Retry: 'Erneut versuchen',
+    Language: 'Sprache',
+    English: 'Englisch',
+    Spanish: 'Spanisch',
+    French: 'Französisch',
+    Help: 'Hilfe',
+    Close: 'Schließen',
+    'Refresh failed: {message}': 'Aktualisierung fehlgeschlagen: {message}',
+    'UI language. Example: English, Espanol, Francais.': 'Sprache der Oberfläche. Beispiel: Englisch, Spanisch, Französisch.',
+    'Report language code. Example: en, fr, es.': 'Sprachcode des Berichts. Beispiel: en, fr, es, de.',
+    'nav.dashboard': 'Dashboard',
+    'nav.connectors': 'Konnektoren',
+    'nav.evidence': 'Evidenz',
+    'nav.frameworks': 'Rahmenwerke',
+    'nav.risks': 'Risiken',
+    'nav.policies': 'Richtlinien',
+    'nav.exceptions': 'Ausnahmen',
+    'nav.remediation': 'Remediation',
+    'nav.incidents': 'Vorfälle',
+    'nav.third_parties': 'Dritte',
+    'nav.dr': 'Notfallwiederherstellung',
+    'nav.apps': 'Anwendungen',
+    'nav.sites': 'Standorte',
+    'nav.audit': 'Audit',
+    'nav.settings': 'Einstellungen',
+    'nav.support': 'Support-Paket',
+    'nav.logout': 'Abmelden',
+    'login.title': 'Bei Attestiv anmelden',
+    'login.email_label': 'E-Mail',
+    'login.password_label': 'Passwort',
+    'login.submit_button': 'Anmelden',
+    'frameworks.title': 'Rahmenwerke',
+    'frameworks.generate_report': 'Bericht erzeugen',
+    'frameworks.subscribed_badge': 'Abonniert',
+    'common.save': 'Speichern',
+    'common.cancel': 'Abbrechen',
+    'common.loading': 'Wird geladen...',
+    'language.switcher_label': 'Sprache',
   },
 }
 
@@ -180,7 +366,12 @@ export function I18nProvider({ children }: PropsWithChildren) {
   const [language, setLanguage] = useState<Language>(defaultSettings().language)
 
   useEffect(() => {
-    setLanguage(loadSettings().language)
+    const persisted = loadSettings().language
+    setLanguage(persisted)
+    // Make sure the cookie reflects the persisted choice even on
+    // first mount — the backend uses it for the next PDF/Markdown
+    // request and we don't want to send a stale tag.
+    syncLanguageCookie(persisted)
   }, [])
 
   const value = useMemo<I18nContextValue>(() => {
@@ -188,6 +379,7 @@ export function I18nProvider({ children }: PropsWithChildren) {
     const setLanguageValue = (next: Language) => {
       setLanguage(next)
       saveSettings({ ...loadSettings(), language: next })
+      syncLanguageCookie(next)
     }
     return { language, setLanguage: setLanguageValue, t }
   }, [language])

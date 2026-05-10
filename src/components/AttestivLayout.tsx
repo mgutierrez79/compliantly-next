@@ -20,7 +20,31 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiJson } from '../lib/api'
+import { useI18n } from '../lib/i18n'
 import { loadSettings } from '../lib/settings'
+import { LanguageSwitcher } from './LanguageSwitcher'
+
+// Translation keys for the rail tooltips. Kept as a side table rather
+// than added to each RailItem so the rail definition stays a plain
+// data declaration; the renderer pulls the key when it resolves the
+// localised label.
+const RAIL_LABEL_TKEY: Record<SectionKey, string> = {
+  dashboard: 'nav.dashboard',
+  connectors: 'nav.connectors',
+  evidence: 'nav.evidence',
+  frameworks: 'nav.frameworks',
+  apps: 'nav.apps',
+  sites: 'nav.sites',
+  risks: 'nav.risks',
+  policies: 'nav.policies',
+  exceptions: 'nav.exceptions',
+  remediation: 'nav.remediation',
+  incidents: 'nav.incidents',
+  thirdparties: 'nav.third_parties',
+  dr: 'nav.dr',
+  audit: 'nav.audit',
+  settings: 'nav.settings',
+}
 
 type SectionKey =
   | 'dashboard'
@@ -234,6 +258,17 @@ function sectionFromPath(pathname: string): SectionKey {
   return 'dashboard'
 }
 
+function useRailLabel() {
+  const { t } = useI18n()
+  return (key: SectionKey, fallback: string) => {
+    const translated = t(RAIL_LABEL_TKEY[key])
+    // The translator returns the key itself when nothing matches;
+    // fall back to the seed English label so a missing entry doesn't
+    // surface `nav.dashboard` as a tooltip.
+    return translated === RAIL_LABEL_TKEY[key] ? fallback : translated
+  }
+}
+
 export function AttestivLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname() || '/'
@@ -289,14 +324,16 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const railLabel = useRailLabel()
   const renderRailButton = (item: RailItem) => {
     const active = item.key === activeSection
+    const label = railLabel(item.key, item.label)
     return (
       <button
         key={item.key}
         type="button"
-        title={item.label}
-        aria-label={item.label}
+        title={label}
+        aria-label={label}
         aria-current={active ? 'page' : undefined}
         onClick={() => router.push(sections[item.key].items[0].to)}
         className={`attestiv-rail-btn${active ? ' active' : ''}`}
@@ -356,6 +393,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
           {section.items.map(renderNavItem)}
         </div>
         <div className="attestiv-sidebar-footer">
+          <LanguageSwitcher />
           <div className="attestiv-tenant-pill">
             <div className="attestiv-tenant-dot" />
             <div>

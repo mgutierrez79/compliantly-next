@@ -3,7 +3,7 @@ import type { LogLevel } from './logger'
 export type UiSettings = {
   apiBaseUrl: string
   tenantId: string
-  language: 'en' | 'es' | 'fr'
+  language: 'en' | 'es' | 'fr' | 'de'
   timeZone: string
   authMode: 'apiKey' | 'oidc' | 'local'
   apiKey: string
@@ -39,7 +39,8 @@ export function loadSettings(): UiSettings {
   const baseDefaults = defaultSettings()
   const browserLang =
     typeof navigator !== 'undefined' && navigator.language ? navigator.language.split('-')[0] : 'en'
-  const inferredLanguage = browserLang === 'es' || browserLang === 'fr' ? browserLang : 'en'
+  const inferredLanguage: UiSettings['language'] =
+    browserLang === 'es' || browserLang === 'fr' || browserLang === 'de' ? browserLang : 'en'
   const inferredTimeZone =
     typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
   const defaults: UiSettings = {
@@ -57,7 +58,10 @@ export function loadSettings(): UiSettings {
       apiKey: typeof parsed.apiKey === 'string' && parsed.apiKey ? parsed.apiKey : defaults.apiKey,
       localToken: typeof parsed.localToken === 'string' ? parsed.localToken : '',
       tenantId: typeof parsed.tenantId === 'string' ? parsed.tenantId : '',
-      language: parsed.language === 'es' || parsed.language === 'fr' ? parsed.language : defaults.language,
+      language:
+        parsed.language === 'es' || parsed.language === 'fr' || parsed.language === 'de'
+          ? parsed.language
+          : defaults.language,
       timeZone: typeof parsed.timeZone === 'string' && parsed.timeZone ? parsed.timeZone : defaults.timeZone,
       authMode: parsed.authMode === 'oidc' ? 'oidc' : parsed.authMode === 'local' ? 'local' : 'apiKey',
       oidcIssuer: typeof parsed.oidcIssuer === 'string' ? parsed.oidcIssuer : defaults.oidcIssuer,

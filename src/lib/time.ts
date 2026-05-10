@@ -1,9 +1,10 @@
 import { loadSettings } from './settings'
 
-const LOCALE_BY_LANGUAGE: Record<'en' | 'es' | 'fr', string> = {
+const LOCALE_BY_LANGUAGE: Record<'en' | 'es' | 'fr' | 'de', string> = {
   en: 'en-US',
   es: 'es-ES',
   fr: 'fr-FR',
+  de: 'de-DE',
 }
 
 export function formatTimestamp(value?: string) {
