@@ -80,3 +80,131 @@ export function describeAuthField(key: string): AuthFieldDescriptor {
     .join(' ')
   return { label }
 }
+
+// Auth-method grouping. A connector's catalog `auth[]` is a flat list
+// of credential keys the backend accepts, but those keys typically
+// represent MUTUALLY EXCLUSIVE methods — e.g. Palo Alto accepts
+// `[api_key, username, password]` to mean "use the API key OR the
+// username/password pair, not both". Rendering all three at once is
+// confusing; this module groups them so the wizard can show a method
+// picker and render only the active method's fields.
+//
+// Add a method here when a new catalog combination shows up. Order
+// matters: composite methods are matched before single-field ones, so
+// `username+password` claims those keys before a hypothetical
+// standalone `password` method would.
+
+export type AuthMethod = {
+  // Stable identifier so the wizard can track which method the user
+  // picked across re-renders (and clear the other method's fields
+  // when they switch).
+  key: string
+  // Tab/segmented-button label.
+  label: string
+  // Optional context line under the picker once active.
+  hint?: string
+  // Credential keys, in render order, that belong to this method.
+  fieldKeys: string[]
+}
+
+// Fields that belong to connector-specific configuration (e.g. PAN-OS
+// firewall serial number) and should always be visible regardless of
+// which auth method is active. These are pulled out of the auth list
+// into a separate "common fields" bucket.
+const NON_AUTH_FIELDS: ReadonlySet<string> = new Set(['serial'])
+
+type AuthMethodDef = {
+  key: string
+  label: string
+  hint?: string
+  match: (keys: ReadonlySet<string>) => string[] | null
+}
+
+const AUTH_METHOD_DEFINITIONS: AuthMethodDef[] = [
+  {
+    key: 'username_password',
+    label: 'Username + password',
+    hint: 'Use the service-account credentials configured on the target.',
+    match: (keys) => (keys.has('username') && keys.has('password') ? ['username', 'password'] : null),
+  },
+  {
+    key: 'oauth_client',
+    label: 'OAuth (client ID + secret)',
+    hint: 'OAuth 2.0 client credentials grant.',
+    match: (keys) => (keys.has('client_id') && keys.has('client_secret') ? ['client_id', 'client_secret'] : null),
+  },
+  {
+    key: 'aws_keys',
+    label: 'AWS access keys',
+    hint: 'IAM access key + secret (and optional session token for STS).',
+    match: (keys) => {
+      if (!keys.has('access_key') || !keys.has('secret_key')) return null
+      const fields = ['access_key', 'secret_key']
+      if (keys.has('session_token')) fields.push('session_token')
+      return fields
+    },
+  },
+  {
+    key: 'glpi_tokens',
+    label: 'GLPI app + user tokens',
+    hint: 'Both tokens are required; the app token authorises the API client and the user token authenticates the operator.',
+    match: (keys) => (keys.has('app_token') && keys.has('user_token') ? ['app_token', 'user_token'] : null),
+  },
+  {
+    key: 'api_key',
+    label: 'API key',
+    hint: 'Single static key; preferred over username/password when the vendor supports it.',
+    match: (keys) => (keys.has('api_key') ? ['api_key'] : null),
+  },
+  {
+    key: 'api_token',
+    label: 'API token',
+    hint: 'Generated from the vendor admin console with the required scopes.',
+    match: (keys) => (keys.has('api_token') ? ['api_token'] : null),
+  },
+  {
+    key: 'token',
+    label: 'Token',
+    match: (keys) => (keys.has('token') ? ['token'] : null),
+  },
+]
+
+// groupAuthMethods splits a flat credential-field list into:
+//   - commonFields: connector-specific config that's not an auth choice
+//   - methods: mutually-exclusive auth method groups
+//
+// If `methods.length <= 1` the caller should not render a picker —
+// there is only one way to authenticate.
+export function groupAuthMethods<T extends { key: string }>(
+  fields: T[],
+): { commonFields: T[]; methods: AuthMethod[] } {
+  const allKeys = new Set(fields.map((f) => f.key))
+  const consumed = new Set<string>()
+  const commonFields: T[] = []
+  const methods: AuthMethod[] = []
+
+  for (const field of fields) {
+    if (NON_AUTH_FIELDS.has(field.key)) {
+      commonFields.push(field)
+      consumed.add(field.key)
+    }
+  }
+
+  for (const def of AUTH_METHOD_DEFINITIONS) {
+    const matched = def.match(allKeys)
+    if (!matched) continue
+    if (matched.some((k) => consumed.has(k))) continue
+    methods.push({ key: def.key, label: def.label, hint: def.hint, fieldKeys: matched })
+    matched.forEach((k) => consumed.add(k))
+  }
+
+  // Any remaining auth field becomes its own single-field method —
+  // ensures unknown keys still surface in the UI.
+  for (const field of fields) {
+    if (consumed.has(field.key)) continue
+    methods.push({ key: field.key, label: describeAuthField(field.key).label, fieldKeys: [field.key] })
+    consumed.add(field.key)
+  }
+
+  return { commonFields, methods }
+}

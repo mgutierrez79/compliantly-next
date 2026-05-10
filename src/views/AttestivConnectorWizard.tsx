@@ -36,7 +36,7 @@ import {
   authFieldsFor,
   type ConnectorCatalogEntry,
 } from '../lib/connectorCatalog'
-import { describeAuthField } from '../lib/connectorAuthFields'
+import { describeAuthField, groupAuthMethods, type AuthMethod } from '../lib/connectorAuthFields'
 
 type CredentialField = {
   key: string
@@ -231,6 +231,76 @@ export function AttestivConnectorWizard() {
     return out
   }, [connector, kind, catalog])
 
+  // Group the merged fields into common (non-auth) fields and a list
+  // of mutually-exclusive auth methods. When the connector accepts
+  // more than one auth method (e.g. Palo Alto: api_key OR
+  // username/password), the wizard renders a picker and only the
+  // active method's inputs.
+  const { commonFields, authMethods } = useMemo(() => {
+    const grouped = groupAuthMethods(mergedFields)
+    return { commonFields: grouped.commonFields, authMethods: grouped.methods }
+  }, [mergedFields])
+
+  const [authMethodKey, setAuthMethodKey] = useState<string>('')
+
+  // Auto-pick the first method when the connector kind changes (or
+  // the catalog arrives after mount). If the user previously chose a
+  // method that no longer exists for the current kind, fall back to
+  // the first available method so the form is never in an invalid
+  // state.
+  useEffect(() => {
+    if (authMethods.length === 0) {
+      setAuthMethodKey('')
+      return
+    }
+    if (!authMethods.some((m) => m.key === authMethodKey)) {
+      setAuthMethodKey(authMethods[0].key)
+    }
+  }, [authMethods, authMethodKey])
+
+  const activeAuthMethod: AuthMethod | undefined = useMemo(
+    () => authMethods.find((m) => m.key === authMethodKey) ?? authMethods[0],
+    [authMethods, authMethodKey],
+  )
+
+  // The fields actually rendered in the credentials step: common
+  // fields (always visible) + the active method's fields. Field
+  // metadata comes from mergedFields so we reuse the descriptor copy.
+  const fieldByKey = useMemo(() => {
+    const map = new Map<string, CredentialField>()
+    mergedFields.forEach((f) => map.set(f.key, f))
+    return map
+  }, [mergedFields])
+
+  const renderedFields = useMemo<CredentialField[]>(() => {
+    const result: CredentialField[] = [...commonFields]
+    if (activeAuthMethod) {
+      for (const key of activeAuthMethod.fieldKeys) {
+        const field = fieldByKey.get(key)
+        if (field) result.push({ ...field, required: true })
+      }
+    }
+    return result
+  }, [commonFields, activeAuthMethod, fieldByKey])
+
+  // When the user switches auth methods, drop credentials that
+  // belong to methods other than the active one. We never want to
+  // send both `api_key` and `password` to the backend just because
+  // the user typed values into both before flipping the radio.
+  function pickAuthMethod(nextKey: string) {
+    setAuthMethodKey(nextKey)
+    const next = authMethods.find((m) => m.key === nextKey)
+    if (!next) return
+    const keepKeys = new Set<string>([...commonFields.map((f) => f.key), ...next.fieldKeys])
+    setCredentials((current) => {
+      const trimmed: Record<string, string> = {}
+      for (const [k, v] of Object.entries(current)) {
+        if (keepKeys.has(k)) trimmed[k] = v
+      }
+      return trimmed
+    })
+  }
+
   function next() {
     setStep((current) => Math.min(current + 1, STEPS.length - 1))
   }
@@ -361,7 +431,10 @@ export function AttestivConnectorWizard() {
             {step === 1 ? (
               <CredentialsStep
                 connector={connector}
-                fields={mergedFields}
+                fields={renderedFields}
+                authMethods={authMethods}
+                activeAuthMethodKey={activeAuthMethod?.key ?? ''}
+                onPickAuthMethod={pickAuthMethod}
                 name={name}
                 endpoint={endpoint}
                 credentials={credentials}
@@ -405,7 +478,7 @@ export function AttestivConnectorWizard() {
               </GhostButton>
               {step < STEPS.length - 1 ? (
                 <PrimaryButton
-                  disabled={!canAdvance(step, { connector, name, endpoint, credentials, testResult })}
+                  disabled={!canAdvance(step, { renderedFields, name, endpoint, credentials, testResult })}
                   onClick={next}
                 >
                   Continue
@@ -423,7 +496,7 @@ export function AttestivConnectorWizard() {
 function canAdvance(
   step: number,
   values: {
-    connector: ConnectorKind
+    renderedFields: CredentialField[]
     name: string
     endpoint: string
     credentials: Record<string, string>
@@ -431,11 +504,11 @@ function canAdvance(
   },
 ): boolean {
   if (step === 0) {
-    return values.connector !== undefined
+    return true
   }
   if (step === 1) {
     if (!values.endpoint.trim()) return false
-    for (const field of values.connector.fields) {
+    for (const field of values.renderedFields) {
       if (field.required && !values.credentials[field.key]?.trim()) {
         return false
       }
@@ -521,10 +594,12 @@ function PickStep({ kind, onChange }: { kind: string; onChange: (next: string) =
 
 function CredentialsStep(props: {
   connector: ConnectorKind
-  // fields is the merged list (seed ∪ catalog.auth). Render this
-  // instead of connector.fields so the catalog drives what's
-  // visible.
+  // fields is the list to render: common fields + the active auth
+  // method's fields only. Non-active methods are hidden.
   fields: CredentialField[]
+  authMethods: AuthMethod[]
+  activeAuthMethodKey: string
+  onPickAuthMethod: (key: string) => void
   name: string
   endpoint: string
   credentials: Record<string, string>
@@ -536,6 +611,8 @@ function CredentialsStep(props: {
   setPollSeconds: (v: number) => void
   setVerifyTLS: (v: boolean) => void
 }) {
+  const activeMethod = props.authMethods.find((m) => m.key === props.activeAuthMethodKey)
+  const showMethodPicker = props.authMethods.length > 1
   return (
     <>
       <SectionHeader
@@ -556,6 +633,23 @@ function CredentialsStep(props: {
           placeholder={props.connector.endpointHint}
         />
       </FormField>
+      {showMethodPicker ? (
+        <FormField
+          label="Authentication method"
+          hint="Pick one. Only the selected method's credentials are sent to the connector."
+        >
+          <AuthMethodPicker
+            methods={props.authMethods}
+            activeKey={props.activeAuthMethodKey}
+            onPick={props.onPickAuthMethod}
+          />
+          {activeMethod?.hint ? (
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 6 }}>
+              {activeMethod.hint}
+            </div>
+          ) : null}
+        </FormField>
+      ) : null}
       {props.fields.map((field) => (
         <FormField key={field.key} label={field.label} hint={field.hint}>
           <TextInput
@@ -801,6 +895,71 @@ function SectionHeader({ title, sub }: { title: string; sub: string }) {
     <div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{title}</div>
       <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', lineHeight: 1.5 }}>{sub}</div>
+    </div>
+  )
+}
+
+// AuthMethodPicker is a segmented-button row for choosing between
+// mutually-exclusive authentication methods (e.g. "API key" vs
+// "Username + password"). Only used when the connector accepts more
+// than one method — for single-method connectors the picker is
+// suppressed entirely.
+function AuthMethodPicker({
+  methods,
+  activeKey,
+  onPick,
+}: {
+  methods: AuthMethod[]
+  activeKey: string
+  onPick: (key: string) => void
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Authentication method"
+      style={{
+        display: 'flex',
+        gap: 6,
+        flexWrap: 'wrap',
+        background: 'var(--color-background-tertiary)',
+        padding: 4,
+        borderRadius: 'var(--border-radius-md)',
+      }}
+    >
+      {methods.map((method) => {
+        const active = method.key === activeKey
+        return (
+          <button
+            key={method.key}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onPick(method.key)}
+            style={{
+              flex: '1 1 0',
+              minWidth: 120,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: active ? 500 : 400,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              border: active
+                ? '1px solid var(--color-brand-blue)'
+                : '0.5px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-md)',
+              background: active ? 'var(--color-background-primary)' : 'transparent',
+              color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            {active ? <i className="ti ti-check" aria-hidden="true" /> : null}
+            <span>{method.label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
