@@ -1,5 +1,5 @@
-import { DashboardPage } from '@/views/DashboardPage'
+import { AttestivDashboardOverview } from '@/views/AttestivDashboardOverview'
 
 export default function Page() {
-  return <DashboardPage />
+  return <AttestivDashboardOverview />
 }

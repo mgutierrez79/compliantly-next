@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Button, HelpTip, Input, Label } from '../components/Ui'
 import { defaultSettings, loadSettings, saveSettings } from '../lib/settings'
+import { setSessionMarker } from '../lib/session'
 import loginLogo from '../assets/Login-logo.png'
 
 type LocalLoginResponse = {
@@ -40,6 +41,20 @@ export function LoginPage() {
     setScope(savedSettings.oidcScope)
   }, [])
 
+  // redirectTarget reads ?next=... from the URL so middleware-driven
+  // redirects deliver the user back to the page they were trying to
+  // reach. We restrict the target to absolute paths within our origin
+  // to avoid open-redirect abuse.
+  function redirectTarget(): string {
+    if (typeof window === 'undefined') return '/health'
+    const search = new URLSearchParams(window.location.search)
+    const next = search.get('next')
+    if (next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login')) {
+      return next
+    }
+    return '/health'
+  }
+
   function onSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
@@ -56,8 +71,9 @@ export function LoginPage() {
       oidcAudience: settings.oidcAudience,
     }
     saveSettings(next)
+    setSessionMarker()
     setMessage('Saved. Redirecting...')
-    router.push('/health')
+    router.push(redirectTarget())
   }
 
   async function onLocalLogin(event: FormEvent) {
@@ -93,8 +109,9 @@ export function LoginPage() {
         oidcScope: scope.trim() || settings.oidcScope,
         oidcAudience: settings.oidcAudience,
       })
+      setSessionMarker()
       setMessage('Logged in. Redirecting...')
-      router.push('/health')
+      router.push(redirectTarget())
     } catch (err: any) {
       setError(err.message ?? 'Local login failed')
     } finally {
@@ -126,7 +143,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#0b1224] via-[#0c1a30] to-[#0f2540] px-4">
       <div className="w-full max-w-md rounded-2xl bg-[#0f1f36]/90 p-8 shadow-2xl shadow-black/30 border border-[#1f365a]">
         <div className="flex flex-col items-center gap-3 mb-6">
-          <Image src={loginLogo} alt="Compliantly" className="h-16 w-auto drop-shadow" priority />
+          <Image src={loginLogo} alt="Attestiv" className="h-16 w-auto drop-shadow" priority />
           <div className="text-sm text-slate-300">Sign in to configure your API access</div>
         </div>
         <form className="space-y-4" onSubmit={onSubmit}>

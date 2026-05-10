@@ -1,5 +1,5 @@
-import { ExceptionsPage } from '@/views/ExceptionsPage'
+import { AttestivExceptionsPage } from '@/views/AttestivExceptionsPage'
 
 export default function Page() {
-  return <ExceptionsPage />
+  return <AttestivExceptionsPage />
 }

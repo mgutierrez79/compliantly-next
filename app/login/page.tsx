@@ -1,5 +1,5 @@
-import { LoginPage } from '@/views/LoginPage'
+import { AttestivLoginPage } from '@/views/AttestivLoginPage'
 
 export default function Page() {
-  return <LoginPage />
+  return <AttestivLoginPage />
 }

@@ -1,5 +1,5 @@
-import { Layout } from '@/components/Layout'
+import { AttestivLayout } from '@/components/AttestivLayout'
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
-  return <Layout>{children}</Layout>
+  return <AttestivLayout>{children}</AttestivLayout>
 }

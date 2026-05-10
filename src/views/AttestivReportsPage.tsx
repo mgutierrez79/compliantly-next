@@ -1,0 +1,308 @@
+'use client'
+
+// Audit / Reports list.
+//
+// Generated PDF / Markdown reports per framework. The Frameworks page
+// is the trigger; this page is the archive — all prior runs that
+// produced a signed report. The "Latest" entry is the canonical
+// artifact an auditor downloads via /v1/public/reports/latest/pdf
+// without needing to authenticate.
+
+import { useEffect, useState } from 'react'
+
+import {
+  Badge,
+  Banner,
+  Card,
+  CardTitle,
+  GhostButton,
+  PrimaryButton,
+  Topbar,
+} from '../components/AttestivUi'
+import { apiFetch } from '../lib/api'
+import { loadSettings } from '../lib/settings'
+
+type ReportRow = {
+  id: string
+  framework?: string
+  run_id?: string
+  generated_at: string
+  format: 'pdf' | 'md'
+  size_bytes?: number
+  signed: boolean
+}
+
+const DEMO_REPORTS: ReportRow[] = [
+  {
+    id: 'soc2-2026-Q2',
+    framework: 'SOC 2',
+    run_id: 'run-2026-05-08T14-22-19Z',
+    generated_at: '2026-05-08T14:22:51.000Z',
+    format: 'pdf',
+    size_bytes: 412_009,
+    signed: true,
+  },
+  {
+    id: 'iso27001-2026-Q2',
+    framework: 'ISO 27001',
+    run_id: 'run-2026-05-08T14-22-19Z',
+    generated_at: '2026-05-08T14:23:11.000Z',
+    format: 'pdf',
+    size_bytes: 388_440,
+    signed: true,
+  },
+  {
+    id: 'executive-2026-04',
+    framework: 'Executive brief',
+    run_id: 'run-2026-04-30T22-00-00Z',
+    generated_at: '2026-04-30T22:01:08.000Z',
+    format: 'pdf',
+    size_bytes: 188_240,
+    signed: true,
+  },
+]
+
+export function AttestivReportsPage() {
+  const [reports, setReports] = useState<ReportRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [usingDemo, setUsingDemo] = useState(false)
+  const [filter, setFilter] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+  const [busyRow, setBusyRow] = useState<string | null>(null)
+
+  // downloadReport fetches the per-run PDF (or md) and triggers a
+  // client-side download. apiFetch carries the session cookie so the
+  // backend's auth gate is honoured. /v1/runs/{id}/report/pdf auto-
+  // generates the file if it doesn't exist yet, which means the
+  // first download of a fresh run takes ~half a second longer than
+  // subsequent ones — still inside the button-click budget.
+  async function downloadReport(runID: string, format: 'pdf' | 'md') {
+    if (!runID) return
+    setBusyRow(runID)
+    setError(null)
+    setInfo(null)
+    try {
+      const suffix = format === 'pdf' ? 'report/pdf' : 'report'
+      const response = await apiFetch(`/runs/${encodeURIComponent(runID)}/${suffix}`)
+      if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw new Error(text || `${response.status} ${response.statusText}`)
+      }
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = `${runID}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to download')
+    } finally {
+      setBusyRow(null)
+    }
+  }
+
+  // copyAuditorLink puts the no-auth public URL on the clipboard so
+  // the user can paste it into an email to an external auditor. The
+  // /v1/public/reports/latest/pdf endpoint always serves the most
+  // recent run, so older rows can't link to a stable URL — those
+  // rows still get the button but it copies the latest URL with a
+  // warning, which we surface in the info banner.
+  async function copyAuditorLink(runID: string, isLatest: boolean) {
+    const settings = loadSettings()
+    const base = settings.apiBaseUrl?.replace(/\/+$/, '') || ''
+    const url = `${base}/v1/public/reports/latest/pdf`
+    try {
+      await navigator.clipboard.writeText(url)
+      if (isLatest) {
+        setInfo('Auditor link copied. This URL serves the most recent signed PDF without auth.')
+      } else {
+        setInfo(
+          `Auditor link copied — but it always serves the LATEST run, not ${runID}. Pin a specific run by including its id in a follow-up email.`,
+        )
+      }
+    } catch {
+      setError(`Could not copy. Manual URL: ${url}`)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const response = await apiFetch('/runs?limit=50')
+        if (!response.ok) throw new Error(`${response.status}`)
+        const body = await response.json().catch(() => ({}))
+        const items: any[] = Array.isArray(body?.items) ? body.items : []
+        const mapped: ReportRow[] = items.map((item) => ({
+          id: String(item?.run_id ?? ''),
+          framework: Array.isArray(item?.summary?.frameworks) && item.summary.frameworks.length === 1
+            ? item.summary.frameworks[0]
+            : 'All frameworks',
+          run_id: item?.run_id,
+          generated_at: String(item?.timestamp ?? ''),
+          format: 'pdf' as const,
+          size_bytes: typeof item?.summary?.size_bytes === 'number' ? item.summary.size_bytes : undefined,
+          signed: !!item?.summary?.signature,
+        }))
+        if (!cancelled) {
+          if (mapped.length > 0) {
+            setReports(mapped)
+            setUsingDemo(false)
+          } else {
+            setReports(DEMO_REPORTS)
+            setUsingDemo(true)
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setReports(DEMO_REPORTS)
+          setUsingDemo(true)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const filtered = filter.trim()
+    ? reports.filter((report) =>
+        [report.id, report.framework, report.run_id]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(filter.trim().toLowerCase())),
+      )
+    : reports
+
+  return (
+    <>
+      <Topbar
+        title="Reports"
+        left={usingDemo ? <Badge tone="amber">Demo data — no signed reports yet</Badge> : null}
+        right={
+          <input
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Filter by framework or run id"
+            style={{
+              padding: '6px 10px',
+              fontSize: 12,
+              border: '0.5px solid var(--color-border-secondary)',
+              borderRadius: 'var(--border-radius-md)',
+              background: 'var(--color-background-primary)',
+              outline: 'none',
+              minWidth: 240,
+              fontFamily: 'inherit',
+            }}
+          />
+        }
+      />
+      <div className="attestiv-content">
+        {error ? <Banner tone="error">{error}</Banner> : null}
+        {info ? <Banner tone="info">{info}</Banner> : null}
+        <Card>
+          <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} reports</span>}>
+            Generated reports
+          </CardTitle>
+          {loading ? (
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No reports match.</div>
+          ) : (
+            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr
+                  style={{
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--color-text-tertiary)',
+                    textAlign: 'left',
+                  }}
+                >
+                  <th style={{ padding: '6px 10px 6px 0' }}>Framework</th>
+                  <th style={{ padding: '6px 10px' }}>Run</th>
+                  <th style={{ padding: '6px 10px' }}>Generated</th>
+                  <th style={{ padding: '6px 10px' }}>Size</th>
+                  <th style={{ padding: '6px 10px' }}>Signed</th>
+                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((report) => (
+                  <tr key={report.id} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                    <td style={{ padding: '10px 10px 10px 0', fontWeight: 500 }}>{report.framework ?? '—'}</td>
+                    <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                      {report.run_id ?? '—'}
+                    </td>
+                    <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                      {formatTimestamp(report.generated_at)}
+                    </td>
+                    <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                      {report.size_bytes ? formatBytes(report.size_bytes) : '—'}
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      {report.signed ? <Badge tone="green">signed</Badge> : <Badge tone="gray">unsigned</Badge>}
+                    </td>
+                    <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <GhostButton onClick={() => copyAuditorLink(report.run_id ?? report.id, filtered.indexOf(report) === 0)}>
+                          <i className="ti ti-link" aria-hidden="true" />
+                          Auditor link
+                        </GhostButton>
+                        <PrimaryButton
+                          onClick={() => downloadReport(report.run_id ?? report.id, report.format)}
+                          disabled={busyRow === (report.run_id ?? report.id)}
+                        >
+                          <i className="ti ti-file-download" aria-hidden="true" />
+                          {busyRow === (report.run_id ?? report.id) ? 'Downloading…' : 'Download'}
+                        </PrimaryButton>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+
+        <Card style={{ marginTop: 12 }}>
+          <CardTitle>Public auditor endpoints</CardTitle>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 18,
+              fontSize: 12,
+              color: 'var(--color-text-secondary)',
+              lineHeight: 1.7,
+            }}
+          >
+            <li><code>GET /v1/public/reports/latest/pdf</code> — most recent signed PDF, no auth required.</li>
+            <li><code>GET /v1/public/reports/latest/md</code> — markdown source for the same.</li>
+            <li><code>GET /v1/public/keys</code> — Ed25519 public keys (active + retired) for offline verification.</li>
+            <li><code>GET /v1/public/manifest/verify</code> — pass <code>?run=...</code> to verify the manifest.</li>
+          </ul>
+        </Card>
+      </div>
+    </>
+  )
+}
+
+function formatTimestamp(value: string): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z')
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}

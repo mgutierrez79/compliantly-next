@@ -1,5 +1,5 @@
-import { SettingsPage } from '@/views/SettingsPage'
+import { AttestivTenantSettingsPage } from '@/views/AttestivTenantSettingsPage'
 
 export default function Page() {
-  return <SettingsPage />
+  return <AttestivTenantSettingsPage />
 }

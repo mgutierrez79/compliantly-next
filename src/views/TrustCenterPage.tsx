@@ -116,9 +116,9 @@ export function TrustCenterPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#0b1224] via-[#0f1f36] to-[#102947] text-slate-100">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
-          <Image src={brandLogo} alt="Compliantly" className="h-10 w-auto" priority />
+          <Image src={brandLogo} alt="Attestiv" className="h-10 w-auto" priority />
           <div>
-            <div className="text-lg font-semibold">Compliantly</div>
+            <div className="text-lg font-semibold">Attestiv</div>
             <div className="text-xs uppercase tracking-wide text-slate-300">Trust Center</div>
           </div>
         </div>

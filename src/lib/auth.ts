@@ -16,6 +16,10 @@ function buildOidcManager(): UserManager {
     extraQueryParams.audience = settings.oidcAudience.trim()
   }
 
+  // sessionStorage rather than localStorage so the IdP token isn't
+  // persisted across browser restarts. The credential of record is
+  // the server-set httpOnly cookie minted via /v1/auth/oidc/exchange;
+  // the OIDC user object only lives long enough to do the exchange.
   return new UserManager({
     authority: issuer,
     client_id: settings.oidcClientId.trim(),
@@ -23,7 +27,7 @@ function buildOidcManager(): UserManager {
     post_logout_redirect_uri: postLogoutRedirectUri,
     response_type: 'code',
     scope: settings.oidcScope.trim() || 'openid profile email',
-    userStore: new WebStorageStateStore({ store: window.localStorage }),
+    userStore: new WebStorageStateStore({ store: window.sessionStorage }),
     loadUserInfo: true,
     extraQueryParams,
   })
@@ -45,7 +49,35 @@ export async function oidcSignIn(): Promise<void> {
 
 export async function oidcHandleCallback(): Promise<User> {
   const manager = oidcManager()
-  return await manager.signinRedirectCallback()
+  const user = await manager.signinRedirectCallback()
+  // Trade the IdP token for a server session cookie. From this point
+  // the cookie is the credential — we drop the OIDC user from
+  // session storage so a future bug can't accidentally fall back to
+  // sending the IdP token as a Bearer.
+  await exchangeOidcTokenForSession(user)
+  await manager.removeUser()
+  return user
+}
+
+async function exchangeOidcTokenForSession(user: User): Promise<void> {
+  const settings = loadSettings()
+  const baseUrl = settings.apiBaseUrl?.trim()?.replace(/\/+$/, '')
+  if (!baseUrl) return
+  const token = user.id_token ?? user.access_token
+  if (!token) return
+  const response = await fetch(`${baseUrl}/v1/auth/oidc/exchange`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `OIDC exchange failed: ${response.status}`)
+  }
 }
 
 export async function oidcSignOut(): Promise<void> {

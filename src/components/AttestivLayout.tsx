@@ -1,0 +1,402 @@
+'use client'
+
+// AttestivLayout — the console shell.
+//
+// Three columns: 52px icon rail, 180px contextual sidebar, 1fr main
+// content. The rail anchors the seven top-level sections; the
+// sidebar shows the three sub-pages of the active section. This
+// matches the mockup IA exactly and keeps the surface tight enough
+// that the most important compliance objects (evidence, signatures,
+// DLQ, audit trail) are always one click from any page.
+//
+// Auth gating: the page itself runs through the existing
+// /v1/auth/me check via apiJson, so an authenticated user sees their
+// roles. Tenant pill in the footer reflects the resolved tenant.
+//
+// Issue badge: polls the DLQ count every 30s. Same source the
+// previous Layout used; the new chrome is purely a visual lift.
+
+import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { apiJson } from '../lib/api'
+import { loadSettings } from '../lib/settings'
+
+type SectionKey =
+  | 'dashboard'
+  | 'connectors'
+  | 'evidence'
+  | 'frameworks'
+  | 'apps'
+  | 'sites'
+  | 'risks'
+  | 'policies'
+  | 'exceptions'
+  | 'remediation'
+  | 'incidents'
+  | 'thirdparties'
+  | 'dr'
+  | 'audit'
+  | 'settings'
+
+type RailItem = {
+  key: SectionKey
+  label: string
+  icon: string
+  prefix: string
+}
+
+type NavItem = {
+  to: string
+  label: string
+  icon: string
+  badge?: 'issues' | 'dlq'
+}
+
+type Section = {
+  key: SectionKey
+  navLabel: string
+  items: NavItem[]
+}
+
+// Top-rail order matches the mockup. "Settings" is pinned to the
+// bottom via a flex spacer so admin-only entries don't crowd the
+// daily-use rail.
+const railTop: RailItem[] = [
+  { key: 'dashboard',  label: 'Dashboard',  icon: 'ti-layout-dashboard', prefix: '/dashboard' },
+  { key: 'connectors', label: 'Connectors', icon: 'ti-plug',             prefix: '/connectors' },
+  { key: 'evidence',   label: 'Evidence',   icon: 'ti-lock',             prefix: '/evidence' },
+  { key: 'frameworks', label: 'Frameworks', icon: 'ti-shield-check',     prefix: '/frameworks' },
+  { key: 'apps',       label: 'Apps',       icon: 'ti-apps',             prefix: '/apps' },
+  { key: 'sites',      label: 'Sites',      icon: 'ti-building',         prefix: '/sites' },
+  { key: 'risks',      label: 'Risk',       icon: 'ti-alert-octagon',    prefix: '/risks' },
+  { key: 'policies',   label: 'Policies',   icon: 'ti-file-text',        prefix: '/policies' },
+  { key: 'exceptions', label: 'Exceptions', icon: 'ti-shield-half-filled', prefix: '/exceptions' },
+  { key: 'remediation', label: 'Remediation', icon: 'ti-checklist',       prefix: '/remediation' },
+  { key: 'incidents',  label: 'Incidents',  icon: 'ti-radar-2',          prefix: '/incidents' },
+  { key: 'thirdparties', label: 'Third parties', icon: 'ti-building',    prefix: '/third-parties' },
+  { key: 'dr',         label: 'DR Testing', icon: 'ti-refresh-alert',    prefix: '/dr' },
+  { key: 'audit',      label: 'Audit',      icon: 'ti-file-certificate', prefix: '/audit' },
+]
+const railBottom: RailItem[] = [
+  { key: 'settings', label: 'Settings', icon: 'ti-settings', prefix: '/settings' },
+]
+
+// Each section's three sub-pages. Order is the order they appear in
+// the sidebar. The first item is the section's default route (its
+// /<section> path resolves here).
+const sections: Record<SectionKey, Section> = {
+  dashboard: {
+    key: 'dashboard',
+    navLabel: 'Summary',
+    items: [
+      { to: '/dashboard',         label: 'Overview', icon: 'ti-home' },
+      { to: '/dashboard/posture', label: 'Posture',  icon: 'ti-chart-pie' },
+      { to: '/dashboard/issues',  label: 'Issues',   icon: 'ti-alert-triangle', badge: 'issues' },
+    ],
+  },
+  connectors: {
+    key: 'connectors',
+    navLabel: 'Sources',
+    items: [
+      { to: '/connectors',             label: 'Registry',    icon: 'ti-layout-grid' },
+      { to: '/connectors/health',      label: 'Health',      icon: 'ti-activity' },
+      { to: '/connectors/dead-letter', label: 'Dead-letter', icon: 'ti-inbox', badge: 'dlq' },
+    ],
+  },
+  evidence: {
+    key: 'evidence',
+    navLabel: 'Evidence',
+    items: [
+      { to: '/evidence',        label: 'Live stream',       icon: 'ti-player-play' },
+      { to: '/evidence/search', label: 'Search',            icon: 'ti-search' },
+      { to: '/evidence/verify', label: 'Verify signature',  icon: 'ti-check' },
+    ],
+  },
+  frameworks: {
+    key: 'frameworks',
+    navLabel: 'Frameworks',
+    items: [
+      { to: '/frameworks',           label: 'All frameworks', icon: 'ti-layout-list' },
+      { to: '/frameworks/controls',  label: 'Controls',       icon: 'ti-list-check' },
+      { to: '/frameworks/crosswalk', label: 'Crosswalk',      icon: 'ti-arrows-cross' },
+    ],
+  },
+  apps: {
+    key: 'apps',
+    navLabel: 'Applications',
+    items: [
+      { to: '/apps',          label: 'Registry',  icon: 'ti-apps' },
+      { to: '/apps?tier=tier_1', label: 'Tier 1',  icon: 'ti-flame' },
+      { to: '/apps?gxp=true', label: 'GxP-validated', icon: 'ti-flask' },
+    ],
+  },
+  sites: {
+    key: 'sites',
+    navLabel: 'Sites',
+    items: [
+      { to: '/sites',         label: 'Registry',         icon: 'ti-building' },
+    ],
+  },
+  risks: {
+    key: 'risks',
+    navLabel: 'Risk',
+    items: [
+      { to: '/risks',          label: 'Register',  icon: 'ti-alert-octagon' },
+      { to: '/risks?source=auto_scoring', label: 'Auto-created', icon: 'ti-rocket' },
+      { to: '/risks?status=in_treatment', label: 'In treatment', icon: 'ti-tools' },
+    ],
+  },
+  policies: {
+    key: 'policies',
+    navLabel: 'Policies',
+    items: [
+      { to: '/policies',                       label: 'All policies',  icon: 'ti-file-text' },
+      { to: '/policies?overdueOnly=true',      label: 'Overdue review', icon: 'ti-clock-exclamation' },
+      { to: '/policies?status=draft',          label: 'Draft',          icon: 'ti-pencil' },
+    ],
+  },
+  exceptions: {
+    key: 'exceptions',
+    navLabel: 'Exceptions',
+    items: [
+      { to: '/exceptions',                  label: 'Register',       icon: 'ti-shield-half-filled' },
+      { to: '/exceptions?status=active',    label: 'Active',         icon: 'ti-clock' },
+      { to: '/exceptions?status=expired',   label: 'Expired',        icon: 'ti-circle-x' },
+    ],
+  },
+  remediation: {
+    key: 'remediation',
+    navLabel: 'Remediation',
+    items: [
+      { to: '/remediation',                  label: 'All tasks',  icon: 'ti-checklist' },
+      { to: '/remediation?status=open',      label: 'Open',       icon: 'ti-circle-dot' },
+      { to: '/remediation?priority=critical', label: 'Critical',  icon: 'ti-flame' },
+    ],
+  },
+  incidents: {
+    key: 'incidents',
+    navLabel: 'Incidents',
+    items: [
+      { to: '/incidents',                            label: 'Register',          icon: 'ti-radar-2' },
+      { to: '/incidents?nis2_significant=true',      label: 'NIS2 significant',  icon: 'ti-flame' },
+      { to: '/incidents?status=detected',            label: 'Awaiting class.',   icon: 'ti-tag' },
+    ],
+  },
+  thirdparties: {
+    key: 'thirdparties',
+    navLabel: 'Third parties',
+    items: [
+      { to: '/third-parties',                       label: 'Register',         icon: 'ti-building' },
+      { to: '/third-parties?criticality=critical',  label: 'Critical',         icon: 'ti-flame' },
+      { to: '/third-parties?due_only=true',         label: 'Due for review',   icon: 'ti-clock-exclamation' },
+    ],
+  },
+  dr: {
+    key: 'dr',
+    navLabel: 'DR testing',
+    items: [
+      { to: '/dr',           label: 'Schedules',  icon: 'ti-calendar' },
+      { to: '/dr/runs',      label: 'Test runs',  icon: 'ti-history' },
+      { to: '/dr/approvals', label: 'Approvals',  icon: 'ti-user-check' },
+    ],
+  },
+  audit: {
+    key: 'audit',
+    navLabel: 'Audit',
+    items: [
+      { to: '/audit',           label: 'Audit trail', icon: 'ti-timeline' },
+      { to: '/audit/reports',   label: 'Reports',     icon: 'ti-file-description' },
+      { to: '/audit/manifests', label: 'Manifests',   icon: 'ti-file-certificate' },
+    ],
+  },
+  settings: {
+    key: 'settings',
+    navLabel: 'Settings',
+    items: [
+      { to: '/settings',            label: 'Tenant',       icon: 'ti-building' },
+      { to: '/settings/users',      label: 'Users & RBAC', icon: 'ti-users' },
+      { to: '/settings/keys',       label: 'API keys',     icon: 'ti-key' },
+      { to: '/settings/frameworks', label: 'Frameworks',   icon: 'ti-layout-list' },
+      { to: '/settings/support',    label: 'Support bundle', icon: 'ti-file-zip' },
+    ],
+  },
+}
+
+function sectionFromPath(pathname: string): SectionKey {
+  for (const item of [...railTop, ...railBottom]) {
+    if (pathname === item.prefix || pathname.startsWith(`${item.prefix}/`)) {
+      return item.key
+    }
+  }
+  // Default: dashboard. Any unknown route lands here visually until
+  // it 404s; better than rendering an empty rail.
+  return 'dashboard'
+}
+
+export function AttestivLayout({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname() || '/'
+  const activeSection = useMemo(() => sectionFromPath(pathname), [pathname])
+  const section = sections[activeSection]
+
+  const [tenantId, setTenantId] = useState('')
+  const [subject, setSubject] = useState('')
+  const [issuesCount, setIssuesCount] = useState(0)
+
+  // Pull current tenant + subject from /auth/me so the footer pill
+  // reflects the bound principal, not whatever the user typed in
+  // settings. Falls back to localStorage if /auth/me hasn't returned
+  // yet (cold load).
+  useEffect(() => {
+    setTenantId(loadSettings().tenantId)
+    let cancelled = false
+    apiJson<{ subject?: string; roles?: string[]; tenant_id?: string | null }>('/auth/me')
+      .then((response) => {
+        if (cancelled) return
+        if (response.tenant_id) setTenantId(response.tenant_id)
+        if (response.subject) setSubject(response.subject)
+      })
+      .catch(() => {
+        // Layout is rendered before auth resolution; silent failure
+        // is fine. The login redirect happens via middleware.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // DLQ count for the Issues / Dead-letter badges. Same source as
+  // the previous Layout — Phase 3 has the count tenant-scoped at the
+  // store layer, so this number reflects only the current tenant.
+  useEffect(() => {
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const response = await apiJson<{ count?: number }>(
+          '/ingest/queue?queue=dead_letter&status=dead_letter&limit=1',
+        )
+        if (!cancelled) setIssuesCount(response.count || 0)
+      } catch {
+        // No-op: a transient failure shouldn't break the chrome.
+      }
+    }
+    void refresh()
+    const handle = window.setInterval(refresh, 30_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(handle)
+    }
+  }, [])
+
+  const renderRailButton = (item: RailItem) => {
+    const active = item.key === activeSection
+    return (
+      <button
+        key={item.key}
+        type="button"
+        title={item.label}
+        aria-label={item.label}
+        aria-current={active ? 'page' : undefined}
+        onClick={() => router.push(sections[item.key].items[0].to)}
+        className={`attestiv-rail-btn${active ? ' active' : ''}`}
+      >
+        <i className={`ti ${item.icon}`} aria-hidden="true" />
+      </button>
+    )
+  }
+
+  const renderNavItem = (item: NavItem) => {
+    const active = pathname === item.to ||
+      (item.to !== `/${section.key}` && pathname.startsWith(`${item.to}/`)) ||
+      // Default nav item is active when pathname matches the section
+      // root exactly (e.g. /dashboard → "Overview").
+      (item.to === sections[section.key].items[0].to && pathname === sections[section.key].items[0].to)
+    const showBadge = item.badge && issuesCount > 0
+    return (
+      <button
+        key={item.to}
+        type="button"
+        onClick={() => router.push(item.to)}
+        aria-current={active ? 'page' : undefined}
+        className={`attestiv-nav-item${active ? ' active' : ''}`}
+      >
+        <i className={`ti ${item.icon}`} aria-hidden="true" />
+        <span style={{ flex: 1 }}>{item.label}</span>
+        {showBadge ? (
+          <span
+            className="attestiv-nav-badge"
+            style={{ background: 'var(--color-status-red-bg)', color: 'var(--color-status-red-deep)' }}
+          >
+            {issuesCount}
+          </span>
+        ) : null}
+      </button>
+    )
+  }
+
+  return (
+    <div className="attestiv-shell">
+      <div className="attestiv-rail">
+        <div className="attestiv-rail-logo">
+          <AttestivLogo />
+        </div>
+        {railTop.map(renderRailButton)}
+        <div className="attestiv-rail-spacer" />
+        {railBottom.map(renderRailButton)}
+      </div>
+
+      <aside className="attestiv-sidebar">
+        <div className="attestiv-sidebar-header">
+          <div className="attestiv-sidebar-title">Attestiv</div>
+          <div className="attestiv-sidebar-sub">{section.navLabel}</div>
+        </div>
+        <div className="attestiv-nav-group">
+          <div className="attestiv-nav-label">{section.navLabel}</div>
+          {section.items.map(renderNavItem)}
+        </div>
+        <div className="attestiv-sidebar-footer">
+          <div className="attestiv-tenant-pill">
+            <div className="attestiv-tenant-dot" />
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 500 }}>{tenantId || 'No tenant'}</div>
+              <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+                {subject || 'unauthenticated'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main className="attestiv-main">{children}</main>
+    </div>
+  )
+}
+
+// Inline brand mark from the mockup. Shield + check, three-tone
+// blue. Inlining beats a separate SVG file because the colors are
+// design tokens — keeping the source here means the logo moves with
+// the palette automatically.
+function AttestivLogo() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M10 1L3 4.5V10C3 14.5 6 18 10 19.5C14 18 17 14.5 17 10V4.5L10 1Z"
+        fill="var(--color-brand-blue-pale)"
+        stroke="var(--color-brand-blue-soft)"
+        strokeWidth="0.5"
+      />
+      <path
+        d="M10 3.5L5 6.5V10C5 13.5 7.5 16.5 10 17.5C12.5 16.5 15 13.5 15 10V6.5L10 3.5Z"
+        fill="var(--color-brand-blue-mid)"
+      />
+      <path
+        d="M7 10L9.5 12.5L14 8"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}

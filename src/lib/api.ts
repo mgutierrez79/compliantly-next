@@ -130,9 +130,17 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 
   const headers = new Headers(init?.headers ?? {})
   if (settings.authMode === 'oidc') {
-    const token = await oidcAccessToken()
-    if (token) headers.set('Authorization', `Bearer ${token}`)
+    // Phase 4b/OIDC: the credential is the httpOnly session cookie
+    // minted by /v1/auth/oidc/exchange. We deliberately do NOT add a
+    // Bearer header — falling back to the IdP token would let a
+    // misconfigured deployment leak it through the network tab.
+    void oidcAccessToken
   } else if (settings.authMode === 'local') {
+    // Phase 4b: local auth uses an httpOnly session cookie set by the
+    // server on /v1/auth/login. The browser carries it automatically as
+    // long as the request includes credentials. localToken is only a
+    // fallback for the rare case where a token was issued before the
+    // cookie migration; new logins do not populate it.
     if (settings.localToken) headers.set('Authorization', `Bearer ${settings.localToken}`)
   } else if (settings.apiKey) {
     headers.set('Authorization', `Bearer ${settings.apiKey}`)
@@ -148,6 +156,13 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       response = await fetch(url, {
         ...init,
         headers,
+        // Required for the httpOnly session cookie to flow on
+        // cross-origin requests (frontend at :3000, API at :8001 in
+        // local dev). The backend must respond with
+        // Access-Control-Allow-Credentials: true for the browser to
+        // accept the response — already configured by corsMiddleware
+        // when COMPLIANCE_CORS_ALLOW_CREDENTIALS is true.
+        credentials: 'include',
       })
     } catch (err) {
       networkError = err

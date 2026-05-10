@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { formatTimestamp } from '../lib/time'
 import { Button, Card, ErrorBox, HelpTip, Label, PageTitle } from '../components/Ui'
+import { FreshnessBanner } from '../components/FreshnessBanner'
 import { getResilienceRuleHelp } from '../data/resilienceRuleHelp'
 
 type RunItem = {
@@ -3982,6 +3983,7 @@ export function DashboardPage() {
       <p className="text-sm text-slate-50">
         Track overall posture at a glance. Drill into Runs, Analytics, or Connectors when needed.
       </p>
+      <FreshnessBanner />
       <div className="text-xs text-slate-300">
         {dashboardSummary?.generated_at ? `Updated ${formatTimestamp(dashboardSummary.generated_at)}` : 'Updated n/a'}
         {dashboardSummary?.cache_key ? ` | Cache ${dashboardSummary.cache_key}` : ''}

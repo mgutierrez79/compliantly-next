@@ -1,5 +1,5 @@
-import { ConnectorsPage } from '@/views/ConnectorsPage'
+import { AttestivConnectorRegistry } from '@/views/AttestivConnectorRegistry'
 
 export default function Page() {
-  return <ConnectorsPage />
+  return <AttestivConnectorRegistry />
 }

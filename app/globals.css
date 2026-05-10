@@ -1,4 +1,78 @@
 @import "tailwindcss";
+@import "@tabler/icons-webfont/dist/tabler-icons.min.css";
+
+/* Attestiv design tokens.
+ *
+ * Light cream theme (vs the previous dark-navy console). The palette
+ * is tuned for compliance reading: high contrast for evidence text,
+ * neutral cream surfaces so signed data feels like a document, navy
+ * + blue accents for actions and status that match the brand mark.
+ *
+ * If you change a token here, the entire UI moves with it. Do not
+ * sprinkle hex values in components — go through the variables.
+ */
+:root {
+  /* Surfaces — cream layered onto cream so cards have a subtle lift
+   * without heavy borders. */
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8f8f6;
+  --color-background-tertiary: #f1efe8;
+
+  /* Text — three tiers so secondary metadata can recede without
+   * graying out unrecognizably. */
+  --color-text-primary: #1a1a18;
+  --color-text-secondary: #5f5e5a;
+  --color-text-tertiary: #888780;
+
+  /* Borders — translucent black so they layer over both cream and
+   * white without color clashes. */
+  --color-border-tertiary: rgba(0, 0, 0, 0.10);
+  --color-border-secondary: rgba(0, 0, 0, 0.20);
+
+  /* Brand: Attestiv navy + blue. Navy is the icon rail and chip
+   * background; blue is the primary action and active accent. */
+  --color-brand-navy: #042C53;
+  --color-brand-navy-deep: #0C447C;
+  --color-brand-blue: #185FA5;
+  --color-brand-blue-mid: #378ADD;
+  --color-brand-blue-soft: #85B7EB;
+  --color-brand-blue-pale: #B5D4F4;
+
+  /* Status — three tiers (filled, mid, deep) per family so badges,
+   * bars, and text can use related but distinguishable shades. */
+  --color-status-green-bg: #E1F5EE;
+  --color-status-green-mid: #1D9E75;
+  --color-status-green-deep: #085041;
+
+  --color-status-amber-bg: #FAEEDA;
+  --color-status-amber-mid: #EF9F27;
+  --color-status-amber-deep: #633806;
+  --color-status-amber-text: #854F0B;
+
+  --color-status-red-bg: #FCEBEB;
+  --color-status-red-mid: #C53737;
+  --color-status-red-deep: #791F1F;
+
+  --color-status-blue-bg: #E6F1FB;
+  --color-status-blue-deep: #0C447C;
+
+  --color-status-violet-bg: #EEEDFE;
+  --color-status-violet-mid: #534AB7;
+
+  --color-status-rust-bg: #FAECE7;
+  --color-status-rust-mid: #993C1D;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas,
+    monospace;
+
+  /* Radii — md for tight controls, lg for surfaces. */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+}
 
 html,
 body {
@@ -7,7 +81,12 @@ body {
 
 body {
   margin: 0;
-  background-color: #0b1224;
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
@@ -15,4 +94,267 @@ input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
+}
+
+/* The shell wrapper. The console layout fills the viewport; routes
+ * outside the (console) group (login, trust center) render normally. */
+.attestiv-shell {
+  display: grid;
+  grid-template-columns: 52px 180px 1fr;
+  min-height: 100vh;
+  background: var(--color-background-primary);
+}
+
+/* ICON RAIL */
+.attestiv-rail {
+  background: var(--color-brand-navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+}
+.attestiv-rail-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-brand-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+.attestiv-rail-logo svg {
+  width: 20px;
+  height: 20px;
+}
+.attestiv-rail-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-brand-blue-soft);
+  font-size: 18px;
+  border: none;
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.attestiv-rail-btn:hover {
+  background: var(--color-brand-navy-deep);
+  color: white;
+}
+.attestiv-rail-btn.active {
+  background: var(--color-brand-blue);
+  color: white;
+}
+.attestiv-rail-spacer {
+  flex: 1;
+}
+
+/* SIDEBAR */
+.attestiv-sidebar {
+  background: var(--color-background-secondary);
+  border-right: 0.5px solid var(--color-border-tertiary);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.attestiv-sidebar-header {
+  padding: 14px 14px 10px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  flex-shrink: 0;
+}
+.attestiv-sidebar-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+.attestiv-sidebar-sub {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+.attestiv-nav-group {
+  padding: 8px 0;
+}
+.attestiv-nav-label {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 14px 6px;
+}
+.attestiv-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  border-right: 2px solid transparent;
+  border-top: none;
+  border-left: none;
+  border-bottom: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.1s, color 0.1s;
+}
+.attestiv-nav-item:hover {
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+.attestiv-nav-item.active {
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  border-right: 2px solid var(--color-brand-blue);
+}
+.attestiv-nav-item i {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.attestiv-nav-badge {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.attestiv-sidebar-footer {
+  margin-top: auto;
+  padding: 10px 14px;
+  border-top: 0.5px solid var(--color-border-tertiary);
+  flex-shrink: 0;
+}
+.attestiv-tenant-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.attestiv-tenant-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-status-green-mid);
+  flex-shrink: 0;
+}
+
+/* MAIN */
+.attestiv-main {
+  background: var(--color-background-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.attestiv-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  flex-shrink: 0;
+}
+.attestiv-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.attestiv-topbar-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.attestiv-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.attestiv-content {
+  padding: 16px 18px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Animated pulse used for "live" indicators. */
+.attestiv-pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-status-green-mid);
+  animation: attestiv-pulse 2s ease-in-out infinite;
+}
+@keyframes attestiv-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes attestiv-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Skeleton shimmer — pure CSS, no JS animation. The gradient
+ * translates left→right across a transparent rectangle to give
+ * the impression of loading without thrashing the main thread.
+ */
+.attestiv-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-background-secondary) 0%,
+    var(--color-background-tertiary) 50%,
+    var(--color-background-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: attestiv-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes attestiv-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Page fade-in. Applies to every console route via .attestiv-content;
+ * keeps the transition subtle so it reads as polish, not animation
+ * for its own sake. Respects prefers-reduced-motion.
+ */
+.attestiv-content {
+  animation: attestiv-fade-in 180ms ease-out;
+}
+@keyframes attestiv-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .attestiv-content,
+  .attestiv-skeleton,
+  .attestiv-pulse {
+    animation: none;
+  }
+}
+
+/* Clickable card — subtle lift on hover, focus ring on keyboard.
+ * The :focus-visible selector ensures the ring only shows for
+ * keyboard navigation, not after a mouse click (matches platform
+ * convention).
+ */
+.attestiv-clickable-card {
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms ease-out;
+}
+.attestiv-clickable-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-border-secondary);
+  box-shadow: 0 4px 10px rgba(4, 44, 83, 0.06);
+}
+.attestiv-clickable-card:focus-visible {
+  outline: none;
+  border-color: var(--color-brand-blue);
+  box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.15);
 }

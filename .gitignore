@@ -16,6 +16,9 @@ test-results/
 !.env.example
 secrets/
 
+# Claude Code workspace
+.claude/
+
 # OS / editor
 .DS_Store
 Thumbs.db

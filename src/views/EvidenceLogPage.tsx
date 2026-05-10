@@ -4,6 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, Input, Label, PageTitle } from '../components/Ui'
 import { formatTimestamp } from '../lib/time'
+import { verifyManifest, type ManifestPayload, type VerifyResult } from '../lib/verify'
+
+type RunManifestResponse = {
+  run_id: string
+  path: string
+  manifest: ManifestPayload
+  signature_status?: { valid?: boolean | null }
+}
 
 type EvidenceLogEntry = {
   run_id: string
@@ -21,6 +29,32 @@ type EvidenceLogResponse = {
   count: number
   limit: number
   offset: number
+}
+
+function VerifyBadge({ result }: { result: VerifyResult }) {
+  // The status text is intentionally explicit — "verified offline"
+  // tells the user the proof did not depend on the server's word.
+  if (result.status === 'valid') {
+    return (
+      <div className="mt-3 rounded-lg border border-emerald-700/60 bg-emerald-900/30 px-3 py-2 text-xs text-emerald-200">
+        ✓ Signature verified offline using public key{' '}
+        <span className="font-mono text-[10px]">{result.kid}</span>. The manifest has not been
+        modified since signing.
+      </div>
+    )
+  }
+  if (result.status === 'unsupported') {
+    return (
+      <div className="mt-3 rounded-lg border border-amber-700/60 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
+        ⚠ Verification unavailable: {result.reason}
+      </div>
+    )
+  }
+  return (
+    <div className="mt-3 rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-2 text-xs text-rose-200">
+      ✗ Signature did not verify: {result.reason}
+    </div>
+  )
 }
 
 function toIso(value: string): string {
@@ -50,6 +84,28 @@ export function EvidenceLogPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
   const [exporting, setExporting] = useState(false)
+  // Per-row verification state. Keyed by run_id so users see live
+  // status without us replaying the verify on every render.
+  const [verifying, setVerifying] = useState<Record<string, boolean>>({})
+  const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({})
+
+  const verify = async (runID: string) => {
+    if (!runID) return
+    setVerifying((prev) => ({ ...prev, [runID]: true }))
+    try {
+      const response = await apiJson<RunManifestResponse>(`/runs/${encodeURIComponent(runID)}/manifest`)
+      const result = await verifyManifest(response.manifest)
+      setVerifyResults((prev) => ({ ...prev, [runID]: result }))
+    } catch (err) {
+      const apiError = err as ApiError
+      setVerifyResults((prev) => ({
+        ...prev,
+        [runID]: { status: 'invalid', reason: apiError.message || 'failed to load manifest' },
+      }))
+    } finally {
+      setVerifying((prev) => ({ ...prev, [runID]: false }))
+    }
+  }
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -214,31 +270,41 @@ export function EvidenceLogPage() {
       <Card>
         <div className="grid gap-3">
           {items.length ? (
-            items.map((entry, index) => (
-              <div
-                key={`${entry.run_id}-${entry.timestamp}-${index}`}
-                className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-100">{entry.run_id}</div>
-                    <div className="text-xs text-slate-400">{formatTimestamp(entry.timestamp)}</div>
+            items.map((entry, index) => {
+              const result = verifyResults[entry.run_id]
+              const isVerifying = !!verifying[entry.run_id]
+              return (
+                <div
+                  key={`${entry.run_id}-${entry.timestamp}-${index}`}
+                  className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-100">{entry.run_id}</div>
+                      <div className="text-xs text-slate-400">{formatTimestamp(entry.timestamp)}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-slate-300">
+                        {entry.frameworks?.length ? entry.frameworks.join(', ') : 'no frameworks'}
+                      </div>
+                      <Button size="sm" onClick={() => verify(entry.run_id)} disabled={isVerifying || !entry.run_id}>
+                        {isVerifying ? 'Verifying…' : 'Verify signature'}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-300">
-                    {entry.frameworks?.length ? entry.frameworks.join(', ') : 'no frameworks'}
+                  {result ? <VerifyBadge result={result} /> : null}
+                  <div className="mt-3 grid gap-2 text-xs text-slate-300 md:grid-cols-2">
+                    <div>Risk score: {entry.risk_score ?? 'n/a'}</div>
+                    <div>Findings: {entry.finding_count ?? 'n/a'}</div>
+                    <div className="break-all">Signature: {entry.report_signature || 'n/a'}</div>
+                    <div className="break-all">Run hash: {entry.run_hash || 'n/a'}</div>
                   </div>
+                  <pre className="mt-3 whitespace-pre-wrap break-words rounded-lg border border-[#233a61] bg-[#0d1a2b] p-3 text-xs text-slate-200">
+                    {formatMetadata(entry)}
+                  </pre>
                 </div>
-                <div className="mt-3 grid gap-2 text-xs text-slate-300 md:grid-cols-2">
-                  <div>Risk score: {entry.risk_score ?? 'n/a'}</div>
-                  <div>Findings: {entry.finding_count ?? 'n/a'}</div>
-                  <div className="break-all">Signature: {entry.report_signature || 'n/a'}</div>
-                  <div className="break-all">Run hash: {entry.run_hash || 'n/a'}</div>
-                </div>
-                <pre className="mt-3 whitespace-pre-wrap break-words rounded-lg border border-[#233a61] bg-[#0d1a2b] p-3 text-xs text-slate-200">
-                  {formatMetadata(entry)}
-                </pre>
-              </div>
-            ))
+              )
+            })
           ) : (
             <div className="text-sm text-slate-400">No evidence log entries recorded yet.</div>
           )}

@@ -23,6 +23,7 @@ type IconName =
   | 'connectors'
   | 'controls'
   | 'jobs'
+  | 'issues'
   | 'settings'
 
 type NavItem = { to: string; label: string; icon: IconName }
@@ -49,6 +50,7 @@ const navItems: NavItem[] = [
   { to: '/policy-tasks', label: 'Policy Tasks', icon: 'policy' },
   { to: '/trust-center', label: 'Trust Center', icon: 'trust' },
   { to: '/jobs', label: 'Jobs', icon: 'jobs' },
+  { to: '/issues', label: 'Issues', icon: 'issues' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
 ]
 
@@ -191,6 +193,15 @@ function NavIcon({ name }: { name: IconName }) {
           />
         </svg>
       )
+    case 'issues':
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 2 1 21h22L12 2Zm-1 7h2v6h-2V9Zm0 8h2v2h-2v-2Z"
+          />
+        </svg>
+      )
     case 'settings':
       return (
         <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -211,6 +222,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null)
   const [snapshotLoading, setSnapshotLoading] = useState(false)
   const [roles, setRoles] = useState<string[]>([])
+  const [issuesCount, setIssuesCount] = useState(0)
   const [expandedGroups, setExpandedGroups] = useState<Record<GroupKey, boolean>>({
     executive: false,
     evidence: false,
@@ -236,6 +248,30 @@ export function Layout({ children }: { children: ReactNode }) {
     void load()
     return () => {
       cancelled = true
+    }
+  }, [])
+
+  // Poll the DLQ count so the Issues nav item shows a live badge
+  // when failures accumulate. 30s cadence matches the IssuesPage's
+  // own auto-refresh and is well below the natural rate at which
+  // operators glance at the sidebar.
+  useEffect(() => {
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const response = await apiJson<{ count?: number }>(
+          '/ingest/queue?queue=dead_letter&status=dead_letter&limit=1',
+        )
+        if (!cancelled) setIssuesCount(response.count || 0)
+      } catch {
+        // silent — Layout already surfaces auth errors via /auth/me
+      }
+    }
+    void refresh()
+    const handle = window.setInterval(refresh, 30_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(handle)
     }
   }, [])
 
@@ -319,6 +355,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const renderNavItem = (item: NavItem) => {
     const isActive = isNavItemActive(item)
+    const showBadge = item.to === '/issues' && issuesCount > 0
     return (
       <button
         key={item.to}
@@ -333,7 +370,15 @@ export function Layout({ children }: { children: ReactNode }) {
         )}
       >
         <NavIcon name={item.icon} />
-        {t(item.label)}
+        <span className="flex-1">{t(item.label)}</span>
+        {showBadge ? (
+          <span
+            aria-label={`${issuesCount} unresolved issues`}
+            className="rounded-full border border-rose-700/60 bg-rose-600/30 px-2 text-[10px] font-semibold text-rose-100"
+          >
+            {issuesCount}
+          </span>
+        ) : null}
       </button>
     )
   }
@@ -400,7 +445,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
         <aside className="w-64 border-r border-[#203659] bg-[#0e1c33]/95 p-5 shadow-xl shadow-black/30 overflow-y-auto">
           <div className="mb-6 rounded-xl border border-[#223a61] bg-gradient-to-br from-[#142543] via-[#0f1f36] to-[#0b182d] p-4 shadow-md shadow-black/30">
-            <Image src={brandLogo} alt="Compliantly" className="h-16 w-auto" priority />
+            <Image src={brandLogo} alt="Attestiv" className="h-16 w-auto" priority />
             <div className="mt-2 text-xs text-slate-300">{t('Management Console')}</div>
           </div>
           <nav className="space-y-3">

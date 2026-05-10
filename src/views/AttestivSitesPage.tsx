@@ -1,0 +1,289 @@
+'use client'
+
+// Sites registry page.
+//
+// One row per registered site. Renders the site identity (city,
+// country, region), the count of hosted CIs, and a concentration
+// indicator if the site exceeds its DORA Art.29 threshold.
+// Concentration data is fetched separately and joined client-side.
+
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+import {
+  Badge,
+  Banner,
+  Card,
+  CardTitle,
+  EmptyState,
+  Skeleton,
+  Topbar,
+} from '../components/AttestivUi'
+import { apiFetch } from '../lib/api'
+
+type SiteSummary = {
+  site_id: string
+  display_name: string
+  site_type?: string
+  city?: string
+  country?: string
+  region?: string
+  dr_site?: string
+  primary_site?: string
+  ci_count?: number
+  wan_link_count?: number
+}
+
+type ConcentrationRisk = {
+  site_id: string
+  total_tier1_apps?: number
+  apps_in_site?: number
+  concentration_pct?: number
+  exceeds_threshold?: boolean
+  threshold_pct?: number
+}
+
+export function AttestivSitesPage() {
+  const router = useRouter()
+  const [sites, setSites] = useState<SiteSummary[]>([])
+  const [concentration, setConcentration] = useState<Map<string, ConcentrationRisk>>(new Map())
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<{ region?: string; type?: string }>({})
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const [sitesRes, concentrationRes] = await Promise.allSettled([
+          apiFetch('/sites'),
+          apiFetch('/concentration-risk'),
+        ])
+        if (cancelled) return
+        if (sitesRes.status === 'fulfilled') {
+          if (!sitesRes.value.ok) {
+            throw new Error(`${sitesRes.value.status} ${sitesRes.value.statusText}`)
+          }
+          const body = await sitesRes.value.json()
+          setSites(Array.isArray(body?.items) ? body.items : [])
+        } else {
+          throw sitesRes.reason
+        }
+        if (concentrationRes.status === 'fulfilled' && concentrationRes.value.ok) {
+          const body = await concentrationRes.value.json()
+          const items: ConcentrationRisk[] = Array.isArray(body?.items) ? body.items : []
+          const map = new Map<string, ConcentrationRisk>()
+          for (const c of items) {
+            if (c.site_id) map.set(c.site_id, c)
+          }
+          setConcentration(map)
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load sites')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const regions = useMemo(() => {
+    return Array.from(new Set(sites.map((s) => s.region).filter(Boolean))).sort() as string[]
+  }, [sites])
+
+  const types = useMemo(() => {
+    return Array.from(new Set(sites.map((s) => s.site_type).filter(Boolean))).sort() as string[]
+  }, [sites])
+
+  const filtered = useMemo(() => {
+    return sites.filter((site) => {
+      if (filter.region && site.region !== filter.region) return false
+      if (filter.type && site.site_type !== filter.type) return false
+      return true
+    })
+  }, [sites, filter])
+
+  const exceedingThreshold = useMemo(() => {
+    let count = 0
+    for (const c of concentration.values()) {
+      if (c.exceeds_threshold) count++
+    }
+    return count
+  }, [concentration])
+
+  return (
+    <>
+      <Topbar
+        title="Sites"
+        left={<Badge tone="navy">{sites.length} registered</Badge>}
+        right={
+          <FilterBar value={filter} onChange={setFilter} regions={regions} types={types} />
+        }
+      />
+      <div className="attestiv-content">
+        {error ? <Banner tone="error">{error}</Banner> : null}
+        {exceedingThreshold > 0 ? (
+          <Banner tone="warning" title={`${exceedingThreshold} site${exceedingThreshold === 1 ? '' : 's'} exceeding DORA Art.29 concentration threshold`}>
+            A site holding too high a share of tier-1 apps becomes a single point of failure. Move workloads or document compensating controls.
+          </Banner>
+        ) : null}
+
+        <Card>
+          <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} shown</span>}>
+            Site registry
+          </CardTitle>
+          {loading ? (
+            <Skeleton lines={5} height={42} />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon="ti-building"
+              title="No sites"
+              description="Sites are configured via YAML in the policies/sites/ directory. Once registered they show up here for cascade + concentration analysis."
+            />
+          ) : (
+            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr
+                  style={{
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--color-text-tertiary)',
+                    textAlign: 'left',
+                  }}
+                >
+                  <th style={{ padding: '6px 10px 6px 0' }}>Site</th>
+                  <th style={{ padding: '6px 10px' }}>Type</th>
+                  <th style={{ padding: '6px 10px' }}>Region</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>CIs</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>WAN links</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>Concentration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((site) => {
+                  const conc = concentration.get(site.site_id)
+                  return (
+                    <tr
+                      key={site.site_id}
+                      onClick={() => router.push(`/sites/${encodeURIComponent(site.site_id)}`)}
+                      style={{
+                        borderTop: '0.5px solid var(--color-border-tertiary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <td style={{ padding: '10px 10px 10px 0' }}>
+                        <div style={{ fontWeight: 500 }}>{site.display_name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                          <code>{site.site_id}</code>
+                          {site.city ? ` · ${site.city}` : ''}
+                          {site.country ? `, ${site.country}` : ''}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        {site.site_type ? <Badge tone="navy">{site.site_type.replace(/_/g, ' ')}</Badge> : '—'}
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                        {site.region || '—'}
+                      </td>
+                      <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
+                        {site.ci_count ?? '—'}
+                      </td>
+                      <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
+                        {site.wan_link_count ?? '—'}
+                      </td>
+                      <td style={{ padding: '10px 0 10px 10px' }}>
+                        {conc?.exceeds_threshold ? (
+                          <Badge tone="red" icon="ti-alert-triangle">
+                            {conc.concentration_pct?.toFixed(0)}% of tier-1
+                          </Badge>
+                        ) : conc?.concentration_pct !== undefined ? (
+                          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                            {conc.concentration_pct.toFixed(0)}%
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
+    </>
+  )
+}
+
+function FilterBar({
+  value,
+  onChange,
+  regions,
+  types,
+}: {
+  value: { region?: string; type?: string }
+  onChange: (next: { region?: string; type?: string }) => void
+  regions: string[]
+  types: string[]
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
+      <SelectChip
+        label="Region"
+        value={value.region}
+        options={regions}
+        onChange={(v) => onChange({ ...value, region: v })}
+      />
+      <SelectChip
+        label="Type"
+        value={value.type}
+        options={types}
+        onChange={(v) => onChange({ ...value, type: v })}
+      />
+    </div>
+  )
+}
+
+function SelectChip({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value?: string
+  options: string[]
+  onChange: (next: string | undefined) => void
+}) {
+  return (
+    <select
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value || undefined)}
+      style={{
+        fontSize: 11,
+        padding: '4px 8px',
+        border: '0.5px solid var(--color-border-secondary)',
+        borderRadius: 'var(--border-radius-md)',
+        background: 'var(--color-background-primary)',
+        color: 'var(--color-text-primary)',
+        fontFamily: 'inherit',
+      }}
+    >
+      <option value="">{label}: any</option>
+      {options.map((opt) => (
+        <option key={opt} value={opt}>
+          {label}: {opt.replace(/_/g, ' ')}
+        </option>
+      ))}
+    </select>
+  )
+}
