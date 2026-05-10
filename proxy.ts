@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Phase 4.1: edge middleware for the console.
+// Edge proxy for the console (Next.js 16+ replacement for the old
+// `middleware.ts` convention — same execution model, new file name and
+// exported function name per the `middleware-to-proxy` migration).
 //
 // Responsibilities:
 //   1. Security headers on every response. CSP locks `script-src` to self
@@ -8,17 +10,11 @@ import { NextRequest, NextResponse } from 'next/server'
 //      (clickjacking), forces a referrer policy, and disables MIME-type
 //      sniffing.
 //   2. Redirect unauthenticated users away from console routes BEFORE
-//      any HTML renders. Auth state is detected via a non-sensitive
-//      "compliantly.session" cookie set by the Login page on successful
-//      auth. This is a marker, not a credential — actual API calls
-//      still require the Bearer token from localStorage. The cookie
-//      exists so the middleware can detect "user has never logged in"
-//      at the edge and redirect, eliminating the protected-shell flash.
-//
-// Phase 4.2 (deferred) will replace this with proper httpOnly session
-// cookies bound to the API server, which the middleware can validate.
-// Until then, this layer prevents the cold-load flash; the strong
-// access control still lives in the API.
+//      any HTML renders. Auth state is detected via the httpOnly
+//      `compliantly.session` cookie set by the API on successful auth.
+//      The cookie's contents aren't trusted at the edge — its presence
+//      alone is enough to skip the login redirect; the real check is
+//      enforced on every API request server-side.
 
 const SESSION_COOKIE = 'compliantly.session'
 
@@ -43,9 +39,9 @@ function isPublicPath(pathname: string): boolean {
 function applySecurityHeaders(response: NextResponse): NextResponse {
   // CSP: Next.js needs 'unsafe-inline' for runtime hydration scripts in
   // dev. In production a stricter nonce-based policy is achievable but
-  // requires per-request nonce injection — out of scope for Phase 4.1.
-  // The current policy still blocks third-party scripts and inline
-  // event handlers, which is the bulk of the XSS surface.
+  // requires per-request nonce injection — out of scope for now. The
+  // current policy still blocks third-party scripts and inline event
+  // handlers, which is the bulk of the XSS surface.
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -65,7 +61,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (isPublicPath(pathname)) {
@@ -88,7 +84,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Run on everything except Next.js internals and static files. The
   // exclusion regex mirrors what isPublicPath does; redundant but
-  // matters because the matcher is the only way to keep middleware off
+  // matters because the matcher is the only way to keep the proxy off
   // the static asset path entirely.
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
