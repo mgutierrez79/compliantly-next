@@ -106,7 +106,39 @@ if (certFile && keyFile) {
     )
   }
 } else if (certFile || keyFile) {
-  console.error('[Attestiv] Only one of COMPLIANCE_FRONTEND_TLS_CERT_FILE / KEY_FILE is set; need both for HTTPS. Running plain HTTP.')
+  // Asymmetric case usually means a perm trap: cert is 0644 (readable
+  // by everyone) but key is 0600 (owner-only on host), so the
+  // container's non-root user can read one but not the other.
+  // Surface the unreadable candidates so the operator can fix perms
+  // without re-running gen-tls in debug mode.
+  const certHave = certFile ? `yes (${certFile})` : 'no'
+  const keyHave = keyFile ? `yes (${keyFile})` : 'no'
+  let unreadable = []
+  if (!keyFile) {
+    for (const p of DEFAULT_KEY_CANDIDATES) {
+      try {
+        fs.statSync(p)
+        unreadable.push(p)
+      } catch {
+        // skip nonexistent
+      }
+    }
+  }
+  if (!certFile) {
+    for (const p of DEFAULT_CERT_CANDIDATES) {
+      try {
+        fs.statSync(p)
+        unreadable.push(p)
+      } catch {
+        // skip nonexistent
+      }
+    }
+  }
+  console.error(`[Attestiv] Asymmetric TLS material: cert=${certHave}, key=${keyHave}. Running plain HTTP.`)
+  if (unreadable.length > 0) {
+    console.error(`[Attestiv] These files exist but the container user can't read them (likely 0600 perms): ${unreadable.join(', ')}`)
+    console.error('[Attestiv] Fix on the host: chmod 0644 <those files> (the bundle is a self-signed internal CA on a trusted host).')
+  }
 } else {
   console.log('[Attestiv] Frontend running plain HTTP (set COMPLIANCE_FRONTEND_TLS_CERT_FILE + KEY_FILE for HTTPS).')
 }
