@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // DORA Art.28 ICT third-party register (Phase-2 GRC, chunk 6).
 //
 // What's on screen:
@@ -24,6 +23,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Provider = {
   id: string
@@ -62,6 +63,10 @@ const CRITICALITIES = ['critical', 'important', 'standard'] as const
 const STATUSES = ['active', 'under_review', 'exited'] as const
 
 export function AttestivThirdPartiesPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [providers, setProviders] = useState<Provider[]>([])
   const [overdue, setOverdue] = useState<Provider[]>([])
@@ -166,18 +171,21 @@ export function AttestivThirdPartiesPage() {
   return (
     <>
       <Topbar
-        title="ICT third-party register (DORA Art.28)"
+        title={t(
+          'ICT third-party register (DORA Art.28)',
+          'ICT third-party register (DORA Art.28)'
+        )}
         left={<Badge tone="navy">{providers.length} providers</Badge>}
         right={
           <div style={{ display: 'flex', gap: 6 }}>
             <GhostButton onClick={() => downloadROI('csv')}>
-              <i className="ti ti-file-spreadsheet" aria-hidden="true" /> RoI CSV
+              <i className="ti ti-file-spreadsheet" aria-hidden="true" /> {t('RoI CSV', 'RoI CSV')}
             </GhostButton>
             <GhostButton onClick={() => downloadROI('json')}>
-              <i className="ti ti-file-code" aria-hidden="true" /> RoI JSON
+              <i className="ti ti-file-code" aria-hidden="true" /> {t('RoI JSON', 'RoI JSON')}
             </GhostButton>
             <PrimaryButton onClick={() => setShowCreate(true)}>
-              <i className="ti ti-plus" aria-hidden="true" /> Add provider
+              <i className="ti ti-plus" aria-hidden="true" /> {t('Add provider', 'Add provider')}
             </PrimaryButton>
           </div>
         }
@@ -186,14 +194,17 @@ export function AttestivThirdPartiesPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {overdue.length > 0 ? (
           <Banner tone="warning" title={`${overdue.length} provider${overdue.length === 1 ? '' : 's'} overdue for assessment`}>
-            DORA Art.28(1) requires periodic monitoring of ICT third-party arrangements. Schedule
-            reassessment for these providers before submitting the next RoI.
+            {t(
+              'DORA Art.28(1) requires periodic monitoring of ICT third-party arrangements. Schedule\n            reassessment for these providers before submitting the next RoI.',
+              'DORA Art.28(1) requires periodic monitoring of ICT third-party arrangements. Schedule\n            reassessment for these providers before submitting the next RoI.'
+            )}
           </Banner>
         ) : null}
         <Banner tone="info" title={`RoI export covers ${roiEligible} provider${roiEligible === 1 ? '' : 's'}`}>
-          Core RoI fields only — review against the latest EBA RoI ITS before submission to your
-          competent authority. Sector-specific fields (B_02 governance, B_04 contractual provisions,
-          B_06 dependency assessment) are out of scope for the chunk-1 export.
+          {t(
+            'Core RoI fields only — review against the latest EBA RoI ITS before submission to your\n          competent authority. Sector-specific fields (B_02 governance, B_04 contractual provisions,\n          B_06 dependency assessment) are out of scope for the chunk-1 export.',
+            'Core RoI fields only — review against the latest EBA RoI ITS before submission to your\n          competent authority. Sector-specific fields (B_02 governance, B_04 contractual provisions,\n          B_06 dependency assessment) are out of scope for the chunk-1 export.'
+          )}
         </Banner>
 
         <div
@@ -203,24 +214,27 @@ export function AttestivThirdPartiesPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Total" value={summary.total} icon="ti-building" tone="navy" />
-          <SummaryCard label="Critical" value={summary.critical} icon="ti-flame" tone="red" />
-          <SummaryCard label="Important" value={summary.important} icon="ti-alert-triangle" tone="amber" />
-          <SummaryCard label="Overdue" value={overdue.length} icon="ti-clock-exclamation" tone="red" />
+          <SummaryCard label={t('Total', 'Total')} value={summary.total} icon="ti-building" tone="navy" />
+          <SummaryCard label={t('Critical', 'Critical')} value={summary.critical} icon="ti-flame" tone="red" />
+          <SummaryCard label={t('Important', 'Important')} value={summary.important} icon="ti-alert-triangle" tone="amber" />
+          <SummaryCard label={t('Overdue', 'Overdue')} value={overdue.length} icon="ti-clock-exclamation" tone="red" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>Providers</CardTitle>
+          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>{t('Providers', 'Providers')}</CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : providers.length === 0 ? (
             <EmptyState
               icon="ti-building"
-              title="No providers"
-              description="Add your ICT third-party providers — at minimum the ones supporting critical or important functions. The register feeds the DORA RoI export."
+              title={t('No providers', 'No providers')}
+              description={t(
+                'Add your ICT third-party providers — at minimum the ones supporting critical or important functions. The register feeds the DORA RoI export.',
+                'Add your ICT third-party providers — at minimum the ones supporting critical or important functions. The register feeds the DORA RoI export.'
+              )}
               action={
                 <PrimaryButton onClick={() => setShowCreate(true)}>
-                  <i className="ti ti-plus" aria-hidden="true" /> Add provider
+                  <i className="ti ti-plus" aria-hidden="true" /> {t('Add provider', 'Add provider')}
                 </PrimaryButton>
               }
             />
@@ -237,12 +251,11 @@ export function AttestivThirdPartiesPage() {
           )}
         </Card>
       </div>
-
       {showCreate ? (
         <CreateProviderModal busy={createBusy} onCancel={() => setShowCreate(false)} onSubmit={createProvider} />
       ) : null}
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -295,22 +308,26 @@ function FilterBar({
   value: { criticality?: string; status?: string }
   onChange: (next: { criticality?: string; status?: string }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Criticality"
+        label={t('Criticality', 'Criticality')}
         value={value.criticality}
         options={CRITICALITIES.slice()}
         onChange={(v) => onChange({ ...value, criticality: v })}
       />
       <SelectChip
-        label="Status"
+        label={t('Status', 'Status')}
         value={value.status}
         options={STATUSES.slice()}
         onChange={(v) => onChange({ ...value, status: v })}
       />
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -324,6 +341,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -338,17 +359,21 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }
 
 function ProviderRow({ provider, onOpen }: { provider: Provider; onOpen: () => void }) {
+  const {
+    t
+  } = useI18n();
+
   const criticality = (provider.criticality || 'standard').toLowerCase()
   const status = (provider.status || 'active').toLowerCase()
   const critTone = CRITICALITY_TONE[criticality] ?? 'gray'
@@ -398,16 +423,16 @@ function ProviderRow({ provider, onOpen }: { provider: Provider; onOpen: () => v
         <Badge tone={statusTone}>{status.replace(/_/g, ' ')}</Badge>
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        end: {provider.contract_end_date ? provider.contract_end_date.slice(0, 10) : '—'}
+        {t('end:', 'end:')} {provider.contract_end_date ? provider.contract_end_date.slice(0, 10) : '—'}
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        last: {provider.last_assessment_date ? provider.last_assessment_date.slice(0, 10) : '—'}
+        {t('last:', 'last:')} {provider.last_assessment_date ? provider.last_assessment_date.slice(0, 10) : '—'}
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
-        {provider.roi_included ? <Badge tone="navy">RoI</Badge> : <span>—</span>}
+        {provider.roi_included ? <Badge tone="navy">{t('RoI', 'RoI')}</Badge> : <span>—</span>}
       </div>
     </button>
-  )
+  );
 }
 
 function CreateProviderModal({
@@ -419,6 +444,10 @@ function CreateProviderModal({
   onCancel: () => void
   onSubmit: (payload: Record<string, unknown>) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [name, setName] = useState('')
   const [country, setCountry] = useState('')
   const [services, setServices] = useState('')
@@ -453,53 +482,55 @@ function CreateProviderModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>Add ICT provider</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>{t('Add ICT provider', 'Add ICT provider')}</h3>
         <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 0 }}>
-          Captures the core RoI fields. Detail page lets you fill data-processing locations, exit
-          plan, sub-outsourcing details, and assessment cadence.
+          {t(
+            'Captures the core RoI fields. Detail page lets you fill data-processing locations, exit\n          plan, sub-outsourcing details, and assessment cadence.',
+            'Captures the core RoI fields. Detail page lets you fill data-processing locations, exit\n          plan, sub-outsourcing details, and assessment cadence.'
+          )}
         </p>
-        <FormRow label="Provider name">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Cloud Services" style={inputStyle} />
+        <FormRow label={t('Provider name', 'Provider name')}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('e.g. Acme Cloud Services', 'e.g. Acme Cloud Services')} style={inputStyle} />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Country (ISO 3166)">
+          <FormRow label={t('Country (ISO 3166)', 'Country (ISO 3166)')}>
             <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="IE" style={inputStyle} />
           </FormRow>
-          <FormRow label="LEI (optional)">
-            <input value={lei} onChange={(e) => setLei(e.target.value)} placeholder="20-char identifier" style={inputStyle} />
+          <FormRow label={t('LEI (optional)', 'LEI (optional)')}>
+            <input value={lei} onChange={(e) => setLei(e.target.value)} placeholder={t('20-char identifier', '20-char identifier')} style={inputStyle} />
           </FormRow>
         </div>
-        <FormRow label="Services provided">
+        <FormRow label={t('Services provided', 'Services provided')}>
           <textarea value={services} onChange={(e) => setServices(e.target.value)} rows={2} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Criticality">
+          <FormRow label={t('Criticality', 'Criticality')}>
             <select value={criticality} onChange={(e) => setCriticality(e.target.value as typeof CRITICALITIES[number])} style={inputStyle}>
               {CRITICALITIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </FormRow>
-          <FormRow label="Contract end (optional)">
+          <FormRow label={t('Contract end (optional)', 'Contract end (optional)')}>
             <input type="date" value={contractEnd} onChange={(e) => setContractEnd(e.target.value)} style={inputStyle} />
           </FormRow>
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12, marginTop: 4 }}>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={roiIncluded} onChange={(e) => setRoiIncluded(e.target.checked)} />
-            Include in RoI export
+            {t('Include in RoI export', 'Include in RoI export')}
           </label>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={subOutsourcing} onChange={(e) => setSubOutsourcing(e.target.checked)} />
-            Sub-outsourcing
+            {t('Sub-outsourcing', 'Sub-outsourcing')}
           </label>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={exitPlan} onChange={(e) => setExitPlan(e.target.checked)} />
-            Exit plan documented
+            {t('Exit plan documented', 'Exit plan documented')}
           </label>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 12 }}>
-          <GhostButton onClick={onCancel} disabled={busy}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel} disabled={busy}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             onClick={() =>
               onSubmit({
@@ -521,7 +552,7 @@ function CreateProviderModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {

@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Scoring trend — 12-month sparkline + annotated events.
 //
 // Hand-rendered SVG (no chart library) because the dataset is tiny
@@ -25,6 +24,8 @@ import {
   type TrendEvent,
 } from '../lib/scoring'
 
+import { useI18n } from '../lib/i18n';
+
 const FRAMEWORK_COLORS: Record<string, string> = {
   dora: '#1D9E75',
   iso27001: '#185FA5',
@@ -35,6 +36,10 @@ const FRAMEWORK_COLORS: Record<string, string> = {
 }
 
 export function AttestivScoringTrendPage() {
+  const {
+    t
+  } = useI18n();
+
   const params = useParams<{ frameworkId?: string | string[] }>()
   const frameworkID = Array.isArray(params?.frameworkId)
     ? params.frameworkId[0]
@@ -110,31 +115,34 @@ export function AttestivScoringTrendPage() {
 
         <Card>
           <CardTitle right={data ? <Badge tone="navy">{data.items.length} months</Badge> : null}>
-            Score over time
+            {t('Score over time', 'Score over time')}
           </CardTitle>
           {loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
           ) : data && data.items.length > 0 ? (
             <TrendChart items={data.items} events={data.events} frameworkID={frameworkID} />
           ) : (
             <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              No history yet. Click Re-evaluate now on the calculator page to seed the first data point.
+              {t(
+                'No history yet. Click Re-evaluate now on the calculator page to seed the first data point.',
+                'No history yet. Click Re-evaluate now on the calculator page to seed the first data point.'
+              )}
             </div>
           )}
         </Card>
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle right={data ? <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{data.events.length} events</span> : null}>
-            Events
+            {t('Events', 'Events')}
           </CardTitle>
           {data && data.events.length > 0 ? (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-tertiary)', textAlign: 'left' }}>
-                  <th style={{ padding: '6px 10px 6px 0' }}>Date</th>
-                  <th style={{ padding: '6px 10px' }}>Type</th>
-                  <th style={{ padding: '6px 10px' }}>Severity</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>Description</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Date', 'Date')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Severity', 'Severity')}</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Description', 'Description')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,19 +163,22 @@ export function AttestivScoringTrendPage() {
               </tbody>
             </table>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No events recorded for this window.</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t(
+              'No events recorded for this window.',
+              'No events recorded for this window.'
+            )}</div>
           )}
         </Card>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-arrow-left" aria-hidden="true" />
-            Back to scoring
+            {t('Back to scoring', 'Back to scoring')}
           </GhostButton>
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function TrendChart({
@@ -179,6 +190,10 @@ function TrendChart({
   events: TrendEvent[]
   frameworkID: string
 }) {
+  const {
+    t
+  } = useI18n();
+
   const width = 720
   const height = 220
   const margin = { top: 12, right: 12, bottom: 24, left: 36 }
@@ -237,7 +252,7 @@ function TrendChart({
 
         {/* Pass threshold callout */}
         <text x={margin.left + innerW - 4} y={passLine - 4} textAnchor="end" fontSize={9} fill="var(--color-status-green-deep)">
-          PASS 95%
+          {t('PASS 95%', 'PASS 95%')}
         </text>
 
         {/* Event markers — vertical dotted lines at the event's month */}
@@ -281,7 +296,7 @@ function TrendChart({
         ))}
       </svg>
     </div>
-  )
+  );
 }
 
 function severityTone(severity: string): 'red' | 'amber' | 'gray' | 'blue' {

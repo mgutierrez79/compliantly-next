@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
@@ -9,6 +8,8 @@ import { defaultSettings, loadSettings, saveSettings } from '../lib/settings'
 import { setSessionMarker } from '../lib/session'
 import loginLogo from '../assets/Login-logo.png'
 
+import { useI18n } from '../lib/i18n';
+
 type LocalLoginResponse = {
   access_token: string
   token_type: string
@@ -16,6 +17,10 @@ type LocalLoginResponse = {
 }
 
 export function LoginPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [settings, setSettings] = useState(defaultSettings)
   const [apiBaseUrl, setApiBaseUrl] = useState(settings.apiBaseUrl)
@@ -144,50 +149,53 @@ export function LoginPage() {
       <div className="w-full max-w-md rounded-2xl bg-[#0f1f36]/90 p-8 shadow-2xl shadow-black/30 border border-[#1f365a]">
         <div className="flex flex-col items-center gap-3 mb-6">
           <Image src={loginLogo} alt="Attestiv" className="h-16 w-auto drop-shadow" priority />
-          <div className="text-sm text-slate-300">Sign in to configure your API access</div>
+          <div className="text-sm text-slate-300">{t(
+            'Sign in to configure your API access',
+            'Sign in to configure your API access'
+          )}</div>
         </div>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>API base URL</Label>
+              <Label>{t('API base URL', 'API base URL')}</Label>
               <HelpTip text={'Base URL of the API. Example: https://localhost:8001'} />
             </div>
             <Input value={apiBaseUrl} onChange={(e) => setApiBaseUrl(e.target.value)} placeholder="http://127.0.0.1:8001" />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>API key (Bearer)</Label>
+              <Label>{t('API key (Bearer)', 'API key (Bearer)')}</Label>
               <HelpTip text={'API key with roles. Example: key-admin or key-smoke'} />
             </div>
-            <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="key-admin or key-smoke" />
+            <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t('key-admin or key-smoke', 'key-admin or key-smoke')} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Tenant ID (optional)</Label>
+              <Label>{t('Tenant ID (optional)', 'Tenant ID (optional)')}</Label>
               <HelpTip text={'Tenant scope for multi-tenant mode. Example: acme'} />
             </div>
             <Input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="default" />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>OIDC issuer</Label>
+              <Label>{t('OIDC issuer', 'OIDC issuer')}</Label>
               <HelpTip text={'OIDC authority URL. Example: https://login.microsoftonline.com/<tenant-id>/v2.0'} />
             </div>
             <Input value={issuer} onChange={(e) => setIssuer(e.target.value)} placeholder="https://login.microsoftonline.com/<tenant-id>/v2.0" />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>OIDC client ID</Label>
+              <Label>{t('OIDC client ID', 'OIDC client ID')}</Label>
               <HelpTip text={'Client ID registered in your IdP application.'} />
             </div>
-            <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="client-id from IdP" />
+            <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder={t('client-id from IdP', 'client-id from IdP')} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Scope</Label>
+              <Label>{t('Scope', 'Scope')}</Label>
               <HelpTip text={'OIDC scopes. Example: openid profile email'} />
             </div>
-            <Input value={scope} onChange={(e) => setScope(e.target.value)} placeholder="openid profile email" />
+            <Input value={scope} onChange={(e) => setScope(e.target.value)} placeholder={t('openid profile email', 'openid profile email')} />
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {presets.map((preset) => (
@@ -207,30 +215,33 @@ export function LoginPage() {
             ))}
           </div>
           <Button type="submit" disabled={!apiBaseUrl.trim()}>
-            Save and continue
+            {t('Save and continue', 'Save and continue')}
           </Button>
         </form>
         <div className="mt-6 border-t border-[#1f365a] pt-6">
-          <div className="text-sm font-semibold text-slate-100">Local login</div>
-          <p className="mt-1 text-xs text-slate-400">Use a local username + password when local auth is enabled.</p>
+          <div className="text-sm font-semibold text-slate-100">{t('Local login', 'Local login')}</div>
+          <p className="mt-1 text-xs text-slate-400">{t(
+            'Use a local username + password when local auth is enabled.',
+            'Use a local username + password when local auth is enabled.'
+          )}</p>
           <form className="mt-4 space-y-3" onSubmit={onLocalLogin}>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Username</Label>
+                <Label>{t('Username', 'Username')}</Label>
                 <HelpTip text={'Local user subject. Example: admin@example.com'} />
               </div>
-              <Input value={localSubject} onChange={(e) => setLocalSubject(e.target.value)} placeholder="admin@example.com" />
+              <Input value={localSubject} onChange={(e) => setLocalSubject(e.target.value)} placeholder={t('admin@example.com', 'admin@example.com')} />
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Password</Label>
+                <Label>{t('Password', 'Password')}</Label>
                 <HelpTip text={'Local user password for /v1/auth/login.'} />
               </div>
               <Input
                 type="password"
                 value={localPassword}
                 onChange={(e) => setLocalPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t('Enter your password', 'Enter your password')}
               />
             </div>
             <Button type="submit" disabled={localBusy}>
@@ -241,9 +252,12 @@ export function LoginPage() {
         {error ? <div className="mt-4 text-sm text-rose-200">{error}</div> : null}
         {message ? <div className="mt-2 text-sm text-slate-200">{message}</div> : null}
         <div className="mt-6 text-xs text-slate-400">
-          Use an API key with the right roles (e.g., admin for admin pages). You can change these values later in Settings.
+          {t(
+            'Use an API key with the right roles (e.g., admin for admin pages). You can change these values later in Settings.',
+            'Use an API key with the right roles (e.g., admin for admin pages). You can change these values later in Settings.'
+          )}
         </div>
       </div>
     </div>
-  )
+  );
 }

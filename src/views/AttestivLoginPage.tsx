@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Attestiv login.
 //
 // Cream-themed sign-in for the console. We expose three sign-in modes
@@ -40,6 +39,8 @@ import {
 import { defaultSettings, loadSettings, saveSettings } from '../lib/settings'
 import { setSessionMarker } from '../lib/session'
 
+import { useI18n } from '../lib/i18n';
+
 type Mode = 'local' | 'sso' | 'api-key'
 
 type LocalLoginResponse = {
@@ -62,6 +63,10 @@ const SSO_PRESETS = [
 ]
 
 export function AttestivLoginPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
 
   const [mode, setMode] = useState<Mode>('local')
@@ -225,15 +230,15 @@ export function AttestivLoginPage() {
 
           {mode === 'local' ? (
             <form onSubmit={onLocalSubmit}>
-              <FormField label="Username">
+              <FormField label={t('Username', 'Username')}>
                 <TextInput
                   value={localSubject}
                   onChange={(event) => setLocalSubject(event.target.value)}
-                  placeholder="admin@acme.example"
+                  placeholder={t('admin@acme.example', 'admin@acme.example')}
                   autoComplete="username"
                 />
               </FormField>
-              <FormField label="Password">
+              <FormField label={t('Password', 'Password')}>
                 <TextInput
                   type="password"
                   value={localPassword}
@@ -242,47 +247,50 @@ export function AttestivLoginPage() {
                   autoComplete="current-password"
                 />
               </FormField>
-              <SubmitRow busy={busy} label="Sign in" />
+              <SubmitRow busy={busy} label={t('Sign in', 'Sign in')} />
             </form>
           ) : null}
 
           {mode === 'api-key' ? (
             <form onSubmit={onApiKeySubmit}>
               <FormField
-                label="API key (Bearer)"
-                hint="Use a key with the role required for the pages you'll visit. CI keys are typically scoped to reporter."
+                label={t('API key (Bearer)', 'API key (Bearer)')}
+                hint={t(
+                  'Use a key with the role required for the pages you\'ll visit. CI keys are typically scoped to reporter.',
+                  'Use a key with the role required for the pages you\'ll visit. CI keys are typically scoped to reporter.'
+                )}
               >
                 <TextInput
                   value={apiKey}
                   onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="key-admin / key-reporter / ..."
+                  placeholder={t('key-admin / key-reporter / ...', 'key-admin / key-reporter / ...')}
                 />
               </FormField>
-              <SubmitRow busy={busy} label="Save and continue" />
+              <SubmitRow busy={busy} label={t('Save and continue', 'Save and continue')} />
             </form>
           ) : null}
 
           {mode === 'sso' ? (
             <form onSubmit={onSsoSubmit}>
-              <FormField label="OIDC issuer">
+              <FormField label={t('OIDC issuer', 'OIDC issuer')}>
                 <TextInput
                   value={issuer}
                   onChange={(event) => setIssuer(event.target.value)}
                   placeholder="https://login.microsoftonline.com/<tenant-id>/v2.0"
                 />
               </FormField>
-              <FormField label="Client ID">
+              <FormField label={t('Client ID', 'Client ID')}>
                 <TextInput
                   value={clientId}
                   onChange={(event) => setClientId(event.target.value)}
-                  placeholder="client-id from IdP"
+                  placeholder={t('client-id from IdP', 'client-id from IdP')}
                 />
               </FormField>
-              <FormField label="Scope">
+              <FormField label={t('Scope', 'Scope')}>
                 <TextInput
                   value={scope}
                   onChange={(event) => setScope(event.target.value)}
-                  placeholder="openid profile email"
+                  placeholder={t('openid profile email', 'openid profile email')}
                 />
               </FormField>
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -299,7 +307,7 @@ export function AttestivLoginPage() {
                   </GhostButton>
                 ))}
               </div>
-              <SubmitRow busy={busy} label="Save and redirect" />
+              <SubmitRow busy={busy} label={t('Save and redirect', 'Save and redirect')} />
             </form>
           ) : null}
 
@@ -342,21 +350,24 @@ export function AttestivLoginPage() {
             lineHeight: 1.5,
           }}
         >
-          New tenant?{' '}
+          {t('New tenant?', 'New tenant?')}{' '}
           <a
             href="/onboarding"
             style={{ color: 'var(--color-brand-blue)', textDecoration: 'none', fontWeight: 500 }}
           >
-            Run first-time setup
-          </a>
-          .
-        </div>
+            {t('Run first-time setup', 'Run first-time setup')}
+          </a>.
+                  </div>
       </div>
     </div>
-  )
+  );
 }
 
 function BrandHeader() {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div
       style={{
@@ -384,12 +395,12 @@ function BrandHeader() {
           style={{ color: 'var(--color-brand-blue-pale)', fontSize: 28 }}
         />
       </div>
-      <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Attestiv</div>
+      <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{t('Attestiv', 'Attestiv')}</div>
       <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
-        Sign in to the compliance console
+        {t('Sign in to the compliance console', 'Sign in to the compliance console')}
       </div>
     </div>
-  )
+  );
 }
 
 function ModeTabs({ mode, onChange }: { mode: Mode; onChange: (next: Mode) => void }) {
@@ -454,9 +465,16 @@ function SharedFields({
   setApiBaseUrl: (v: string) => void
   setTenantId: (v: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
-      <FormField label="API base URL" hint="Where the Attestiv backend is reachable from this browser.">
+      <FormField label={t('API base URL', 'API base URL')} hint={t(
+        'Where the Attestiv backend is reachable from this browser.',
+        'Where the Attestiv backend is reachable from this browser.'
+      )}>
         <TextInput
           value={apiBaseUrl}
           onChange={(event) => setApiBaseUrl(event.target.value)}
@@ -464,7 +482,10 @@ function SharedFields({
           autoComplete="off"
         />
       </FormField>
-      <FormField label="Tenant" hint="Lower-case slug. Leave empty for single-tenant deployments.">
+      <FormField label={t('Tenant', 'Tenant')} hint={t(
+        'Lower-case slug. Leave empty for single-tenant deployments.',
+        'Lower-case slug. Leave empty for single-tenant deployments.'
+      )}>
         <TextInput
           value={tenantId}
           onChange={(event) => setTenantId(event.target.value)}
@@ -473,7 +494,7 @@ function SharedFields({
         />
       </FormField>
     </>
-  )
+  );
 }
 
 function SubmitRow({ busy, label }: { busy: boolean; label: string }) {

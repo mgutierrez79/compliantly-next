@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // DR / Runs history.
 //
 // Append-only list of every DR test execution: which schedule, who
@@ -18,6 +17,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Run = {
   id: string
@@ -41,6 +42,10 @@ type Schedule = {
 }
 
 export function AttestivDRRunsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [runs, setRuns] = useState<Run[]>([])
   const [schedules, setSchedules] = useState<Record<string, Schedule>>({})
   const [loading, setLoading] = useState(true)
@@ -91,7 +96,7 @@ export function AttestivDRRunsPage() {
   return (
     <>
       <Topbar
-        title="DR test runs"
+        title={t('DR test runs', 'DR test runs')}
         right={
           <select
             value={filterSchedule}
@@ -106,7 +111,7 @@ export function AttestivDRRunsPage() {
               outline: 'none',
             }}
           >
-            <option value="">All schedules</option>
+            <option value="">{t('All schedules', 'All schedules')}</option>
             {Object.values(schedules).map((schedule) => (
               <option key={schedule.id} value={schedule.id}>
                 {schedule.name}
@@ -138,19 +143,22 @@ export function AttestivDRRunsPage() {
             marginBottom: 14,
           }}
         >
-          <SummaryTile label="Pass" value={totals.pass} tone="green" />
-          <SummaryTile label="Fail" value={totals.fail} tone="red" />
-          <SummaryTile label="In flight" value={totals.inflight} tone="amber" />
-          <SummaryTile label="Total" value={filtered.length} tone="navy" />
+          <SummaryTile label={t('Pass', 'Pass')} value={totals.pass} tone="green" />
+          <SummaryTile label={t('Fail', 'Fail')} value={totals.fail} tone="red" />
+          <SummaryTile label={t('In flight', 'In flight')} value={totals.inflight} tone="amber" />
+          <SummaryTile label={t('Total', 'Total')} value={filtered.length} tone="navy" />
         </div>
 
         <Card>
-          <CardTitle>Run history</CardTitle>
+          <CardTitle>{t('Run history', 'Run history')}</CardTitle>
           {loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
           ) : filtered.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              No runs yet. Runs appear here once a schedule is executed against a granted approval.
+              {t(
+                'No runs yet. Runs appear here once a schedule is executed against a granted approval.',
+                'No runs yet. Runs appear here once a schedule is executed against a granted approval.'
+              )}
             </div>
           ) : (
             <div>
@@ -167,7 +175,7 @@ export function AttestivDRRunsPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function SummaryTile({ label, value, tone }: { label: string; value: number; tone: 'green' | 'red' | 'amber' | 'navy' }) {
@@ -197,6 +205,10 @@ function RunRow({
   scheduleName: string
   scheduleTarget?: number
 }) {
+  const {
+    t
+  } = useI18n();
+
   const target = run.rto_target_minutes ?? scheduleTarget
   return (
     <div
@@ -211,8 +223,7 @@ function RunRow({
     >
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 500 }}>{scheduleName}</div>
-        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
-          run <code>{run.id.slice(0, 12)}</code> · started by {run.started_by ?? '—'}
+        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>run <code>{run.id.slice(0, 12)}</code> {t('· started by', '· started by')} {run.started_by ?? '—'}
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
           {run.started_at ? `started ${formatTimestamp(run.started_at)}` : ''}
@@ -236,7 +247,7 @@ function RunRow({
         {run.phases && run.phases.length > 0 ? <TestTimeline phases={run.phases} /> : null}
       </div>
     </div>
-  )
+  );
 }
 
 function formatTimestamp(value: string): string {

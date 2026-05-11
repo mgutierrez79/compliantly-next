@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Audit / Reports list.
 //
 // Generated PDF / Markdown reports per framework. The Frameworks page
@@ -21,6 +20,8 @@ import {
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 import { loadSettings } from '../lib/settings'
+
+import { useI18n } from '../lib/i18n';
 
 type ReportRow = {
   id: string
@@ -63,6 +64,10 @@ const DEMO_REPORTS: ReportRow[] = [
 ]
 
 export function AttestivReportsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [reports, setReports] = useState<ReportRow[]>([])
   const [loading, setLoading] = useState(true)
   const [usingDemo, setUsingDemo] = useState(false)
@@ -183,13 +188,13 @@ export function AttestivReportsPage() {
   return (
     <>
       <Topbar
-        title="Reports"
-        left={usingDemo ? <Badge tone="amber">Demo data — no signed reports yet</Badge> : null}
+        title={t('Reports', 'Reports')}
+        left={usingDemo ? <Badge tone="amber">{t('Demo data — no signed reports yet', 'Demo data — no signed reports yet')}</Badge> : null}
         right={
           <input
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            placeholder="Filter by framework or run id"
+            placeholder={t('Filter by framework or run id', 'Filter by framework or run id')}
             style={{
               padding: '6px 10px',
               fontSize: 12,
@@ -208,12 +213,12 @@ export function AttestivReportsPage() {
         {info ? <Banner tone="info">{info}</Banner> : null}
         <Card>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} reports</span>}>
-            Generated reports
+            {t('Generated reports', 'Generated reports')}
           </CardTitle>
           {loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
           ) : filtered.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No reports match.</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No reports match.', 'No reports match.')}</div>
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
@@ -226,54 +231,60 @@ export function AttestivReportsPage() {
                     textAlign: 'left',
                   }}
                 >
-                  <th style={{ padding: '6px 10px 6px 0' }}>Framework</th>
-                  <th style={{ padding: '6px 10px' }}>Run</th>
-                  <th style={{ padding: '6px 10px' }}>Generated</th>
-                  <th style={{ padding: '6px 10px' }}>Size</th>
-                  <th style={{ padding: '6px 10px' }}>Signed</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Framework', 'Framework')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Run', 'Run')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Generated', 'Generated')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Size', 'Size')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Signed', 'Signed')}</th>
                   <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((report) => (
-                  <tr key={report.id} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                    <td style={{ padding: '10px 10px 10px 0', fontWeight: 500 }}>{report.framework ?? '—'}</td>
-                    <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                      {report.run_id ?? '—'}
-                    </td>
-                    <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
-                      {formatTimestamp(report.generated_at)}
-                    </td>
-                    <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
-                      {report.size_bytes ? formatBytes(report.size_bytes) : '—'}
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      {report.signed ? <Badge tone="green">signed</Badge> : <Badge tone="gray">unsigned</Badge>}
-                    </td>
-                    <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <GhostButton onClick={() => copyAuditorLink(report.run_id ?? report.id, filtered.indexOf(report) === 0)}>
-                          <i className="ti ti-link" aria-hidden="true" />
-                          Auditor link
-                        </GhostButton>
-                        <PrimaryButton
-                          onClick={() => downloadReport(report.run_id ?? report.id, report.format)}
-                          disabled={busyRow === (report.run_id ?? report.id)}
-                        >
-                          <i className="ti ti-file-download" aria-hidden="true" />
-                          {busyRow === (report.run_id ?? report.id) ? 'Downloading…' : 'Download'}
-                        </PrimaryButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(report => {
+                  const {
+                    t
+                  } = useI18n();
+
+                  return (
+                    <tr key={report.id} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                      <td style={{ padding: '10px 10px 10px 0', fontWeight: 500 }}>{report.framework ?? '—'}</td>
+                      <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                        {report.run_id ?? '—'}
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                        {formatTimestamp(report.generated_at)}
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                        {report.size_bytes ? formatBytes(report.size_bytes) : '—'}
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        {report.signed ? <Badge tone="green">signed</Badge> : <Badge tone="gray">unsigned</Badge>}
+                      </td>
+                      <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                          <GhostButton onClick={() => copyAuditorLink(report.run_id ?? report.id, filtered.indexOf(report) === 0)}>
+                            <i className="ti ti-link" aria-hidden="true" />
+                            {t('Auditor link', 'Auditor link')}
+                          </GhostButton>
+                          <PrimaryButton
+                            onClick={() => downloadReport(report.run_id ?? report.id, report.format)}
+                            disabled={busyRow === (report.run_id ?? report.id)}
+                          >
+                            <i className="ti ti-file-download" aria-hidden="true" />
+                            {busyRow === (report.run_id ?? report.id) ? 'Downloading…' : 'Download'}
+                          </PrimaryButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Public auditor endpoints</CardTitle>
+          <CardTitle>{t('Public auditor endpoints', 'Public auditor endpoints')}</CardTitle>
           <ul
             style={{
               margin: 0,
@@ -283,15 +294,21 @@ export function AttestivReportsPage() {
               lineHeight: 1.7,
             }}
           >
-            <li><code>GET /v1/public/reports/latest/pdf</code> — most recent signed PDF, no auth required.</li>
-            <li><code>GET /v1/public/reports/latest/md</code> — markdown source for the same.</li>
-            <li><code>GET /v1/public/keys</code> — Ed25519 public keys (active + retired) for offline verification.</li>
-            <li><code>GET /v1/public/manifest/verify</code> — pass <code>?run=...</code> to verify the manifest.</li>
+            <li><code>{t('GET /v1/public/reports/latest/pdf', 'GET /v1/public/reports/latest/pdf')}</code> {t(
+                '— most recent signed PDF, no auth required.',
+                '— most recent signed PDF, no auth required.'
+              )}</li>
+            <li><code>{t('GET /v1/public/reports/latest/md', 'GET /v1/public/reports/latest/md')}</code> {t('— markdown source for the same.', '— markdown source for the same.')}</li>
+            <li><code>{t('GET /v1/public/keys', 'GET /v1/public/keys')}</code> {t(
+                '— Ed25519 public keys (active + retired) for offline verification.',
+                '— Ed25519 public keys (active + retired) for offline verification.'
+              )}</li>
+            <li><code>{t('GET /v1/public/manifest/verify', 'GET /v1/public/manifest/verify')}</code> {t('— pass', '— pass')} <code>{t('?run=...', '?run=...')}</code> {t('to verify the manifest.', 'to verify the manifest.')}</li>
           </ul>
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function formatTimestamp(value: string): string {

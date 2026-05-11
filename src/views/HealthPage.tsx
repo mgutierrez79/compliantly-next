@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useEffect, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Card, ErrorBox, HelpTip, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type Health = { status: string }
 type ReadyCheck = { status: string; error?: string }
@@ -35,6 +36,10 @@ function statusLabel(status?: string) {
 }
 
 export function HealthPage() {
+  const {
+    t
+  } = useI18n();
+
   const [live, setLive] = useState<Health | null>(null)
   const [ready, setReady] = useState<ReadyPayload | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
@@ -62,46 +67,48 @@ export function HealthPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <PageTitle>Health</PageTitle>
+        <PageTitle>{t('Health', 'Health')}</PageTitle>
         <HelpTip text={'Live = process up; Ready = dependencies (DB/Redis), async toggle, and worker status.\nGreen=healthy, yellow=degraded, red=failing.'} />
       </div>
       <p className="text-sm text-slate-400">
-        Green is healthy, yellow is degraded, red is failing. Use the worker section to confirm async processing.
+        {t(
+          'Green is healthy, yellow is degraded, red is failing. Use the worker section to confirm async processing.',
+          'Green is healthy, yellow is degraded, red is failing. Use the worker section to confirm async processing.'
+        )}
       </p>
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <Label>Live</Label>
+          <Label>{t('Live', 'Live')}</Label>
           <div className={`mt-3 rounded-lg border p-3 text-sm ${statusTone(live?.status)}`}>
             {statusLabel(live?.status)}
           </div>
         </Card>
         <Card>
-          <Label>Ready</Label>
+          <Label>{t('Ready', 'Ready')}</Label>
           <div className={`mt-3 rounded-lg border p-3 text-sm ${statusTone(ready?.status)}`}>
             {statusLabel(ready?.status)}
           </div>
           <div className="mt-3 text-xs text-slate-400">
-            Async jobs: {ready?.async_jobs_enabled ? 'enabled' : 'disabled'}
+            {t('Async jobs:', 'Async jobs:')} {ready?.async_jobs_enabled ? 'enabled' : 'disabled'}
           </div>
           <div className="text-xs text-slate-400">
-            Async-only heavy endpoints: {ready?.async_only_heavy_endpoints ? 'on' : 'off'}
+            {t('Async-only heavy endpoints:', 'Async-only heavy endpoints:')} {ready?.async_only_heavy_endpoints ? 'on' : 'off'}
           </div>
         </Card>
         <Card>
-          <Label>Workers</Label>
+          <Label>{t('Workers', 'Workers')}</Label>
           <div className={`mt-3 rounded-lg border p-3 text-sm ${statusTone(ready?.workers?.status)}`}>
             {statusLabel(ready?.workers?.status)}
           </div>
-          <div className="mt-3 text-xs text-slate-400">Mode: {ready?.workers?.mode ?? 'unknown'}</div>
+          <div className="mt-3 text-xs text-slate-400">{t('Mode:', 'Mode:')} {ready?.workers?.mode ?? 'unknown'}</div>
           <div className="text-xs text-slate-400">
-            Autostart: {ready?.workers?.autostart ? 'yes' : 'no'}
+            {t('Autostart:', 'Autostart:')} {ready?.workers?.autostart ? 'yes' : 'no'}
           </div>
         </Card>
       </div>
-
       <Card>
-        <Label>Subsystem checks</Label>
+        <Label>{t('Subsystem checks', 'Subsystem checks')}</Label>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           {Object.entries(ready?.checks ?? {}).map(([name, check]) => (
             <div key={name} className={`rounded-lg border p-3 text-sm ${statusTone(check.status)}`}>
@@ -111,10 +118,10 @@ export function HealthPage() {
             </div>
           ))}
           {!ready?.checks || Object.keys(ready.checks).length === 0 ? (
-            <div className="text-sm text-slate-400">No checks reported.</div>
+            <div className="text-sm text-slate-400">{t('No checks reported.', 'No checks reported.')}</div>
           ) : null}
         </div>
       </Card>
     </div>
-  )
+  );
 }

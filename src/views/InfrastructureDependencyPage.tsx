@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { formatTimestamp } from '../lib/time'
 import { Button, Card, ErrorBox, Input, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type ReplicationVolumeStatus = {
   id?: string | null
@@ -603,6 +604,10 @@ function mergeConnectorStatusesStable(
 }
 
 export function InfrastructureDependencyPage() {
+  const {
+    t
+  } = useI18n();
+
   const CONNECTOR_STATUS_CACHE_KEY = 'dependency_map_connector_status_cache_v1'
   const [connectors, setConnectors] = useState<ConnectorStatus[] | null>(() => {
     if (typeof window === 'undefined') return null
@@ -1397,192 +1402,212 @@ export function InfrastructureDependencyPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <PageTitle>Infrastructure Visual Mapping</PageTitle>
+        <PageTitle>{t('Infrastructure Visual Mapping', 'Infrastructure Visual Mapping')}</PageTitle>
         <Button onClick={() => void load()} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh graph'}
         </Button>
       </div>
-
-      {error ? <ErrorBox title="Dependency tree error" detail={error.message} /> : null}
-
+      {error ? <ErrorBox title={t('Dependency tree error', 'Dependency tree error')} detail={error.message} /> : null}
       <Card>
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_repeat(4,minmax(0,10rem))]">
           <div>
-            <Label>Filter</Label>
+            <Label>{t('Filter', 'Filter')}</Label>
             <Input
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
-              placeholder="Filter layers, connectors, hosts, VMs, volumes, backups..."
+              placeholder={t(
+                'Filter layers, connectors, hosts, VMs, volumes, backups...',
+                'Filter layers, connectors, hosts, VMs, volumes, backups...'
+              )}
             />
           </div>
           <div className="rounded-lg border border-[#29446c] bg-[#0b1729] p-3">
-            <Label>Network</Label>
+            <Label>{t('Network', 'Network')}</Label>
             <div className="mt-1 text-lg font-semibold text-slate-100">{summary.networkNodes}</div>
             <div className="text-[11px] text-slate-400">{summary.networkConnectors} connectors</div>
           </div>
           <div className="rounded-lg border border-[#29446c] bg-[#0b1729] p-3">
-            <Label>Computing</Label>
+            <Label>{t('Computing', 'Computing')}</Label>
             <div className="mt-1 text-lg font-semibold text-slate-100">{summary.vms}</div>
             <div className="text-[11px] text-slate-400">{summary.hosts} hosts</div>
           </div>
           <div className="rounded-lg border border-[#29446c] bg-[#0b1729] p-3">
-            <Label>Storage</Label>
+            <Label>{t('Storage', 'Storage')}</Label>
             <div className="mt-1 text-lg font-semibold text-slate-100">{summary.storageVolumes}</div>
-            <div className="text-[11px] text-slate-400">{summary.mappedLinks} VM links</div>
+            <div className="text-[11px] text-slate-400">{summary.mappedLinks} {t('VM links', 'VM links')}</div>
           </div>
           <div className="rounded-lg border border-[#29446c] bg-[#0b1729] p-3">
-            <Label>Backup</Label>
+            <Label>{t('Backup', 'Backup')}</Label>
             <div className="mt-1 text-lg font-semibold text-slate-100">{summary.backupEntries}</div>
-            <div className="text-[11px] text-slate-400">VM backup entries</div>
+            <div className="text-[11px] text-slate-400">{t('VM backup entries', 'VM backup entries')}</div>
           </div>
         </div>
       </Card>
-
       <Card>
-        <div className="text-xs uppercase tracking-wide text-slate-300">Fast Recovery Flow</div>
-        <div className="mt-1 text-xs text-slate-400">
-          VM {'->'} Volume + Storage Source {'->'} Replication Status {'->'} Volume + Storage Destination
+        <div className="text-xs uppercase tracking-wide text-slate-300">{t('Fast Recovery Flow', 'Fast Recovery Flow')}</div>
+        <div className="mt-1 text-xs text-slate-400">VM {'->'} {t('Volume + Storage Source', 'Volume + Storage Source')} {'->'} {t('Replication Status', 'Replication Status')} {'->'} {t('Volume + Storage Destination', 'Volume + Storage Destination')}
         </div>
         <div className="mt-2 rounded border border-[#29446c] bg-[#0b1729] p-2 text-xs text-slate-200">
-          <span className="font-semibold text-slate-100">Network context:</span>{' '}
+          <span className="font-semibold text-slate-100">{t('Network context:', 'Network context:')}</span>{' '}
           {filtered.networkConnectors.map((connector) => connector.name).join(', ') || 'none'} ({filtered.networkAssets.length}{' '}
           assets)
         </div>
         <div className="mt-3 space-y-3">
           {!vmVisualRows.length ? (
             <div className="rounded border border-[#29446c] bg-[#0b1729] p-3 text-sm text-slate-300">
-              No VM has replicated-volume or backup evidence in the current data set.
+              {t(
+                'No VM has replicated-volume or backup evidence in the current data set.',
+                'No VM has replicated-volume or backup evidence in the current data set.'
+              )}
             </div>
           ) : null}
-          {vmVisualRows.map((row) => (
-            <div key={`fast-${row.vm.key}`} className="rounded border border-[#29446c] bg-[#0b1729] p-3">
-              <div className="grid gap-2 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1.6fr)_auto_minmax(0,0.9fr)_auto_minmax(0,1.6fr)]">
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">VM</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-100">{row.vm.name}</div>
-                  <div className="mt-1 text-[11px] text-slate-400">Host: {row.hostName}</div>
-                </div>
-                <div className="self-center text-center text-slate-500">{'->'}</div>
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Volume + Storage Source</div>
-                  {row.sourceMappings.length ? (
-                    <ul className="mt-1 space-y-1 text-[11px] text-slate-200">
-                      {row.sourceMappings.slice(0, 6).map((mapping, index) => (
-                        <li key={`src-${row.vm.key}-${index}`}>
-                          <span className={`rounded border px-1.5 py-0.5 ${stateBadgeClass(mapping.status)}`}>{mapping.status}</span>{' '}
-                          {mapping.volume} @ {mapping.connector}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-1 text-[11px] text-slate-500">No explicit source volume mapping.</div>
-                  )}
-                </div>
-                <div className="self-center text-center text-slate-500">{'->'}</div>
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Replication Status</div>
-                  <div className="mt-1">
-                    <span className={`rounded border px-2 py-0.5 text-[11px] ${stateBadgeClass(row.vm.replicationState)}`}>
-                      {row.vm.replicationState}
-                    </span>
+          {vmVisualRows.map(row => {
+            const {
+              t
+            } = useI18n();
+
+            return (
+              <div key={`fast-${row.vm.key}`} className="rounded border border-[#29446c] bg-[#0b1729] p-3">
+                <div className="grid gap-2 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1.6fr)_auto_minmax(0,0.9fr)_auto_minmax(0,1.6fr)]">
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">VM</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-100">{row.vm.name}</div>
+                    <div className="mt-1 text-[11px] text-slate-400">{t('Host:', 'Host:')} {row.hostName}</div>
                   </div>
-                  {row.vm.replicationSources.length ? (
-                    <div className="mt-1 text-[11px] text-slate-400">Sources: {row.vm.replicationSources.join(', ')}</div>
-                  ) : null}
-                </div>
-                <div className="self-center text-center text-slate-500">{'->'}</div>
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
-                    Volume + Storage Destination
+                  <div className="self-center text-center text-slate-500">{'->'}</div>
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">{t('Volume + Storage Source', 'Volume + Storage Source')}</div>
+                    {row.sourceMappings.length ? (
+                      <ul className="mt-1 space-y-1 text-[11px] text-slate-200">
+                        {row.sourceMappings.slice(0, 6).map((mapping, index) => (
+                          <li key={`src-${row.vm.key}-${index}`}>
+                            <span className={`rounded border px-1.5 py-0.5 ${stateBadgeClass(mapping.status)}`}>{mapping.status}</span>{' '}
+                            {mapping.volume} @ {mapping.connector}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-1 text-[11px] text-slate-500">{t('No explicit source volume mapping.', 'No explicit source volume mapping.')}</div>
+                    )}
                   </div>
-                  {row.destinationMappings.length ? (
-                    <ul className="mt-1 space-y-1 text-[11px] text-slate-200">
-                      {row.destinationMappings.slice(0, 6).map((mapping, index) => (
-                        <li key={`dst-${row.vm.key}-${index}`}>
-                          <span className={`rounded border px-1.5 py-0.5 ${stateBadgeClass(mapping.status)}`}>{mapping.status}</span>{' '}
-                          {mapping.volume} @ {mapping.connector}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-1 text-[11px] text-slate-500">No explicit destination volume mapping.</div>
-                  )}
+                  <div className="self-center text-center text-slate-500">{'->'}</div>
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">{t('Replication Status', 'Replication Status')}</div>
+                    <div className="mt-1">
+                      <span className={`rounded border px-2 py-0.5 text-[11px] ${stateBadgeClass(row.vm.replicationState)}`}>
+                        {row.vm.replicationState}
+                      </span>
+                    </div>
+                    {row.vm.replicationSources.length ? (
+                      <div className="mt-1 text-[11px] text-slate-400">{t('Sources:', 'Sources:')} {row.vm.replicationSources.join(', ')}</div>
+                    ) : null}
+                  </div>
+                  <div className="self-center text-center text-slate-500">{'->'}</div>
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                      {t('Volume + Storage Destination', 'Volume + Storage Destination')}
+                    </div>
+                    {row.destinationMappings.length ? (
+                      <ul className="mt-1 space-y-1 text-[11px] text-slate-200">
+                        {row.destinationMappings.slice(0, 6).map((mapping, index) => (
+                          <li key={`dst-${row.vm.key}-${index}`}>
+                            <span className={`rounded border px-1.5 py-0.5 ${stateBadgeClass(mapping.status)}`}>{mapping.status}</span>{' '}
+                            {mapping.volume} @ {mapping.connector}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-1 text-[11px] text-slate-500">{t(
+                        'No explicit destination volume mapping.',
+                        'No explicit destination volume mapping.'
+                      )}</div>
+                    )}
+                  </div>
                 </div>
+                {row.unknownMappings.length ? (
+                  <div className="mt-2 text-[11px] text-slate-400">
+                    {t('Unknown role mappings:', 'Unknown role mappings:')}{' '}
+                    {row.unknownMappings
+                      .slice(0, 6)
+                      .map((mapping) => `${mapping.volume} @ ${mapping.connector}`)
+                      .join(' | ')}
+                  </div>
+                ) : null}
+                {row.unmappedStorageConnectors.length ? (
+                  <div className="mt-1 text-[11px] text-amber-300">{t('Unmapped in:', 'Unmapped in:')} {row.unmappedStorageConnectors.join(', ')}</div>
+                ) : null}
               </div>
-              {row.unknownMappings.length ? (
-                <div className="mt-2 text-[11px] text-slate-400">
-                  Unknown role mappings:{' '}
-                  {row.unknownMappings
-                    .slice(0, 6)
-                    .map((mapping) => `${mapping.volume} @ ${mapping.connector}`)
-                    .join(' | ')}
-                </div>
-              ) : null}
-              {row.unmappedStorageConnectors.length ? (
-                <div className="mt-1 text-[11px] text-amber-300">Unmapped in: {row.unmappedStorageConnectors.join(', ')}</div>
-              ) : null}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
-
       <Card>
-        <div className="text-xs uppercase tracking-wide text-slate-300">Backup And Recovery Flow</div>
-        <div className="mt-1 text-xs text-slate-400">
-          VM {'->'} Backup Status + Last Backup Age {'->'} Last Recovery
+        <div className="text-xs uppercase tracking-wide text-slate-300">{t('Backup And Recovery Flow', 'Backup And Recovery Flow')}</div>
+        <div className="mt-1 text-xs text-slate-400">VM {'->'} {t('Backup Status + Last Backup Age', 'Backup Status + Last Backup Age')} {'->'} {t('Last Recovery', 'Last Recovery')}
         </div>
         <div className="mt-3 space-y-3">
           {!vmVisualRows.length ? (
             <div className="rounded border border-[#29446c] bg-[#0b1729] p-3 text-sm text-slate-300">
-              No VM has replicated-volume or backup evidence in the current data set.
+              {t(
+                'No VM has replicated-volume or backup evidence in the current data set.',
+                'No VM has replicated-volume or backup evidence in the current data set.'
+              )}
             </div>
           ) : null}
-          {vmVisualRows.map((row) => (
-            <div key={`backup-${row.vm.key}`} className="rounded border border-[#29446c] bg-[#0b1729] p-3">
-              <div className="grid gap-2 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1.6fr)_auto_minmax(0,1.6fr)]">
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">VM</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-100">{row.vm.name}</div>
-                </div>
-                <div className="self-center text-center text-slate-500">{'->'}</div>
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Backup</div>
-                  <div className="mt-1">
-                    <span className={`rounded border px-2 py-0.5 text-[11px] ${stateBadgeClass(row.backupStatus)}`}>
-                      {row.backupStatus}
-                    </span>
+          {vmVisualRows.map(row => {
+            const {
+              t
+            } = useI18n();
+
+            return (
+              <div key={`backup-${row.vm.key}`} className="rounded border border-[#29446c] bg-[#0b1729] p-3">
+                <div className="grid gap-2 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1.6fr)_auto_minmax(0,1.6fr)]">
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">VM</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-100">{row.vm.name}</div>
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-400">Last backup age: {row.latestBackupAge}</div>
-                  <div className="text-[11px] text-slate-400">
-                    Last backup: {displayTimestamp(row.latestBackupAt)}
+                  <div className="self-center text-center text-slate-500">{'->'}</div>
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">{t('Backup', 'Backup')}</div>
+                    <div className="mt-1">
+                      <span className={`rounded border px-2 py-0.5 text-[11px] ${stateBadgeClass(row.backupStatus)}`}>
+                        {row.backupStatus}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-400">{t('Last backup age:', 'Last backup age:')} {row.latestBackupAge}</div>
+                    <div className="text-[11px] text-slate-400">
+                      {t('Last backup:', 'Last backup:')} {displayTimestamp(row.latestBackupAt)}
+                    </div>
+                    <div className="text-[11px] text-slate-400">{t('Backup plan:', 'Backup plan:')} {row.latestBackupPlan}</div>
                   </div>
-                  <div className="text-[11px] text-slate-400">Backup plan: {row.latestBackupPlan}</div>
-                </div>
-                <div className="self-center text-center text-slate-500">{'->'}</div>
-                <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Last Recovery</div>
-                  <div className="mt-1">
-                    <span className={`rounded border px-2 py-0.5 text-[11px] ${stateBadgeClass(row.latestRecoveryStatus)}`}>
-                      {row.latestRecoveryStatus}
-                    </span>
+                  <div className="self-center text-center text-slate-500">{'->'}</div>
+                  <div className="rounded border border-[#203b5f] bg-[#0a1628] p-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">{t('Last Recovery', 'Last Recovery')}</div>
+                    <div className="mt-1">
+                      <span className={`rounded border px-2 py-0.5 text-[11px] ${stateBadgeClass(row.latestRecoveryStatus)}`}>
+                        {row.latestRecoveryStatus}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-400">{t('Age:', 'Age:')} {row.latestRecoveryAge}</div>
+                    <div className="text-[11px] text-slate-400">
+                      {t('Timestamp:', 'Timestamp:')} {displayTimestamp(row.latestRecoveryAt)}
+                    </div>
+                    <div className="text-[11px] text-slate-400">{t('Source:', 'Source:')} {row.latestRecoverySource}</div>
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-400">Age: {row.latestRecoveryAge}</div>
-                  <div className="text-[11px] text-slate-400">
-                    Timestamp: {displayTimestamp(row.latestRecoveryAt)}
-                  </div>
-                  <div className="text-[11px] text-slate-400">Source: {row.latestRecoverySource}</div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
-
       {!loading && !filtered.vms.length && !filtered.storageConnectors.length && !filtered.backupConnectors.length ? (
         <Card>
-          <div className="text-sm text-slate-300">No dependency records found for current connectors/snapshot.</div>
+          <div className="text-sm text-slate-300">{t(
+            'No dependency records found for current connectors/snapshot.',
+            'No dependency records found for current connectors/snapshot.'
+          )}</div>
         </Card>
       ) : null}
     </div>
-  )
+  );
 }

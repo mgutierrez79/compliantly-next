@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Users & RBAC page.
 //
 // Lists users in the current tenant with their role, MFA state, and
@@ -32,6 +31,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { loadSettings } from '../lib/settings'
+
+import { useI18n } from '../lib/i18n';
 
 type Role = 'admin' | 'auditor' | 'engineer' | 'reporter'
 
@@ -86,6 +87,10 @@ const FALLBACK_USERS: User[] = [
 ]
 
 export function AttestivUsersAndRbacPage() {
+  const {
+    t
+  } = useI18n();
+
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [usingFallback, setUsingFallback] = useState(false)
@@ -151,16 +156,19 @@ export function AttestivUsersAndRbacPage() {
   return (
     <>
       <Topbar
-        title="Users & RBAC"
+        title={t('Users & RBAC', 'Users & RBAC')}
         left={
           usingFallback ? (
-            <Badge tone="amber">Demo data — backend users API not reachable</Badge>
+            <Badge tone="amber">{t(
+              'Demo data — backend users API not reachable',
+              'Demo data — backend users API not reachable'
+            )}</Badge>
           ) : null
         }
         right={
           <PrimaryButton onClick={() => setInviteOpen(true)}>
             <i className="ti ti-user-plus" aria-hidden="true" />
-            Invite user
+            {t('Invite user', 'Invite user')}
           </PrimaryButton>
         }
       />
@@ -195,11 +203,11 @@ export function AttestivUsersAndRbacPage() {
 
         <Card>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{users.length} users</span>}>
-            Tenant users
+            {t('Tenant users', 'Tenant users')}
           </CardTitle>
           {loading ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '16px 0' }}>
-              Loading...
+              {t('Loading...', 'Loading...')}
             </div>
           ) : (
             <UserTable
@@ -214,7 +222,7 @@ export function AttestivUsersAndRbacPage() {
         </Card>
 
         <Card style={{ marginTop: 10 }}>
-          <CardTitle>Role definitions</CardTitle>
+          <CardTitle>{t('Role definitions', 'Role definitions')}</CardTitle>
           <div style={{ display: 'grid', gap: 8 }}>
             {(Object.keys(ROLE_DESCRIPTIONS) as Role[]).map((role) => (
               <div
@@ -237,7 +245,6 @@ export function AttestivUsersAndRbacPage() {
           </div>
         </Card>
       </div>
-
       {inviteOpen ? (
         <InviteDialog
           onClose={() => setInviteOpen(false)}
@@ -258,7 +265,7 @@ export function AttestivUsersAndRbacPage() {
         />
       ) : null}
     </>
-  )
+  );
 }
 
 function RoleSummaryCard({ role, count }: { role: Role; count: number }) {
@@ -286,6 +293,10 @@ function UserTable({
   users: User[]
   onChangeRole: (subject: string, role: Role) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <table
@@ -305,62 +316,68 @@ function UserTable({
               textAlign: 'left',
             }}
           >
-            <th style={{ padding: '6px 10px 6px 0' }}>User</th>
-            <th style={{ padding: '6px 10px' }}>Role</th>
+            <th style={{ padding: '6px 10px 6px 0' }}>{t('User', 'User')}</th>
+            <th style={{ padding: '6px 10px' }}>{t('Role', 'Role')}</th>
             <th style={{ padding: '6px 10px' }}>MFA</th>
-            <th style={{ padding: '6px 10px' }}>Status</th>
-            <th style={{ padding: '6px 10px' }}>Last sign-in</th>
+            <th style={{ padding: '6px 10px' }}>{t('Status', 'Status')}</th>
+            <th style={{ padding: '6px 10px' }}>{t('Last sign-in', 'Last sign-in')}</th>
             <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}></th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
-            <tr
-              key={user.subject}
-              style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}
-            >
-              <td style={{ padding: '10px 10px 10px 0' }}>
-                <div style={{ fontWeight: 500 }}>{user.display_name || user.subject}</div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                  {user.subject}
-                </div>
-              </td>
-              <td style={{ padding: '10px' }}>
-                <Select
-                  value={user.role}
-                  onChange={(event) => onChangeRole(user.subject, event.target.value as Role)}
-                  style={{ padding: '4px 8px', fontSize: 12 }}
-                >
-                  <option value="admin">admin</option>
-                  <option value="auditor">auditor</option>
-                  <option value="engineer">engineer</option>
-                  <option value="reporter">reporter</option>
-                </Select>
-              </td>
-              <td style={{ padding: '10px' }}>
-                {user.mfa_enrolled ? (
-                  <Badge tone="green">enrolled</Badge>
-                ) : (
-                  <Badge tone="amber">required</Badge>
-                )}
-              </td>
-              <td style={{ padding: '10px' }}>
-                <Badge tone={user.status === 'active' ? 'green' : user.status === 'invited' ? 'blue' : 'gray'}>
-                  {user.status}
-                </Badge>
-              </td>
-              <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
-                {user.last_login ? formatRelative(user.last_login) : '—'}
-              </td>
-              <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
-                <GhostButton onClick={() => undefined}>Manage</GhostButton>
-              </td>
-            </tr>
-          ))}
+          {users.map(user => {
+            const {
+              t
+            } = useI18n();
+
+            return (
+              <tr
+                key={user.subject}
+                style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}
+              >
+                <td style={{ padding: '10px 10px 10px 0' }}>
+                  <div style={{ fontWeight: 500 }}>{user.display_name || user.subject}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                    {user.subject}
+                  </div>
+                </td>
+                <td style={{ padding: '10px' }}>
+                  <Select
+                    value={user.role}
+                    onChange={(event) => onChangeRole(user.subject, event.target.value as Role)}
+                    style={{ padding: '4px 8px', fontSize: 12 }}
+                  >
+                    <option value="admin">admin</option>
+                    <option value="auditor">auditor</option>
+                    <option value="engineer">engineer</option>
+                    <option value="reporter">reporter</option>
+                  </Select>
+                </td>
+                <td style={{ padding: '10px' }}>
+                  {user.mfa_enrolled ? (
+                    <Badge tone="green">enrolled</Badge>
+                  ) : (
+                    <Badge tone="amber">required</Badge>
+                  )}
+                </td>
+                <td style={{ padding: '10px' }}>
+                  <Badge tone={user.status === 'active' ? 'green' : user.status === 'invited' ? 'blue' : 'gray'}>
+                    {user.status}
+                  </Badge>
+                </td>
+                <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                  {user.last_login ? formatRelative(user.last_login) : '—'}
+                </td>
+                <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
+                  <GhostButton onClick={() => undefined}>{t('Manage', 'Manage')}</GhostButton>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 function InviteDialog({
@@ -370,6 +387,10 @@ function InviteDialog({
   onClose: () => void
   onInvite: (invite: { email: string; name: string; role: Role }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [role, setRole] = useState<Role>('engineer')
@@ -411,33 +432,33 @@ function InviteDialog({
             justifyContent: 'space-between',
           }}
         >
-          Invite a user
+          {t('Invite a user', 'Invite a user')}
           <button
             type="button"
             onClick={onClose}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-tertiary)' }}
-            aria-label="Close"
+            aria-label={t('Close', 'Close')}
           >
             <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 16 }} />
           </button>
         </div>
-        <FormField label="Email">
+        <FormField label={t('Email', 'Email')}>
           <TextInput
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="user@acme.example"
+            placeholder={t('user@acme.example', 'user@acme.example')}
             autoFocus
           />
         </FormField>
-        <FormField label="Display name (optional)">
+        <FormField label={t('Display name (optional)', 'Display name (optional)')}>
           <TextInput
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Marina Singh"
+            placeholder={t('Marina Singh', 'Marina Singh')}
           />
         </FormField>
-        <FormField label="Role">
+        <FormField label={t('Role', 'Role')}>
           <Select value={role} onChange={(event) => setRole(event.target.value as Role)}>
             <option value="engineer">engineer</option>
             <option value="reporter">reporter</option>
@@ -446,21 +467,24 @@ function InviteDialog({
           </Select>
         </FormField>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 14 }}>
-          The invited user will receive an email with a one-time setup link. MFA enrollment is required on first sign-in.
+          {t(
+            'The invited user will receive an email with a one-time setup link. MFA enrollment is required on first sign-in.',
+            'The invited user will receive an email with a one-time setup link. MFA enrollment is required on first sign-in.'
+          )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <GhostButton onClick={onClose}>Cancel</GhostButton>
+          <GhostButton onClick={onClose}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             disabled={!email.trim()}
             onClick={() => onInvite({ email: email.trim(), name: name.trim(), role })}
           >
             <i className="ti ti-send" aria-hidden="true" />
-            Send invite
+            {t('Send invite', 'Send invite')}
           </PrimaryButton>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function formatRelative(iso: string): string {

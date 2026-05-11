@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Risk detail page — single risk record with timeline + edit panel.
 //
 // Edit surface lets a user change status, owner, treatment, due date,
@@ -23,6 +22,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Risk = {
   risk_id: string
@@ -69,6 +70,10 @@ const STATUS_TONE: Record<string, 'amber' | 'green' | 'gray' | 'navy' | 'red'> =
 }
 
 export function AttestivRiskDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -152,23 +157,26 @@ export function AttestivRiskDetailPage() {
   if (loading) {
     return (
       <>
-        <Topbar title="Risk" left={<GhostButton onClick={() => router.push('/risks')}><i className="ti ti-arrow-left" aria-hidden="true" /> Back</GhostButton>} />
+        <Topbar title={t('Risk', 'Risk')} left={<GhostButton onClick={() => router.push('/risks')}><i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}</GhostButton>} />
         <div className="attestiv-content">
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!data) {
     return (
       <>
-        <Topbar title="Risk" />
+        <Topbar title={t('Risk', 'Risk')} />
         <div className="attestiv-content">
-          <EmptyState icon="ti-alert-octagon" title="Risk not found" description="The risk may have been deleted or you may not have access." />
+          <EmptyState icon="ti-alert-octagon" title={t('Risk not found', 'Risk not found')} description={t(
+            'The risk may have been deleted or you may not have access.',
+            'The risk may have been deleted or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   const { risk } = data
@@ -181,7 +189,7 @@ export function AttestivRiskDetailPage() {
         title={risk.title || 'Risk'}
         left={
           <GhostButton onClick={() => router.push('/risks')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
@@ -195,27 +203,27 @@ export function AttestivRiskDetailPage() {
 
         <Card>
           <CardTitle right={<Badge tone={tone}>{(risk.status || 'open').replace(/_/g, ' ')}</Badge>}>
-            Summary
+            {t('Summary', 'Summary')}
           </CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <Field label="Category">{(risk.category || '—').replace(/_/g, ' ')}</Field>
-            <Field label="Source">
+            <Field label={t('Category', 'Category')}>{(risk.category || '—').replace(/_/g, ' ')}</Field>
+            <Field label={t('Source', 'Source')}>
               {isAuto ? <Badge tone="navy" icon="ti-rocket">{risk.source}</Badge> : <Badge tone="gray">manual</Badge>}
             </Field>
-            <Field label="Likelihood × impact">
+            <Field label={t('Likelihood × impact', 'Likelihood × impact')}>
               {(risk.likelihood || '—').toUpperCase()} × {(risk.impact || '—').toUpperCase()}
             </Field>
-            <Field label="Score">{String(risk.score ?? 0)}</Field>
+            <Field label={t('Score', 'Score')}>{String(risk.score ?? 0)}</Field>
             {risk.source_framework_id ? (
-              <Field label="Linked control">
+              <Field label={t('Linked control', 'Linked control')}>
                 <code>{risk.source_framework_id}/{risk.source_control_id}</code>
               </Field>
             ) : null}
             {typeof meta['control_name'] === 'string' ? (
-              <Field label="Control name">{String(meta['control_name'])}</Field>
+              <Field label={t('Control name', 'Control name')}>{String(meta['control_name'])}</Field>
             ) : null}
             {typeof meta['score_percent'] === 'string' ? (
-              <Field label="Last evaluation">{meta['score_percent'] as string}%</Field>
+              <Field label={t('Last evaluation', 'Last evaluation')}>{meta['score_percent'] as string}%</Field>
             ) : null}
           </div>
           {risk.description ? (
@@ -226,19 +234,19 @@ export function AttestivRiskDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Treatment</CardTitle>
+          <CardTitle>{t('Treatment', 'Treatment')}</CardTitle>
           <FormGrid>
-            <FormRow label="Status">
+            <FormRow label={t('Status', 'Status')}>
               <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
                 {['open', 'in_treatment', 'accepted', 'closed'].map((opt) => (
                   <option key={opt} value={opt}>{opt.replace(/_/g, ' ')}</option>
                 ))}
               </select>
             </FormRow>
-            <FormRow label="Owner">
+            <FormRow label={t('Owner', 'Owner')}>
               <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="alice@acme" style={inputStyle} />
             </FormRow>
-            <FormRow label="Treatment">
+            <FormRow label={t('Treatment', 'Treatment')}>
               <select value={treatment} onChange={(e) => setTreatment(e.target.value)} style={inputStyle}>
                 <option value="">—</option>
                 {['accept', 'mitigate', 'transfer', 'avoid'].map((opt) => (
@@ -246,11 +254,11 @@ export function AttestivRiskDetailPage() {
                 ))}
               </select>
             </FormRow>
-            <FormRow label="Due date">
+            <FormRow label={t('Due date', 'Due date')}>
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} />
             </FormRow>
           </FormGrid>
-          <FormRow label="Notes">
+          <FormRow label={t('Notes', 'Notes')}>
             <textarea
               value={treatmentNotes}
               onChange={(e) => setTreatmentNotes(e.target.value)}
@@ -266,12 +274,15 @@ export function AttestivRiskDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>History</CardTitle>
+          <CardTitle>{t('History', 'History')}</CardTitle>
           {data.history.length === 0 ? (
             <EmptyState
               icon="ti-history"
-              title="No history yet"
-              description="Lifecycle changes (status, owner, treatment) will appear here as they happen."
+              title={t('No history yet', 'No history yet')}
+              description={t(
+                'Lifecycle changes (status, owner, treatment) will appear here as they happen.',
+                'Lifecycle changes (status, owner, treatment) will appear here as they happen.'
+              )}
             />
           ) : (
             <div>
@@ -283,7 +294,7 @@ export function AttestivRiskDetailPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

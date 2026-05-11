@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Connectors / Dead-letter queue.
 //
 // Failed ingestion attempts that weren't retried successfully. The
@@ -27,6 +26,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type DLQEntry = {
   queue_id: string
@@ -68,6 +69,10 @@ const DEMO_DLQ: DLQEntry[] = [
 ]
 
 export function AttestivDLQInboxPage() {
+  const {
+    t
+  } = useI18n();
+
   const [entries, setEntries] = useState<DLQEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [usingDemo, setUsingDemo] = useState(false)
@@ -138,22 +143,25 @@ export function AttestivDLQInboxPage() {
   return (
     <>
       <Topbar
-        title="Dead-letter queue"
-        left={usingDemo ? <Badge tone="amber">Demo data — no real DLQ entries</Badge> : null}
+        title={t('Dead-letter queue', 'Dead-letter queue')}
+        left={usingDemo ? <Badge tone="amber">{t('Demo data — no real DLQ entries', 'Demo data — no real DLQ entries')}</Badge> : null}
         right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{entries.length} entries</span>}
       />
       <div className="attestiv-content">
         {info ? <Banner tone="info">{info}</Banner> : null}
         {error ? <Banner tone="error">{error}</Banner> : null}
         <Card>
-          <CardTitle>Failed ingestion attempts</CardTitle>
+          <CardTitle>{t('Failed ingestion attempts', 'Failed ingestion attempts')}</CardTitle>
           {loading ? (
             <Skeleton lines={3} height={48} />
           ) : entries.length === 0 ? (
             <EmptyState
               icon="ti-circle-check"
-              title="Queue is empty"
-              description="Failed ingestions appear here when the worker exhausts retries."
+              title={t('Queue is empty', 'Queue is empty')}
+              description={t(
+                'Failed ingestions appear here when the worker exhausts retries.',
+                'Failed ingestions appear here when the worker exhausts retries.'
+              )}
             />
           ) : (
             <div>
@@ -170,7 +178,7 @@ export function AttestivDLQInboxPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function DLQRow({
@@ -182,6 +190,10 @@ function DLQRow({
   retrying: boolean
   onRetry: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div
       style={{
@@ -208,7 +220,7 @@ function DLQRow({
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-eye" aria-hidden="true" />
-            View
+            {t('View', 'View')}
           </GhostButton>
           <PrimaryButton onClick={onRetry} disabled={retrying}>
             <i className="ti ti-refresh" aria-hidden="true" />
@@ -216,14 +228,14 @@ function DLQRow({
           </PrimaryButton>
         </span>
       </div>
-      {entry.message ? <SignatureBox label="Error" value={entry.message} mono={false} /> : null}
+      {entry.message ? <SignatureBox label={t('Error', 'Error')} value={entry.message} mono={false} /> : null}
       <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        {entry.run_id ? <span>run: {entry.run_id}</span> : null}
-        {entry.first_seen_at ? <span>first: {formatTimestamp(entry.first_seen_at)}</span> : null}
-        {entry.last_seen_at ? <span>last: {formatTimestamp(entry.last_seen_at)}</span> : null}
+        {entry.run_id ? <span>{t('run:', 'run:')} {entry.run_id}</span> : null}
+        {entry.first_seen_at ? <span>{t('first:', 'first:')} {formatTimestamp(entry.first_seen_at)}</span> : null}
+        {entry.last_seen_at ? <span>{t('last:', 'last:')} {formatTimestamp(entry.last_seen_at)}</span> : null}
       </div>
     </div>
-  )
+  );
 }
 
 function formatTimestamp(value: string): string {

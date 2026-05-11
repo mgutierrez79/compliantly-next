@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // DR / Approvals queue.
 //
 // The admin's approval inbox. Rows are pending approvals waiting for
@@ -21,6 +20,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Approval = {
   id: string
@@ -50,6 +51,10 @@ const STATUS_TONE: Record<Approval['status'], 'amber' | 'green' | 'red' | 'gray'
 }
 
 export function AttestivDRApprovalsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [approvals, setApprovals] = useState<Approval[]>([])
   const [schedules, setSchedules] = useState<Record<string, Schedule>>({})
   const [loading, setLoading] = useState(true)
@@ -130,11 +135,11 @@ export function AttestivDRApprovalsPage() {
   return (
     <>
       <Topbar
-        title="DR approvals"
+        title={t('DR approvals', 'DR approvals')}
         right={
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-list" aria-hidden="true" />
-            DR schedules
+            {t('DR schedules', 'DR schedules')}
           </GhostButton>
         }
       />
@@ -144,15 +149,18 @@ export function AttestivDRApprovalsPage() {
 
         <Card>
           <CardTitle right={<Badge tone="amber">{pending.length} pending</Badge>}>
-            Awaiting decision
+            {t('Awaiting decision', 'Awaiting decision')}
           </CardTitle>
           {loading ? (
             <Skeleton lines={3} height={42} />
           ) : pending.length === 0 ? (
             <EmptyState
               icon="ti-stamp"
-              title="No pending approvals"
-              description="New requests show up here when an operator submits one from the DR schedules page."
+              title={t('No pending approvals', 'No pending approvals')}
+              description={t(
+                'New requests show up here when an operator submits one from the DR schedules page.',
+                'New requests show up here when an operator submits one from the DR schedules page.'
+              )}
             />
           ) : (
             <div>
@@ -172,64 +180,73 @@ export function AttestivDRApprovalsPage() {
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{decided.length} entries</span>}>
-            History
+            {t('History', 'History')}
           </CardTitle>
           {decided.length === 0 ? (
             <EmptyState
               icon="ti-history"
-              title="No decisions yet"
-              description="Granted, denied, and consumed approvals will land here once they're acted on."
+              title={t('No decisions yet', 'No decisions yet')}
+              description={t(
+                'Granted, denied, and consumed approvals will land here once they\'re acted on.',
+                'Granted, denied, and consumed approvals will land here once they\'re acted on.'
+              )}
             />
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-tertiary)', textAlign: 'left' }}>
-                  <th style={{ padding: '6px 10px 6px 0' }}>Schedule</th>
-                  <th style={{ padding: '6px 10px' }}>Requested by</th>
-                  <th style={{ padding: '6px 10px' }}>Status</th>
-                  <th style={{ padding: '6px 10px' }}>Approver</th>
-                  <th style={{ padding: '6px 10px' }}>Detail</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>When</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Schedule', 'Schedule')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Requested by', 'Requested by')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Status', 'Status')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Approver', 'Approver')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Detail', 'Detail')}</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>{t('When', 'When')}</th>
                 </tr>
               </thead>
               <tbody>
-                {decided.map((approval) => (
-                  <tr key={approval.id} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                    <td style={{ padding: '10px 10px 10px 0', fontWeight: 500 }}>
-                      {schedules[approval.schedule_id]?.name ?? approval.schedule_id}
-                    </td>
-                    <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
-                      {approval.requested_by ?? '—'}
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <Badge tone={STATUS_TONE[approval.status]}>{approval.status}</Badge>
-                    </td>
-                    <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
-                      {approval.approver ?? '—'}
-                    </td>
-                    <td style={{ padding: '10px', color: 'var(--color-text-tertiary)', fontSize: 11 }}>
-                      {approval.consumed_by_run ? (
-                        <span>consumed by {approval.consumed_by_run.slice(0, 12)}</span>
-                      ) : approval.denial_reason ? (
-                        <span title={approval.denial_reason}>{truncate(approval.denial_reason, 36)}</span>
-                      ) : approval.expires_at ? (
-                        <span>expires {formatTimestamp(approval.expires_at)}</span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 0 10px 10px', color: 'var(--color-text-tertiary)' }}>
-                      {formatTimestamp(approval.granted_at ?? approval.requested_at ?? '')}
-                    </td>
-                  </tr>
-                ))}
+                {decided.map(approval => {
+                  const {
+                    t
+                  } = useI18n();
+
+                  return (
+                    <tr key={approval.id} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                      <td style={{ padding: '10px 10px 10px 0', fontWeight: 500 }}>
+                        {schedules[approval.schedule_id]?.name ?? approval.schedule_id}
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                        {approval.requested_by ?? '—'}
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        <Badge tone={STATUS_TONE[approval.status]}>{approval.status}</Badge>
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                        {approval.approver ?? '—'}
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--color-text-tertiary)', fontSize: 11 }}>
+                        {approval.consumed_by_run ? (
+                          <span>{t('consumed by', 'consumed by')} {approval.consumed_by_run.slice(0, 12)}</span>
+                        ) : approval.denial_reason ? (
+                          <span title={approval.denial_reason}>{truncate(approval.denial_reason, 36)}</span>
+                        ) : approval.expires_at ? (
+                          <span>expires {formatTimestamp(approval.expires_at)}</span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={{ padding: '10px 0 10px 10px', color: 'var(--color-text-tertiary)' }}>
+                        {formatTimestamp(approval.granted_at ?? approval.requested_at ?? '')}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function PendingRow({
@@ -245,6 +262,10 @@ function PendingRow({
   onGrant: () => void
   onDeny: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div
       style={{
@@ -259,21 +280,21 @@ function PendingRow({
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{ fontSize: 13, fontWeight: 500 }}>{scheduleName}</div>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
-          requested by {approval.requested_by ?? '—'} · {formatTimestamp(approval.requested_at ?? '')}
+          {t('requested by', 'requested by')} {approval.requested_by ?? '—'}· {formatTimestamp(approval.requested_at ?? '')}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <GhostButton onClick={onDeny} disabled={busy}>
           <i className="ti ti-x" aria-hidden="true" />
-          Deny
+          {t('Deny', 'Deny')}
         </GhostButton>
         <PrimaryButton onClick={onGrant} disabled={busy}>
           <i className="ti ti-check" aria-hidden="true" />
-          Grant
+          {t('Grant', 'Grant')}
         </PrimaryButton>
       </div>
     </div>
-  )
+  );
 }
 
 function formatTimestamp(value: string): string {

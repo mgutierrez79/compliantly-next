@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, HelpTip, Input, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type ExceptionTicket = {
   system?: string | null
@@ -45,6 +46,10 @@ const statusActions: Record<string, Array<{ label: string; next: string }>> = {
 }
 
 export function ExceptionsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [data, setData] = useState<ExceptionsResponse | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
   const [actionError, setActionError] = useState<ApiError | null>(null)
@@ -200,55 +205,53 @@ export function ExceptionsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <PageTitle>Exceptions</PageTitle>
+          <PageTitle>{t('Exceptions', 'Exceptions')}</PageTitle>
           <HelpTip text="Track risk exceptions, approvals, ticketing links, and expiry." />
         </div>
         <Button onClick={fetchExceptions} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh list'}
         </Button>
       </div>
-
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
       {actionError ? <ErrorBox title={actionError.message} detail={actionError.bodyText} /> : null}
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Label>Create exception</Label>
+            <Label>{t('Create exception', 'Create exception')}</Label>
             <HelpTip text="Use this for risk acceptance, remediation tracking, and ticket references." />
           </div>
-          <div className="text-xs text-slate-400">Role: {roleLabel}</div>
+          <div className="text-xs text-slate-400">{t('Role:', 'Role:')} {roleLabel}</div>
         </div>
         {canManage ? (
           <>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div>
-                <Label>Title</Label>
+                <Label>{t('Title', 'Title')}</Label>
                 <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </div>
               <div>
-                <Label>Owner</Label>
+                <Label>{t('Owner', 'Owner')}</Label>
                 <Input value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} />
               </div>
               <div>
-                <Label>Reason</Label>
+                <Label>{t('Reason', 'Reason')}</Label>
                 <Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>{t('Status', 'Status')}</Label>
                 <select
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
                 >
-                  <option value="requested">Requested</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="expired">Expired</option>
+                  <option value="requested">{t('Requested', 'Requested')}</option>
+                  <option value="approved">{t('Approved', 'Approved')}</option>
+                  <option value="rejected">{t('Rejected', 'Rejected')}</option>
+                  <option value="expired">{t('Expired', 'Expired')}</option>
                 </select>
               </div>
               <div>
-                <Label>Expires on</Label>
+                <Label>{t('Expires on', 'Expires on')}</Label>
                 <Input
                   value={form.expires_on}
                   onChange={(e) => setForm({ ...form, expires_on: e.target.value })}
@@ -256,77 +259,82 @@ export function ExceptionsPage() {
                 />
               </div>
               <div>
-                <Label>Remediation plan</Label>
+                <Label>{t('Remediation plan', 'Remediation plan')}</Label>
                 <Input
                   value={form.remediation_plan}
                   onChange={(e) => setForm({ ...form, remediation_plan: e.target.value })}
-                  placeholder="Short plan or control reference"
+                  placeholder={t('Short plan or control reference', 'Short plan or control reference')}
                 />
               </div>
               <div>
-                <Label>Acceptance note</Label>
+                <Label>{t('Acceptance note', 'Acceptance note')}</Label>
                 <Input
                   value={form.acceptance_note}
                   onChange={(e) => setForm({ ...form, acceptance_note: e.target.value })}
-                  placeholder="Approved with conditions"
+                  placeholder={t('Approved with conditions', 'Approved with conditions')}
                 />
               </div>
             </div>
             <div className="mt-4 border-t border-slate-800 pt-4">
-              <Label>Ticketing</Label>
+              <Label>{t('Ticketing', 'Ticketing')}</Label>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <Input
                   value={form.ticket_system}
                   onChange={(e) => setForm({ ...form, ticket_system: e.target.value })}
-                  placeholder="System (ServiceNow, Jira)"
+                  placeholder={t('System (ServiceNow, Jira)', 'System (ServiceNow, Jira)')}
                 />
                 <Input
                   value={form.ticket_id}
                   onChange={(e) => setForm({ ...form, ticket_id: e.target.value })}
-                  placeholder="Ticket ID"
+                  placeholder={t('Ticket ID', 'Ticket ID')}
                 />
                 <Input
                   value={form.ticket_url}
                   onChange={(e) => setForm({ ...form, ticket_url: e.target.value })}
-                  placeholder="Ticket URL"
+                  placeholder={t('Ticket URL', 'Ticket URL')}
                 />
                 <Input
                   value={form.ticket_status}
                   onChange={(e) => setForm({ ...form, ticket_status: e.target.value })}
-                  placeholder="Ticket status"
+                  placeholder={t('Ticket status', 'Ticket status')}
                 />
               </div>
             </div>
             <div className="mt-4">
               <Button onClick={createException} disabled={!form.title.trim()}>
-                Create exception
+                {t('Create exception', 'Create exception')}
               </Button>
             </div>
           </>
         ) : isReadOnlyAuditor ? (
-          <div className="mt-3 text-sm text-slate-300">Read-only auditors can view exceptions but cannot edit.</div>
+          <div className="mt-3 text-sm text-slate-300">{t(
+            'Read-only auditors can view exceptions but cannot edit.',
+            'Read-only auditors can view exceptions but cannot edit.'
+          )}</div>
         ) : (
-          <div className="mt-3 text-sm text-slate-300">Collaborators can view exceptions but cannot edit.</div>
+          <div className="mt-3 text-sm text-slate-300">{t(
+            'Collaborators can view exceptions but cannot edit.',
+            'Collaborators can view exceptions but cannot edit.'
+          )}</div>
         )}
       </Card>
-
       <Card>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label>Exceptions list</Label>
+            <Label>{t('Exceptions list', 'Exceptions list')}</Label>
             <div className="text-xs text-slate-400">{data ? `${data.count} items` : 'n/a'}</div>
           </div>
           <div className="flex items-center gap-2">
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Search', 'Search')} />
             <Input
               value={filters.owner}
               onChange={(e) => setFilters({ ...filters, owner: e.target.value })}
-              placeholder="Owner filter"
+              placeholder={t('Owner filter', 'Owner filter')}
             />
             <Input
               value={filters.risk_id}
               onChange={(e) => setFilters({ ...filters, risk_id: e.target.value })}
-              placeholder="Risk ID filter"
+              placeholder={t('Risk ID filter', 'Risk ID filter')}
             />
           </div>
         </div>
@@ -334,12 +342,12 @@ export function ExceptionsPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-400">
               <tr>
-                <th className="py-2 pr-4">Title</th>
-                <th className="py-2 pr-4">Owner</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Expires</th>
-                <th className="py-2 pr-4">Ticket</th>
-                <th className="py-2 pr-4">Actions</th>
+                <th className="py-2 pr-4">{t('Title', 'Title')}</th>
+                <th className="py-2 pr-4">{t('Owner', 'Owner')}</th>
+                <th className="py-2 pr-4">{t('Status', 'Status')}</th>
+                <th className="py-2 pr-4">{t('Expires', 'Expires')}</th>
+                <th className="py-2 pr-4">{t('Ticket', 'Ticket')}</th>
+                <th className="py-2 pr-4">{t('Actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -378,7 +386,7 @@ export function ExceptionsPage() {
               {!filtered.length ? (
                 <tr>
                   <td className="py-4 text-sm text-slate-400" colSpan={6}>
-                    No exceptions found.
+                    {t('No exceptions found.', 'No exceptions found.')}
                   </td>
                 </tr>
               ) : null}
@@ -387,5 +395,5 @@ export function ExceptionsPage() {
         </div>
       </Card>
     </div>
-  )
+  );
 }

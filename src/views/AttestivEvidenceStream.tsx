@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Evidence stream — mockup 01 evidence section.
 //
 // Two stacked cards:
@@ -21,6 +20,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Badge, Banner, Card, CardTitle, EmptyState, GhostButton, PrimaryButton, Pulse, Skeleton, Topbar } from '../components/AttestivUi'
 import { loadPublicKeys, verifyManifest, type ManifestPayload, type VerifyResult } from '../lib/verify'
+
+import { useI18n } from '../lib/i18n';
 
 type EvidenceLogEntry = {
   run_id?: string
@@ -75,6 +76,10 @@ function isDLQ(entry: EvidenceLogEntry): boolean {
 }
 
 export function AttestivEvidenceStream() {
+  const {
+    t
+  } = useI18n();
+
   const [items, setItems] = useState<EvidenceLogEntry[]>([])
   const [error, setError] = useState<ApiError | null>(null)
   const [loading, setLoading] = useState(true)
@@ -140,42 +145,52 @@ export function AttestivEvidenceStream() {
   }
 
   const verifyStatusLine = useMemo(() => {
+    const {
+      t
+    } = useI18n();
+
     if (!verifyResult) {
-      return <span style={{ color: 'var(--color-text-tertiary)' }}>Status: not checked</span>
+      return <span style={{ color: 'var(--color-text-tertiary)' }}>{t('Status: not checked', 'Status: not checked')}</span>;
     }
     if (verifyResult.status === 'valid') {
       return (
         <span style={{ color: 'var(--color-status-green-mid)' }}>
-          ✓ VALID — evidence unmodified since signing (kid {verifyResult.kid})
-        </span>
-      )
+          {t(
+            '✓ VALID — evidence unmodified since signing (kid',
+            '✓ VALID — evidence unmodified since signing (kid'
+          )} {verifyResult.kid})
+                  </span>
+      );
     }
     if (verifyResult.status === 'unsupported') {
       return (
         <span style={{ color: 'var(--color-status-amber-text)' }}>
-          ⚠ Verification unavailable: {verifyResult.reason}
+          {t('⚠ Verification unavailable:', '⚠ Verification unavailable:')} {verifyResult.reason}
         </span>
-      )
+      );
     }
     return (
       <span style={{ color: 'var(--color-status-red-deep)' }}>
-        ✗ INVALID — {verifyResult.reason}
+        {t('✗ INVALID —', '✗ INVALID —')} {verifyResult.reason}
       </span>
-    )
+    );
   }, [verifyResult])
 
   return (
     <>
       <Topbar
-        title="Evidence stream"
-        left={<Badge tone="green"><Pulse /> Live</Badge>}
-        right={<GhostButton><i className="ti ti-filter" aria-hidden="true" style={{ fontSize: 13 }} /> Filter</GhostButton>}
+        title={t('Evidence stream', 'Evidence stream')}
+        left={<Badge tone="green"><Pulse /> {t('Live', 'Live')}</Badge>}
+        right={<GhostButton><i className="ti ti-filter" aria-hidden="true" style={{ fontSize: 13 }} /> {t('Filter', 'Filter')}</GhostButton>}
       />
       <div className="attestiv-content">
-        {error ? <Banner tone="error">Failed to load evidence: {error.message}</Banner> : null}
+        {error ? <Banner tone="error">{t('Failed to load evidence:', 'Failed to load evidence:')} {error.message}</Banner> : null}
 
         <Card>
-          <CardTitle>Incoming evidence — signed in real time</CardTitle>
+          <CardTitle>{t(
+            'Incoming evidence — signed in real time',
+            'Incoming evidence — signed in real time'
+          )}</CardTitle>
           {loading && items.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
               {Array.from({ length: 5 }).map((_, i) => (
@@ -201,23 +216,28 @@ export function AttestivEvidenceStream() {
           ) : (
             <EmptyState
               icon="ti-file-certificate"
-              title="No evidence records yet"
-              description="Once a connector starts signing, records will appear here in real time."
+              title={t('No evidence records yet', 'No evidence records yet')}
+              description={t(
+                'Once a connector starts signing, records will appear here in real time.',
+                'Once a connector starts signing, records will appear here in real time.'
+              )}
             />
           )}
         </Card>
 
         <Card>
-          <CardTitle>Signature verification</CardTitle>
+          <CardTitle>{t('Signature verification', 'Signature verification')}</CardTitle>
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-            Paste any evidence id or run id to verify its cryptographic signature offline. The browser fetches
-            only the public key — Attestiv never sees the verification.
+            {t(
+              'Paste any evidence id or run id to verify its cryptographic signature offline. The browser fetches\n            only the public key — Attestiv never sees the verification.',
+              'Paste any evidence id or run id to verify its cryptographic signature offline. The browser fetches\n            only the public key — Attestiv never sees the verification.'
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input
               value={verifyId}
               onChange={(event) => setVerifyId(event.target.value)}
-              placeholder="evd_a1b2c3d4 or run-20260508-1422"
+              placeholder={t('evd_a1b2c3d4 or run-20260508-1422', 'evd_a1b2c3d4 or run-20260508-1422')}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void verify()
               }}
@@ -237,19 +257,23 @@ export function AttestivEvidenceStream() {
             </PrimaryButton>
           </div>
           <SigBox>
-            Public key: {publicKeyUrl || '/v1/public/keys/...'}
+            {t('Public key:', 'Public key:')} {publicKeyUrl || '/v1/public/keys/...'}
             <br />
-            Algorithm: Ed25519
+            {t('Algorithm: Ed25519', 'Algorithm: Ed25519')}
             <br />
             {verifyStatusLine}
           </SigBox>
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
+  const {
+    t
+  } = useI18n();
+
   const dlq = isDLQ(entry)
   const id = entry.evidence_id || entry.run_id || ''
   const signature = entry.signature || entry.report_signature || ''
@@ -299,7 +323,7 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
               marginTop: 2,
             }}
           >
-            DLQ — see Issues for retry history
+            {t('DLQ — see Issues for retry history', 'DLQ — see Issues for retry history')}
             {tags ? ` · ${tags}` : ''}
           </div>
         ) : (
@@ -318,7 +342,7 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
       </div>
       <Badge tone={dlq ? 'red' : 'green'}>{dlq ? 'DLQ' : 'Signed'}</Badge>
     </div>
-  )
+  );
 }
 
 function SigBox({ children }: { children: React.ReactNode }) {

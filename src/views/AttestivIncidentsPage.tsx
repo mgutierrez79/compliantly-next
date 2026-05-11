@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // NIS2 incidents register (Phase-2 GRC, chunk 5).
 //
 // What's on screen:
@@ -28,6 +27,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Incident = {
   id: string
@@ -76,6 +77,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 
 export function AttestivIncidentsPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
@@ -156,11 +161,11 @@ export function AttestivIncidentsPage() {
   return (
     <>
       <Topbar
-        title="Incidents"
+        title={t('Incidents', 'Incidents')}
         left={<Badge tone="navy">{incidents.length} entries</Badge>}
         right={
           <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> Log incident
+            <i className="ti ti-plus" aria-hidden="true" /> {t('Log incident', 'Log incident')}
           </PrimaryButton>
         }
       />
@@ -175,24 +180,27 @@ export function AttestivIncidentsPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Detected" value={summary.detected} icon="ti-radar-2" tone="amber" />
-          <SummaryCard label="Classified" value={summary.classified} icon="ti-tag" tone="navy" />
-          <SummaryCard label="Notified" value={summary.notified} icon="ti-mailbox" tone="navy" />
-          <SummaryCard label="Closed" value={summary.closed} icon="ti-circle-check" tone="green" />
+          <SummaryCard label={t('Detected', 'Detected')} value={summary.detected} icon="ti-radar-2" tone="amber" />
+          <SummaryCard label={t('Classified', 'Classified')} value={summary.classified} icon="ti-tag" tone="navy" />
+          <SummaryCard label={t('Notified', 'Notified')} value={summary.notified} icon="ti-mailbox" tone="navy" />
+          <SummaryCard label={t('Closed', 'Closed')} value={summary.closed} icon="ti-circle-check" tone="green" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>Incidents</CardTitle>
+          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>{t('Incidents', 'Incidents')}</CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : incidents.length === 0 ? (
             <EmptyState
               icon="ti-radar-2"
-              title="No incidents"
-              description="Auto-detection runs against the evidence stream. Log an incident manually for events the detector can't see."
+              title={t('No incidents', 'No incidents')}
+              description={t(
+                'Auto-detection runs against the evidence stream. Log an incident manually for events the detector can\'t see.',
+                'Auto-detection runs against the evidence stream. Log an incident manually for events the detector can\'t see.'
+              )}
               action={
                 <PrimaryButton onClick={() => setShowCreate(true)}>
-                  <i className="ti ti-plus" aria-hidden="true" /> Log incident
+                  <i className="ti ti-plus" aria-hidden="true" /> {t('Log incident', 'Log incident')}
                 </PrimaryButton>
               }
             />
@@ -211,7 +219,7 @@ export function AttestivIncidentsPage() {
 
         {deadlines.length > 1 ? (
           <Card style={{ marginTop: 12 }}>
-            <CardTitle>All upcoming NIS2 deadlines</CardTitle>
+            <CardTitle>{t('All upcoming NIS2 deadlines', 'All upcoming NIS2 deadlines')}</CardTitle>
             <div>
               {deadlines.map((d, idx) => (
                 <DeadlineRow key={`${d.incident_id}-${d.type}-${idx}`} deadline={d} />
@@ -220,12 +228,11 @@ export function AttestivIncidentsPage() {
           </Card>
         ) : null}
       </div>
-
       {showCreate ? (
         <CreateIncidentModal busy={createBusy} onCancel={() => setShowCreate(false)} onSubmit={createIncident} />
       ) : null}
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -272,6 +279,10 @@ function SummaryCard({
 }
 
 function DeadlineBanner({ deadline }: { deadline: Deadline }) {
+  const {
+    t
+  } = useI18n();
+
   const isOverdue = deadline.minutes_until < 0
   const tone = isOverdue ? 'error' : deadline.minutes_until < 60 ? 'warning' : 'info'
   const label = LABEL_FOR_DEADLINE[deadline.type] ?? deadline.type
@@ -280,10 +291,12 @@ function DeadlineBanner({ deadline }: { deadline: Deadline }) {
     : `${humanMinutes(deadline.minutes_until)} remaining`
   return (
     <Banner tone={tone} title={`${label} due — ${countdown}`}>
-      Incident: <strong>{deadline.incident_title}</strong> · target: {deadline.due.slice(0, 16).replace('T', ' ')} UTC.
-      Open the detail page to draft the notification.
+      {t('Incident:', 'Incident:')} <strong>{deadline.incident_title}</strong> {t('· target:', '· target:')} {deadline.due.slice(0, 16).replace('T', ' ')} {t(
+        'UTC.\n      Open the detail page to draft the notification.',
+        'UTC.\n      Open the detail page to draft the notification.'
+      )}
     </Banner>
-  )
+  );
 }
 
 function DeadlineRow({ deadline }: { deadline: Deadline }) {
@@ -320,10 +333,14 @@ function FilterBar({
   value: { status?: string; nis2_significant?: string }
   onChange: (next: { status?: string; nis2_significant?: string }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Status"
+        label={t('Status', 'Status')}
         value={value.status}
         options={['detected', 'classified', 'early_warning_sent', 'notified', 'closed']}
         onChange={(v) => onChange({ ...value, status: v })}
@@ -335,7 +352,7 @@ function FilterBar({
         onChange={(v) => onChange({ ...value, nis2_significant: v })}
       />
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -349,6 +366,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -363,17 +384,21 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }
 
 function IncidentRow({ incident, onOpen }: { incident: Incident; onOpen: () => void }) {
+  const {
+    t
+  } = useI18n();
+
   const status = (incident.status || 'detected').toLowerCase()
   const statusTone = STATUS_TONE[status] ?? 'gray'
   const sinceMins = incident.detected_at
@@ -416,11 +441,11 @@ function IncidentRow({ incident, onOpen }: { incident: Incident; onOpen: () => v
       </div>
       <div>
         {incident.nis2_significant === true ? (
-          <Badge tone="red">NIS2 significant</Badge>
+          <Badge tone="red">{t('NIS2 significant', 'NIS2 significant')}</Badge>
         ) : incident.nis2_significant === false ? (
-          <Badge tone="gray">not NIS2</Badge>
+          <Badge tone="gray">{t('not NIS2', 'not NIS2')}</Badge>
         ) : (
-          <Badge tone="amber">awaiting class.</Badge>
+          <Badge tone="amber">{t('awaiting class.', 'awaiting class.')}</Badge>
         )}
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
@@ -433,7 +458,7 @@ function IncidentRow({ incident, onOpen }: { incident: Incident; onOpen: () => v
         {humanMinutes(sinceMins)} ago
       </div>
     </button>
-  )
+  );
 }
 
 function CreateIncidentModal({
@@ -445,6 +470,10 @@ function CreateIncidentModal({
   onCancel: () => void
   onSubmit: (payload: Record<string, unknown>) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<string>('outage')
   const [services, setServices] = useState('')
@@ -474,25 +503,33 @@ function CreateIncidentModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>Log incident</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>{t('Log incident', 'Log incident')}</h3>
         <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 0 }}>
-          Use this for events the detector can't see — phone calls from the SOC, customer reports, etc.
-          Auto-detected incidents arrive on their own from the evidence stream.
+          {t(
+            'Use this for events the detector can\'t see — phone calls from the SOC, customer reports, etc.\n          Auto-detected incidents arrive on their own from the evidence stream.',
+            'Use this for events the detector can\'t see — phone calls from the SOC, customer reports, etc.\n          Auto-detected incidents arrive on their own from the evidence stream.'
+          )}
         </p>
-        <FormRow label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Suspected data exfiltration via VPN" style={inputStyle} />
+        <FormRow label={t('Title', 'Title')}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t(
+            'e.g. Suspected data exfiltration via VPN',
+            'e.g. Suspected data exfiltration via VPN'
+          )} style={inputStyle} />
         </FormRow>
-        <FormRow label="NIS2 category">
+        <FormRow label={t('NIS2 category', 'NIS2 category')}>
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
             {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
         </FormRow>
-        <FormRow label="Affected services (comma-separated)">
-          <input value={services} onChange={(e) => setServices(e.target.value)} placeholder="e.g. invoicing, payments" style={inputStyle} />
+        <FormRow label={t(
+          'Affected services (comma-separated)',
+          'Affected services (comma-separated)'
+        )}>
+          <input value={services} onChange={(e) => setServices(e.target.value)} placeholder={t('e.g. invoicing, payments', 'e.g. invoicing, payments')} style={inputStyle} />
         </FormRow>
-        <FormRow label="Affected users (estimate)">
+        <FormRow label={t('Affected users (estimate)', 'Affected users (estimate)')}>
           <input
             type="number"
             value={usersCount}
@@ -501,7 +538,7 @@ function CreateIncidentModal({
           />
         </FormRow>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 12 }}>
-          <GhostButton onClick={onCancel} disabled={busy}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel} disabled={busy}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             onClick={() =>
               onSubmit({
@@ -521,7 +558,7 @@ function CreateIncidentModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {

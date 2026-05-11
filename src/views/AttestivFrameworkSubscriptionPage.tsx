@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Framework subscription page — lets a tenant admin pick the
 // frameworks the scoring engine evaluates for them.
 //
@@ -31,6 +30,8 @@ import {
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 
+import { useI18n } from '../lib/i18n';
+
 type FrameworkEntry = {
   key: string
   label: string
@@ -50,6 +51,10 @@ type TenantProfileResponse = {
 }
 
 export function AttestivFrameworkSubscriptionPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [catalog, setCatalog] = useState<FrameworkEntry[]>([])
   const [globallyEnabled, setGloballyEnabled] = useState<Set<string>>(new Set())
@@ -197,7 +202,7 @@ export function AttestivFrameworkSubscriptionPage() {
   return (
     <>
       <Topbar
-        title="Framework subscription"
+        title={t('Framework subscription', 'Framework subscription')}
         left={
           tenantID ? (
             <Badge tone="navy">
@@ -207,7 +212,7 @@ export function AttestivFrameworkSubscriptionPage() {
         }
         right={
           <GhostButton onClick={() => router.push('/settings')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Settings
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Settings', 'Settings')}
           </GhostButton>
         }
       />
@@ -215,11 +220,11 @@ export function AttestivFrameworkSubscriptionPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {savedMessage ? <Banner tone="success">{savedMessage}</Banner> : null}
 
-        <Banner tone="info" title="What this controls">
-          The scoring engine only evaluates frameworks you subscribe to. Unsubscribing a framework
-          means it stops appearing on the Frameworks page, stops generating control failures, and
-          stops dragging your score down. Subscribe back anytime — the evidence is preserved and
-          the next evaluation rebuilds the history.
+        <Banner tone="info" title={t('What this controls', 'What this controls')}>
+          {t(
+            'The scoring engine only evaluates frameworks you subscribe to. Unsubscribing a framework\n          means it stops appearing on the Frameworks page, stops generating control failures, and\n          stops dragging your score down. Subscribe back anytime — the evidence is preserved and\n          the next evaluation rebuilds the history.',
+            'The scoring engine only evaluates frameworks you subscribe to. Unsubscribing a framework\n          means it stops appearing on the Frameworks page, stops generating control failures, and\n          stops dragging your score down. Subscribe back anytime — the evidence is preserved and\n          the next evaluation rebuilds the history.'
+          )}
         </Banner>
 
         <Card style={{ marginTop: 12 }}>
@@ -230,7 +235,7 @@ export function AttestivFrameworkSubscriptionPage() {
               </span>
             }
           >
-            Available frameworks
+            {t('Available frameworks', 'Available frameworks')}
           </CardTitle>
 
           {loading ? (
@@ -238,8 +243,11 @@ export function AttestivFrameworkSubscriptionPage() {
           ) : catalog.length === 0 ? (
             <EmptyState
               icon="ti-layout-list"
-              title="No frameworks configured"
-              description="The platform admin hasn't enabled any frameworks. Ask them to add YAMLs under policies/frameworks/ and update the global enable list."
+              title={t('No frameworks configured', 'No frameworks configured')}
+              description={t(
+                'The platform admin hasn\'t enabled any frameworks. Ask them to add YAMLs under policies/frameworks/ and update the global enable list.',
+                'The platform admin hasn\'t enabled any frameworks. Ask them to add YAMLs under policies/frameworks/ and update the global enable list.'
+              )}
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -262,13 +270,13 @@ export function AttestivFrameworkSubscriptionPage() {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <GhostButton onClick={selectAll} disabled={busy || loading}>
-            <i className="ti ti-checkbox" aria-hidden="true" /> Select all
+            <i className="ti ti-checkbox" aria-hidden="true" /> {t('Select all', 'Select all')}
           </GhostButton>
           <GhostButton onClick={selectNone} disabled={busy || loading}>
-            <i className="ti ti-square" aria-hidden="true" /> Select none
+            <i className="ti ti-square" aria-hidden="true" /> {t('Select none', 'Select none')}
           </GhostButton>
           <GhostButton onClick={resetToDefault} disabled={busy || loading || selection === null}>
-            <i className="ti ti-refresh" aria-hidden="true" /> Reset to default
+            <i className="ti ti-refresh" aria-hidden="true" /> {t('Reset to default', 'Reset to default')}
           </GhostButton>
           <span style={{ flex: 1 }} />
           <PrimaryButton onClick={save} disabled={busy || loading}>
@@ -277,7 +285,7 @@ export function AttestivFrameworkSubscriptionPage() {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function FrameworkToggle({

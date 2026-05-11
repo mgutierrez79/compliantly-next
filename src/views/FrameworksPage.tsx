@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Button, Card, ErrorBox, HelpTip, Label, PageTitle, Textarea } from '../components/Ui'
 import { ApiError, apiJson } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type FrameworksResponse = {
   available: string[]
@@ -95,6 +96,10 @@ type PolicyRawResponse = {
 }
 
 export function FrameworksPage() {
+  const {
+    t
+  } = useI18n();
+
   const [frameworks, setFrameworks] = useState<string[]>([])
   const [frameworkMeta, setFrameworkMeta] = useState<Array<{ key: string; name?: string; version?: string }>>([])
   const [latestMetrics, setLatestMetrics] = useState<Record<string, FrameworkMetricsResponse>>({})
@@ -417,50 +422,56 @@ export function FrameworksPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <PageTitle>Regulations</PageTitle>
+          <PageTitle>{t('Regulations', 'Regulations')}</PageTitle>
           <HelpTip text={'Enable or disable regulations for new compliance runs. Requires admin access to save.'} />
         </div>
         <Link
           href="/control-mappings"
           className="rounded-md border border-[#274266] bg-[#12233d] px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-[#18365f]"
         >
-          Control mappings
+          {t('Control mappings', 'Control mappings')}
         </Link>
       </div>
       <p className="text-sm text-slate-400">
-        Select which regulations are active. Changes affect new runs and reports, not past history.
+        {t(
+          'Select which regulations are active. Changes affect new runs and reports, not past history.',
+          'Select which regulations are active. Changes affect new runs and reports, not past history.'
+        )}
       </p>
-      {error ? <ErrorBox title="Regulations error" detail={error} /> : null}
+      {error ? <ErrorBox title={t('Regulations error', 'Regulations error')} detail={error} /> : null}
       {tenantHint ? (
         <Card>
-          <Label>Tenant required</Label>
+          <Label>{t('Tenant required', 'Tenant required')}</Label>
           <div className="mt-2 text-sm text-slate-300">{tenantHint}</div>
         </Card>
       ) : null}
       {authHint ? (
         <Card>
-          <Label>Auth required</Label>
+          <Label>{t('Auth required', 'Auth required')}</Label>
           <div className="mt-2 text-sm text-slate-300">{authHint}</div>
         </Card>
       ) : null}
       {dbHint ? (
         <Card>
-          <Label>Database issue</Label>
+          <Label>{t('Database issue', 'Database issue')}</Label>
           <div className="mt-2 text-sm text-slate-300">{dbHint}</div>
         </Card>
       ) : null}
       {!canEdit ? (
         <Card>
-          <Label>Read-only mode</Label>
+          <Label>{t('Read-only mode', 'Read-only mode')}</Label>
           <div className="mt-2 text-sm text-slate-300">
-            You do not have access to admin configuration. Use an admin role to enable or disable regulations.
+            {t(
+              'You do not have access to admin configuration. Use an admin role to enable or disable regulations.',
+              'You do not have access to admin configuration. Use an admin role to enable or disable regulations.'
+            )}
           </div>
         </Card>
       ) : null}
       <Card>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <Label>Regulation selection</Label>
+            <Label>{t('Regulation selection', 'Regulation selection')}</Label>
             <div className="mt-1 text-xs text-slate-400">
               {useAll ? 'All regulations enabled.' : `${selectedCount} selected.`}
             </div>
@@ -477,11 +488,15 @@ export function FrameworksPage() {
           </Button>
         </div>
         <div className="mt-2 text-xs text-slate-400">
-          Source: {source ?? 'unknown'}
+          {t('Source:', 'Source:')} {source ?? 'unknown'}
         </div>
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {frameworks.length ? (
             frameworks.map((key) => {
+              const {
+                t
+              } = useI18n();
+
               const isChecked = enabled.has(key)
               const meta = frameworkMeta.find((entry) => entry.key === key)
               const label = meta?.name ? `${meta.name} (${key})` : key
@@ -543,7 +558,7 @@ export function FrameworksPage() {
                       {isExpanded ? (
                         <div className="mt-3 rounded-md border border-slate-800 bg-slate-950/40 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="text-xs font-semibold text-slate-200">Regulation references</div>
+                            <div className="text-xs font-semibold text-slate-200">{t('Regulation references', 'Regulation references')}</div>
                             <div className="flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
@@ -554,7 +569,7 @@ export function FrameworksPage() {
                                 }`}
                                 onClick={() => setDetailTab(key, 'references')}
                               >
-                                References
+                                {t('References', 'References')}
                               </button>
                               <button
                                 type="button"
@@ -604,7 +619,7 @@ export function FrameworksPage() {
                                 }}
                                 disabled={!draft}
                               >
-                                Copy
+                                {t('Copy', 'Copy')}
                               </button>
                             </div>
                           </div>
@@ -616,31 +631,43 @@ export function FrameworksPage() {
                               ) : null}
                               {libraryEntries.length ? (
                                 <div className="mt-3 grid gap-2">
-                                  {libraryEntries.slice(0, 30).map((entry) => (
-                                    <div
-                                      key={`${entry.framework}-${entry.control_id}`}
-                                      className="rounded-md border border-slate-800 bg-black/20 p-2"
-                                    >
-                                      <div className="text-xs font-semibold text-slate-100">{entry.control_id}</div>
-                                      {entry.description ? (
-                                        <div className="mt-1 text-xs text-slate-300">{entry.description}</div>
-                                      ) : null}
-                                      {entry.references?.length ? (
-                                        <div className="mt-1 text-[11px] text-slate-400">
-                                          References: {entry.references.join(', ')}
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  ))}
+                                  {libraryEntries.slice(0, 30).map(entry => {
+                                    const {
+                                      t
+                                    } = useI18n();
+
+                                    return (
+                                      <div
+                                        key={`${entry.framework}-${entry.control_id}`}
+                                        className="rounded-md border border-slate-800 bg-black/20 p-2"
+                                      >
+                                        <div className="text-xs font-semibold text-slate-100">{entry.control_id}</div>
+                                        {entry.description ? (
+                                          <div className="mt-1 text-xs text-slate-300">{entry.description}</div>
+                                        ) : null}
+                                        {entry.references?.length ? (
+                                          <div className="mt-1 text-[11px] text-slate-400">
+                                            {t('References:', 'References:')} {entry.references.join(', ')}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
                                   {libraryEntries.length > 30 ? (
                                     <div className="text-[11px] text-slate-400">
-                                      Showing first 30 controls. Use Control Mappings for full library.
+                                      {t(
+                                        'Showing first 30 controls. Use Control Mappings for full library.',
+                                        'Showing first 30 controls. Use Control Mappings for full library.'
+                                      )}
                                     </div>
                                   ) : null}
                                 </div>
                               ) : (
                                 <div className="mt-2 text-xs text-slate-400">
-                                  No control references found for this regulation.
+                                  {t(
+                                    'No control references found for this regulation.',
+                                    'No control references found for this regulation.'
+                                  )}
                                 </div>
                               )}
                             </>
@@ -650,12 +677,12 @@ export function FrameworksPage() {
                               {raw ? (
                                 <div className="mt-2 text-[11px] text-slate-400">
                                   <div>{raw.path}</div>
-                                  <div>sha256: {raw.source_hash}</div>
+                                  <div>{t('sha256:', 'sha256:')} {raw.source_hash}</div>
                                 </div>
                               ) : null}
 
                               {isPolicyLoading ? (
-                                <div className="mt-2 text-xs text-slate-400">Loading?</div>
+                                <div className="mt-2 text-xs text-slate-400">{t('Loading?', 'Loading?')}</div>
                               ) : raw ? (
                                 <>
                                   <Textarea
@@ -681,13 +708,13 @@ export function FrameworksPage() {
                                         onClick={() => resetDraft(key, currentVariant)}
                                         disabled={!isDirty || isSaving}
                                       >
-                                        Reset
+                                        {t('Reset', 'Reset')}
                                       </button>
                                     </div>
                                   </div>
                                 </>
                               ) : (
-                                <div className="mt-2 text-xs text-slate-400">No policy content available.</div>
+                                <div className="mt-2 text-xs text-slate-400">{t('No policy content available.', 'No policy content available.')}</div>
                               )}
                             </>
                           )}
@@ -696,10 +723,10 @@ export function FrameworksPage() {
                     </div>
                   </div>
                 </div>
-              )
+              );
             })
           ) : (
-            <div className="text-sm text-slate-300">No frameworks found.</div>
+            <div className="text-sm text-slate-300">{t('No frameworks found.', 'No frameworks found.')}</div>
           )}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -713,5 +740,5 @@ export function FrameworksPage() {
         </div>
       </Card>
     </div>
-  )
+  );
 }

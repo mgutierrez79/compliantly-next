@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Application detail page.
 //
 // One scrollable view, four sections:
@@ -26,6 +25,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type AppDetail = {
   application_id: string
@@ -97,6 +98,10 @@ const TIER_TONE: Record<string, 'red' | 'amber' | 'navy' | 'gray'> = {
 }
 
 export function AttestivAppDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -157,10 +162,10 @@ export function AttestivAppDetailPage() {
     return (
       <>
         <Topbar
-          title="Application"
+          title={t('Application', 'Application')}
           left={
             <GhostButton onClick={() => router.push('/apps')}>
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
             </GhostButton>
           }
         />
@@ -168,19 +173,22 @@ export function AttestivAppDetailPage() {
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!app) {
     return (
       <>
-        <Topbar title="Application" />
+        <Topbar title={t('Application', 'Application')} />
         <div className="attestiv-content">
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <EmptyState icon="ti-apps" title="Application not found" description="The application may not be registered or you may not have access." />
+          <EmptyState icon="ti-apps" title={t('Application not found', 'Application not found')} description={t(
+            'The application may not be registered or you may not have access.',
+            'The application may not be registered or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   const tier = (app.criticality_tier ?? '').toLowerCase()
@@ -192,13 +200,13 @@ export function AttestivAppDetailPage() {
         title={app.display_name}
         left={
           <GhostButton onClick={() => router.push('/apps')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {app.criticality_tier ? <Badge tone={tierTone}>{app.criticality_tier}</Badge> : null}
-            {app.gxp_validated ? <Badge tone="navy" icon="ti-flask">GxP</Badge> : null}
+            {app.gxp_validated ? <Badge tone="navy" icon="ti-flask">{t('GxP', 'GxP')}</Badge> : null}
             <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
               <code>{app.application_id}</code>
             </span>
@@ -209,16 +217,16 @@ export function AttestivAppDetailPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
 
         <Card>
-          <CardTitle>Summary</CardTitle>
+          <CardTitle>{t('Summary', 'Summary')}</CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <Field label="Owner">{app.owner_email || '—'}</Field>
-            <Field label="Components">{String(app.component_count ?? 0)}</Field>
-            <Field label="Dependencies">{String(app.dependency_count ?? 0)}</Field>
+            <Field label={t('Owner', 'Owner')}>{app.owner_email || '—'}</Field>
+            <Field label={t('Components', 'Components')}>{String(app.component_count ?? 0)}</Field>
+            <Field label={t('Dependencies', 'Dependencies')}>{String(app.dependency_count ?? 0)}</Field>
             {app.dr_requirements?.rto_minutes !== undefined ? (
-              <Field label="RTO target">{app.dr_requirements.rto_minutes} min</Field>
+              <Field label={t('RTO target', 'RTO target')}>{app.dr_requirements.rto_minutes} min</Field>
             ) : null}
             {app.dr_requirements?.rpo_minutes !== undefined ? (
-              <Field label="RPO target">{app.dr_requirements.rpo_minutes} min</Field>
+              <Field label={t('RPO target', 'RPO target')}>{app.dr_requirements.rpo_minutes} min</Field>
             ) : null}
           </div>
           {app.description ? (
@@ -229,18 +237,21 @@ export function AttestivAppDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<Badge tone="navy">{app.components?.length ?? 0}</Badge>}>Components</CardTitle>
+          <CardTitle right={<Badge tone="navy">{app.components?.length ?? 0}</Badge>}>{t('Components', 'Components')}</CardTitle>
           {!app.components || app.components.length === 0 ? (
-            <EmptyState icon="ti-server-cog" title="No components" description="The application's component list is empty in the YAML registry." />
+            <EmptyState icon="ti-server-cog" title={t('No components', 'No components')} description={t(
+              'The application\'s component list is empty in the YAML registry.',
+              'The application\'s component list is empty in the YAML registry.'
+            )} />
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={headerRowStyle}>
                   <th style={{ padding: '6px 10px 6px 0' }}>VM</th>
-                  <th style={{ padding: '6px 10px' }}>Role</th>
-                  <th style={{ padding: '6px 10px' }}>Site</th>
-                  <th style={{ padding: '6px 10px' }}>DR site</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>Connector</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Role', 'Role')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Site', 'Site')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('DR site', 'DR site')}</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Connector', 'Connector')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,9 +279,12 @@ export function AttestivAppDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<Badge tone="navy">{app.dependencies?.length ?? 0}</Badge>}>Dependencies</CardTitle>
+          <CardTitle right={<Badge tone="navy">{app.dependencies?.length ?? 0}</Badge>}>{t('Dependencies', 'Dependencies')}</CardTitle>
           {!app.dependencies || app.dependencies.length === 0 ? (
-            <EmptyState icon="ti-link-off" title="No declared dependencies" description="The application has no upstream dependency declarations." />
+            <EmptyState icon="ti-link-off" title={t('No declared dependencies', 'No declared dependencies')} description={t(
+              'The application has no upstream dependency declarations.',
+              'The application has no upstream dependency declarations.'
+            )} />
           ) : (
             <div>
               {app.dependencies.map((d, i) => (
@@ -316,7 +330,7 @@ export function AttestivAppDetailPage() {
           )}
           {app.dependency_chain ? (
             <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 10 }}>
-              Resolved chain: <code>{app.dependency_chain}</code>
+              {t('Resolved chain:', 'Resolved chain:')} <code>{app.dependency_chain}</code>
             </div>
           ) : null}
         </Card>
@@ -331,22 +345,23 @@ export function AttestivAppDetailPage() {
               ) : null
             }
           >
-            Availability snapshot
+            {t('Availability snapshot', 'Availability snapshot')}
           </CardTitle>
           {availability?.status === 'no_data' ? (
             <EmptyState
               icon="ti-circle-dashed"
-              title="No availability data yet"
+              title={t('No availability data yet', 'No availability data yet')}
               description={availability.message || 'The platform hasn\'t computed availability for this application yet.'}
             />
           ) : !availability ? (
-            <EmptyState icon="ti-circle-dashed" title="Availability not loaded" description="The /v1/apps/{id}/availability endpoint did not respond." />
+            <EmptyState icon="ti-circle-dashed" title={t('Availability not loaded', 'Availability not loaded')} description={t(
+              'The /v1/apps/{id}/availability endpoint did not respond.',
+              'The /v1/apps/{id}/availability endpoint did not respond.'
+            )} />
           ) : (
             <div>
               <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>
-                Checked at {availability.checked_at ? availability.checked_at.slice(0, 19).replace('T', ' ') + 'Z' : '—'}.
-                Components: {availability.all_components_available ? 'all available' : 'some unavailable'} ·
-                Dependencies: {availability.all_dependencies_healthy ? 'all healthy' : 'some degraded'}
+                {t('Checked at', 'Checked at')} {availability.checked_at ? availability.checked_at.slice(0, 19).replace('T', ' ') + 'Z' : '—'}{t('.\n                Components:', '.\n                Components:')} {availability.all_components_available ? 'all available' : 'some unavailable'} {t('·\n                Dependencies:', '·\n                Dependencies:')} {availability.all_dependencies_healthy ? 'all healthy' : 'some degraded'}
               </div>
               {availability.component_results && availability.component_results.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -366,63 +381,72 @@ export function AttestivAppDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<Badge tone="navy">{ccrs.length}</Badge>}>Change-control records</CardTitle>
+          <CardTitle right={<Badge tone="navy">{ccrs.length}</Badge>}>{t('Change-control records', 'Change-control records')}</CardTitle>
           {ccrs.length === 0 ? (
-            <EmptyState icon="ti-stamp" title="No change-control records" description="CCRs link approved changes to evidence. They appear here once filed via the API or admin UI." />
+            <EmptyState icon="ti-stamp" title={t('No change-control records', 'No change-control records')} description={t(
+              'CCRs link approved changes to evidence. They appear here once filed via the API or admin UI.',
+              'CCRs link approved changes to evidence. They appear here once filed via the API or admin UI.'
+            )} />
           ) : (
             <div>
-              {ccrs.map((ccr) => (
-                <div
-                  key={ccr.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 130px 130px 100px',
-                    gap: 10,
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom: '0.5px solid var(--color-border-tertiary)',
-                    fontSize: 12,
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, marginBottom: 2 }}>
-                      {ccr.change_ref || ccr.id.slice(0, 12)}
-                      {ccr.gxp_revalidation_required ? (
-                        <Badge tone="navy" icon="ti-flask">GxP revalidation</Badge>
+              {ccrs.map(ccr => {
+                const {
+                  t
+                } = useI18n();
+
+                return (
+                  <div
+                    key={ccr.id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 130px 130px 100px',
+                      gap: 10,
+                      alignItems: 'center',
+                      padding: '8px 0',
+                      borderBottom: '0.5px solid var(--color-border-tertiary)',
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 500, marginBottom: 2 }}>
+                        {ccr.change_ref || ccr.id.slice(0, 12)}
+                        {ccr.gxp_revalidation_required ? (
+                          <Badge tone="navy" icon="ti-flask">{t('GxP revalidation', 'GxP revalidation')}</Badge>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                        {ccr.description || ccr.change_type || '—'}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                      {ccr.requested_by || '—'}
+                      {ccr.approved_by ? (
+                        <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+                          ✓ {ccr.approved_by}
+                        </div>
                       ) : null}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                      {ccr.description || ccr.change_type || '—'}
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                      {ccr.quality_approved_by ? (
+                        <Badge tone="green" icon="ti-circle-check">{ccr.quality_approved_by}</Badge>
+                      ) : ccr.gxp_revalidation_required ? (
+                        <Badge tone="amber">{t('QA pending', 'QA pending')}</Badge>
+                      ) : (
+                        '—'
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
+                      {ccr.approved_at ? ccr.approved_at.slice(0, 10) : ccr.created_at ? ccr.created_at.slice(0, 10) : '—'}
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                    {ccr.requested_by || '—'}
-                    {ccr.approved_by ? (
-                      <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                        ✓ {ccr.approved_by}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                    {ccr.quality_approved_by ? (
-                      <Badge tone="green" icon="ti-circle-check">{ccr.quality_approved_by}</Badge>
-                    ) : ccr.gxp_revalidation_required ? (
-                      <Badge tone="amber">QA pending</Badge>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
-                    {ccr.approved_at ? ccr.approved_at.slice(0, 10) : ccr.created_at ? ccr.created_at.slice(0, 10) : '—'}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

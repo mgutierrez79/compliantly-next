@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Evidence / Verify signature.
 //
 // Standalone signature verifier. The auditor — or anyone with a
@@ -27,7 +26,13 @@ import {
 } from '../components/AttestivUi'
 import { loadPublicKeys, verifyManifest, type ManifestPayload, type VerifyResult } from '../lib/verify'
 
+import { useI18n } from '../lib/i18n';
+
 export function AttestivVerifySignaturePage() {
+  const {
+    t
+  } = useI18n();
+
   const [input, setInput] = useState('')
   const [result, setResult] = useState<VerifyResult | null>(null)
   const [busy, setBusy] = useState(false)
@@ -65,22 +70,25 @@ export function AttestivVerifySignaturePage() {
   return (
     <>
       <Topbar
-        title="Verify signature"
+        title={t('Verify signature', 'Verify signature')}
         right={
           <GhostButton onClick={loadSample}>
             <i className="ti ti-file-text" aria-hidden="true" />
-            Load sample
+            {t('Load sample', 'Load sample')}
           </GhostButton>
         }
       />
       <div className="attestiv-content">
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 12 }}>
           <Card>
-            <CardTitle>Manifest JSON</CardTitle>
+            <CardTitle>{t('Manifest JSON', 'Manifest JSON')}</CardTitle>
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Paste a signed manifest here (the JSON the auditor received)…"
+              placeholder={t(
+                'Paste a signed manifest here (the JSON the auditor received)…',
+                'Paste a signed manifest here (the JSON the auditor received)…'
+              )}
               rows={18}
               style={{
                 width: '100%',
@@ -101,12 +109,12 @@ export function AttestivVerifySignaturePage() {
                 {busy ? (
                   <>
                     <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
-                    Verifying…
+                    {t('Verifying…', 'Verifying…')}
                   </>
                 ) : (
                   <>
                     <i className="ti ti-shield-check" aria-hidden="true" />
-                    Verify signature
+                    {t('Verify signature', 'Verify signature')}
                   </>
                 )}
               </PrimaryButton>
@@ -118,33 +126,42 @@ export function AttestivVerifySignaturePage() {
                 }}
                 disabled={busy}
               >
-                Clear
+                {t('Clear', 'Clear')}
               </GhostButton>
             </div>
           </Card>
 
           <div>
             <Card>
-              <CardTitle>Result</CardTitle>
+              <CardTitle>{t('Result', 'Result')}</CardTitle>
               {error ? (
-                <Banner tone="red" icon="ti-alert-triangle" title="Could not verify" detail={error} />
+                <Banner tone="red" icon="ti-alert-triangle" title={t('Could not verify', 'Could not verify')} detail={error} />
               ) : result ? (
                 <ResultPanel result={result} publicKeyCount={publicKeyCount} />
               ) : (
                 <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                  Paste a manifest and click Verify.
+                  {t('Paste a manifest and click Verify.', 'Paste a manifest and click Verify.')}
                 </div>
               )}
             </Card>
 
             <Card style={{ marginTop: 10 }}>
-              <CardTitle>How this works</CardTitle>
+              <CardTitle>{t('How this works', 'How this works')}</CardTitle>
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                 <p style={{ margin: '0 0 8px' }}>
-                  Verification runs in your browser via Web Crypto. The only network call fetches Attestiv's public keys from <code>/v1/public/keys</code> — no authentication required.
+                  {t(
+                    'Verification runs in your browser via Web Crypto. The only network call fetches Attestiv\'s public keys from',
+                    'Verification runs in your browser via Web Crypto. The only network call fetches Attestiv\'s public keys from'
+                  )} <code>/v1/public/keys</code> {t('— no authentication required.', '— no authentication required.')}
                 </p>
                 <p style={{ margin: 0 }}>
-                  A pass means the manifest was signed by the holder of the private key bound to <code>kid</code> and has not been modified since signing.
+                  {t(
+                    'A pass means the manifest was signed by the holder of the private key bound to',
+                    'A pass means the manifest was signed by the holder of the private key bound to'
+                  )} <code>kid</code> {t(
+                    'and has not been modified since signing.',
+                    'and has not been modified since signing.'
+                  )}
                 </p>
               </div>
             </Card>
@@ -152,10 +169,14 @@ export function AttestivVerifySignaturePage() {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function ResultPanel({ result, publicKeyCount }: { result: VerifyResult; publicKeyCount: number | null }) {
+  const {
+    t
+  } = useI18n();
+
   const verified = result.status === 'valid'
   const tone: 'green' | 'red' | 'amber' =
     result.status === 'valid' ? 'green' : result.status === 'invalid' ? 'red' : 'amber'
@@ -181,16 +202,19 @@ function ResultPanel({ result, publicKeyCount }: { result: VerifyResult; publicK
         </div>
       ) : null}
       <div style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: 'var(--color-text-tertiary)' }}>Algorithm</span>
+        <span style={{ color: 'var(--color-text-tertiary)' }}>{t('Algorithm', 'Algorithm')}</span>
         <Badge tone="navy">ed25519</Badge>
       </div>
       {publicKeyCount !== null ? (
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-          {publicKeyCount} public key{publicKeyCount === 1 ? '' : 's'} loaded from /v1/public/keys (active + retired).
+          {publicKeyCount} {t('public key', 'public key')}{publicKeyCount === 1 ? '' : 's'} {t(
+            'loaded from /v1/public/keys (active + retired).',
+            'loaded from /v1/public/keys (active + retired).'
+          )}
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 function Banner({

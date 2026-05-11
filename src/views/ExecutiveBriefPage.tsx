@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Card, ErrorBox, Label, PageTitle } from '../components/Ui'
 import { MarkdownView } from '../components/MarkdownView'
+
+import { useI18n } from '../lib/i18n';
 
 type MarkdownViewResponse = {
   run_id: string
@@ -18,6 +19,10 @@ const languageOptions = [
 ]
 
 export function ExecutiveBriefPage() {
+  const {
+    t
+  } = useI18n();
+
   const [language, setLanguage] = useState('en')
   const [data, setData] = useState<MarkdownViewResponse | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
@@ -52,16 +57,14 @@ export function ExecutiveBriefPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageTitle>Executive Brief</PageTitle>
+        <PageTitle>{t('Executive Brief', 'Executive Brief')}</PageTitle>
         <div className="text-xs text-slate-400">{data?.run_id ? `Run ${data.run_id}` : ''}</div>
       </div>
-
-      {error ? <ErrorBox title="Executive brief error" detail={error.message} /> : null}
-
+      {error ? <ErrorBox title={t('Executive brief error', 'Executive brief error')} detail={error.message} /> : null}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Label>Language</Label>
+            <Label>{t('Language', 'Language')}</Label>
             <select
               value={language}
               onChange={(event) => setLanguage(event.target.value)}
@@ -77,16 +80,15 @@ export function ExecutiveBriefPage() {
           <div className="text-xs text-slate-400">{data?.path ? `Source: ${data.path}` : ''}</div>
         </div>
       </Card>
-
       <Card>
         {loading ? (
-          <div className="text-sm text-slate-300">Loading executive brief…</div>
+          <div className="text-sm text-slate-300">{t('Loading executive brief…', 'Loading executive brief…')}</div>
         ) : data?.content ? (
           <MarkdownView content={data.content} />
         ) : (
-          <div className="text-sm text-slate-300">No executive brief available.</div>
+          <div className="text-sm text-slate-300">{t('No executive brief available.', 'No executive brief available.')}</div>
         )}
       </Card>
     </div>
-  )
+  );
 }

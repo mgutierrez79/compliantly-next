@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Scoring calculator — 4 tabs.
 //
 // Tab 1: Evidence taxonomy table
@@ -34,9 +33,15 @@ import {
   type ControlResult,
 } from '../lib/scoring'
 
+import { useI18n } from '../lib/i18n';
+
 type Tab = 'taxonomy' | 'mapping' | 'algorithm' | 'calculator'
 
 export function AttestivScoringCalculatorPage() {
+  const {
+    t
+  } = useI18n();
+
   const [tab, setTab] = useState<Tab>('algorithm')
   const [frameworks, setFrameworks] = useState<FrameworkSummary[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +79,7 @@ export function AttestivScoringCalculatorPage() {
   return (
     <>
       <Topbar
-        title="Scoring calculator"
+        title={t('Scoring calculator', 'Scoring calculator')}
         right={
           <PrimaryButton onClick={reEvaluate} disabled={evaluating}>
             <i className={`ti ${evaluating ? 'ti-loader-2' : 'ti-calculator'}`} aria-hidden="true" />
@@ -139,7 +144,7 @@ export function AttestivScoringCalculatorPage() {
         {tab === 'calculator' ? <CalculatorTab frameworks={frameworks} /> : null}
       </div>
     </>
-  )
+  );
 }
 
 // ─── Tab 1 ─────────────────────────────────────────────────────────
@@ -156,15 +161,26 @@ const TAXONOMY_HINT = [
 ]
 
 function TaxonomyTab() {
+  const {
+    t
+  } = useI18n();
+
   return (
     <Card>
-      <CardTitle right={<Badge tone="navy">{TAXONOMY_HINT.length} of 41 types shown</Badge>}>
-        Evidence taxonomy
+      <CardTitle right={<Badge tone="navy">{TAXONOMY_HINT.length} {t('of 41 types shown', 'of 41 types shown')}</Badge>}>
+        {t('Evidence taxonomy', 'Evidence taxonomy')}
       </CardTitle>
       <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
-        Each evidence type carries one or more <strong>tags</strong>. Controls reference tags, not raw type names — that's how
-        one signed record (a single <code>dr_test_result</code>) can satisfy DORA Art. 12, ISO 27001 A.17.1, and SOC 2 A1.2 at once.
-        The full 41-type taxonomy lives in <code>policies/evidence_taxonomy.yaml</code> and is loaded at boot.
+        {t(
+          'Each evidence type carries one or more',
+          'Each evidence type carries one or more'
+        )} <strong>tags</strong>{t(
+          '. Controls reference tags, not raw type names — that\'s how\n        one signed record (a single',
+          '. Controls reference tags, not raw type names — that\'s how\n        one signed record (a single'
+        )} <code>dr_test_result</code>{t(
+          ') can satisfy DORA Art. 12, ISO 27001 A.17.1, and SOC 2 A1.2 at once.\n        The full 41-type taxonomy lives in',
+          ') can satisfy DORA Art. 12, ISO 27001 A.17.1, and SOC 2 A1.2 at once.\n        The full 41-type taxonomy lives in'
+        )} <code>{t('policies/evidence_taxonomy.yaml', 'policies/evidence_taxonomy.yaml')}</code> {t('and is loaded at boot.', 'and is loaded at boot.')}
       </div>
       <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
         <thead>
@@ -177,10 +193,10 @@ function TaxonomyTab() {
               textAlign: 'left',
             }}
           >
-            <th style={{ padding: '6px 10px 6px 0' }}>Tag</th>
-            <th style={{ padding: '6px 10px' }}>Description</th>
-            <th style={{ padding: '6px 10px' }}>Delivery</th>
-            <th style={{ padding: '6px 0 6px 10px' }}>Frameworks</th>
+            <th style={{ padding: '6px 10px 6px 0' }}>{t('Tag', 'Tag')}</th>
+            <th style={{ padding: '6px 10px' }}>{t('Description', 'Description')}</th>
+            <th style={{ padding: '6px 10px' }}>{t('Delivery', 'Delivery')}</th>
+            <th style={{ padding: '6px 0 6px 10px' }}>{t('Frameworks', 'Frameworks')}</th>
           </tr>
         </thead>
         <tbody>
@@ -209,12 +225,16 @@ function TaxonomyTab() {
         </tbody>
       </table>
     </Card>
-  )
+  );
 }
 
 // ─── Tab 2 ─────────────────────────────────────────────────────────
 
 function MappingTab({ frameworks }: { frameworks: FrameworkSummary[] }) {
+  const {
+    t
+  } = useI18n();
+
   const [selected, setSelected] = useState<string>('')
   const [framework, setFramework] = useState<FrameworkSummary | null>(null)
   const [busy, setBusy] = useState(false)
@@ -270,10 +290,10 @@ function MappingTab({ frameworks }: { frameworks: FrameworkSummary[] }) {
           </select>
         }
       >
-        Control mapping
+        {t('Control mapping', 'Control mapping')}
       </CardTitle>
       {error ? <Banner tone="error">{error}</Banner> : null}
-      {busy ? <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div> : null}
+      {busy ? <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div> : null}
       {framework && framework.control_results && framework.control_results.length > 0 ? (
         <div>
           {framework.control_results.map((control) => (
@@ -282,32 +302,50 @@ function MappingTab({ frameworks }: { frameworks: FrameworkSummary[] }) {
         </div>
       ) : framework ? (
         <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-          {framework.framework_name ?? framework.framework_id} has no scored results yet — click{' '}
-          <strong>Re-evaluate now</strong> at the top of the page to run the engine.
+          {framework.framework_name ?? framework.framework_id} {t('has no scored results yet — click', 'has no scored results yet — click')}{' '}
+          <strong>{t('Re-evaluate now', 'Re-evaluate now')}</strong> {t(
+            'at the top of the page to run the engine.',
+            'at the top of the page to run the engine.'
+          )}
         </div>
       ) : null}
     </Card>
-  )
+  );
 }
 
 // ─── Tab 3 ─────────────────────────────────────────────────────────
 
 function AlgorithmTab() {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12 }}>
       <Card>
-        <CardTitle>Five sub-scores per requirement</CardTitle>
+        <CardTitle>{t('Five sub-scores per requirement', 'Five sub-scores per requirement')}</CardTitle>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
-          <li><strong>Presence</strong> — 1.0 if any matching evidence exists, 0.0 otherwise. Hard multiplier on the rest.</li>
-          <li><strong>Freshness</strong> — 1.0 inside the window. Linear decay after, hitting 0 at 2× the window.</li>
-          <li><strong>Frequency</strong> — count of records in window / required count, capped at 1.0.</li>
-          <li><strong>Threshold</strong> — 1.0 if a numeric field meets the operator (lte/gte/eq); 0.0 otherwise.</li>
-          <li><strong>Field match</strong> — 1.0 if every key in <code>field_match</code> matches at least one record.</li>
+          <li><strong>{t('Presence', 'Presence')}</strong> {t(
+              '— 1.0 if any matching evidence exists, 0.0 otherwise. Hard multiplier on the rest.',
+              '— 1.0 if any matching evidence exists, 0.0 otherwise. Hard multiplier on the rest.'
+            )}</li>
+          <li><strong>{t('Freshness', 'Freshness')}</strong> {t(
+              '— 1.0 inside the window. Linear decay after, hitting 0 at 2× the window.',
+              '— 1.0 inside the window. Linear decay after, hitting 0 at 2× the window.'
+            )}</li>
+          <li><strong>{t('Frequency', 'Frequency')}</strong> {t(
+              '— count of records in window / required count, capped at 1.0.',
+              '— count of records in window / required count, capped at 1.0.'
+            )}</li>
+          <li><strong>{t('Threshold', 'Threshold')}</strong> {t(
+              '— 1.0 if a numeric field meets the operator (lte/gte/eq); 0.0 otherwise.',
+              '— 1.0 if a numeric field meets the operator (lte/gte/eq); 0.0 otherwise.'
+            )}</li>
+          <li><strong>{t('Field match', 'Field match')}</strong> {t('— 1.0 if every key in', '— 1.0 if every key in')} <code>field_match</code> {t('matches at least one record.', 'matches at least one record.')}</li>
         </ul>
       </Card>
-
       <Card>
-        <CardTitle>Combination weights</CardTitle>
+        <CardTitle>{t('Combination weights', 'Combination weights')}</CardTitle>
         <pre
           style={{
             fontSize: 11,
@@ -327,55 +365,64 @@ function AlgorithmTab() {
 )`}
         </pre>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 8 }}>
-          Freshness + frequency dominate because stale or sporadic evidence is the most common failure mode. Threshold + field
-          match are pass/fail axes; their lower weight reflects that "the evidence is here and current" matters more than the
-          binary check passing for a one-shot record.
+          {t(
+            'Freshness + frequency dominate because stale or sporadic evidence is the most common failure mode. Threshold + field\n          match are pass/fail axes; their lower weight reflects that "the evidence is here and current" matters more than the\n          binary check passing for a one-shot record.',
+            'Freshness + frequency dominate because stale or sporadic evidence is the most common failure mode. Threshold + field\n          match are pass/fail axes; their lower weight reflects that "the evidence is here and current" matters more than the\n          binary check passing for a one-shot record.'
+          )}
         </div>
       </Card>
-
       <Card>
-        <CardTitle>Gate semantics</CardTitle>
+        <CardTitle>{t('Gate semantics', 'Gate semantics')}</CardTitle>
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
           <p style={{ margin: '0 0 8px' }}>
-            A requirement marked <Badge tone="navy">gate</Badge> in the YAML is binary at the control level: any gate failure
-            collapses the whole control to <Badge tone="red">FAIL</Badge> with score 0.
+            {t('A requirement marked', 'A requirement marked')} <Badge tone="navy">gate</Badge> {t(
+              'in the YAML is binary at the control level: any gate failure\n            collapses the whole control to',
+              'in the YAML is binary at the control level: any gate failure\n            collapses the whole control to'
+            )} <Badge tone="red">FAIL</Badge> {t('with score 0.', 'with score 0.')}
           </p>
           <p style={{ margin: 0 }}>
-            That's why "MFA enforced for all users" can never be "mostly passing." Either the threshold says 100% and the
-            evidence agrees, or the control fails — the framework engine doesn't average gate failures away.
+            {t(
+              'That\'s why "MFA enforced for all users" can never be "mostly passing." Either the threshold says 100% and the\n            evidence agrees, or the control fails — the framework engine doesn\'t average gate failures away.',
+              'That\'s why "MFA enforced for all users" can never be "mostly passing." Either the threshold says 100% and the\n            evidence agrees, or the control fails — the framework engine doesn\'t average gate failures away.'
+            )}
           </p>
         </div>
       </Card>
-
       <Card>
-        <CardTitle>Status thresholds</CardTitle>
+        <CardTitle>{t('Status thresholds', 'Status thresholds')}</CardTitle>
         <table style={{ width: '100%', fontSize: 12 }}>
           <tbody>
             <tr>
               <td style={{ padding: '6px 0' }}><Badge tone="green">PASS</Badge></td>
-              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>score ≥ 0.95</td>
+              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>{t('score ≥ 0.95', 'score ≥ 0.95')}</td>
             </tr>
             <tr>
               <td style={{ padding: '6px 0' }}><Badge tone="amber">REVIEW</Badge></td>
-              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>0.70 ≤ score &lt; 0.95</td>
+              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>{t('0.70 ≤ score < 0.95', '0.70 ≤ score < 0.95')}</td>
             </tr>
             <tr>
               <td style={{ padding: '6px 0' }}><Badge tone="amber">WARN</Badge></td>
-              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>0.40 ≤ score &lt; 0.70</td>
+              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>{t('0.40 ≤ score < 0.70', '0.40 ≤ score < 0.70')}</td>
             </tr>
             <tr>
               <td style={{ padding: '6px 0' }}><Badge tone="red">FAIL</Badge></td>
-              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>score &lt; 0.40 OR any gate failure</td>
+              <td style={{ padding: '6px 0', color: 'var(--color-text-secondary)' }}>{t('score < 0.40 OR any gate failure', 'score < 0.40 OR any gate failure')}</td>
             </tr>
           </tbody>
         </table>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 8 }}>
-          Boundaries map up — a 0.95 is PASS, not REVIEW. Per-framework thresholds can override these defaults via
-          <code> scoring_thresholds</code> in the framework YAML; today every framework uses the defaults.
+          {t(
+            'Boundaries map up — a 0.95 is PASS, not REVIEW. Per-framework thresholds can override these defaults via',
+            'Boundaries map up — a 0.95 is PASS, not REVIEW. Per-framework thresholds can override these defaults via'
+          )}
+          <code> scoring_thresholds</code> {t(
+            'in the framework YAML; today every framework uses the defaults.',
+            'in the framework YAML; today every framework uses the defaults.'
+          )}
         </div>
       </Card>
     </div>
-  )
+  );
 }
 
 // ─── Tab 4 ─────────────────────────────────────────────────────────
@@ -389,6 +436,10 @@ const DEFAULT_AREAS = [
 ]
 
 function CalculatorTab({ frameworks }: { frameworks: FrameworkSummary[] }) {
+  const {
+    t
+  } = useI18n();
+
   const [areas, setAreas] = useState(DEFAULT_AREAS)
   const [pickedFramework, setPickedFramework] = useState<string>('')
 
@@ -416,38 +467,46 @@ function CalculatorTab({ frameworks }: { frameworks: FrameworkSummary[] }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 320px', gap: 12 }}>
       <Card>
         <CardTitle right={<Badge tone={statusTone(status)}>{status}</Badge>}>
-          Live calculator
+          {t('Live calculator', 'Live calculator')}
         </CardTitle>
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-          Slide each area's aggregate score to see how it moves the framework rollup. Weights mirror the YAML
-          (critical = 3, high = 2, medium = 1, low = 0.5).
+          {t(
+            'Slide each area\'s aggregate score to see how it moves the framework rollup. Weights mirror the YAML\n          (critical = 3, high = 2, medium = 1, low = 0.5).',
+            'Slide each area\'s aggregate score to see how it moves the framework rollup. Weights mirror the YAML\n          (critical = 3, high = 2, medium = 1, low = 0.5).'
+          )}
         </div>
-        {areas.map((area, index) => (
-          <div key={area.name} style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-              <span style={{ fontWeight: 500 }}>
-                {area.name} <span style={{ color: 'var(--color-text-tertiary)' }}>· weight {area.weight}</span>
-              </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{area.score}%</span>
+        {areas.map((area, index) => {
+          const {
+            t
+          } = useI18n();
+
+          return (
+            <div key={area.name} style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                <span style={{ fontWeight: 500 }}>
+                  {area.name} <span style={{ color: 'var(--color-text-tertiary)' }}>{t('· weight', '· weight')} {area.weight}</span>
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{area.score}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={area.score}
+                onChange={(event) => {
+                  const next = [...areas]
+                  next[index] = { ...next[index], score: Number(event.target.value) }
+                  setAreas(next)
+                }}
+                style={{ width: '100%' }}
+              />
             </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={area.score}
-              onChange={(event) => {
-                const next = [...areas]
-                next[index] = { ...next[index], score: Number(event.target.value) }
-                setAreas(next)
-              }}
-              style={{ width: '100%' }}
-            />
-          </div>
-        ))}
+          );
+        })}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
           <GhostButton onClick={() => setAreas(DEFAULT_AREAS)}>
             <i className="ti ti-rotate" aria-hidden="true" />
-            Reset
+            {t('Reset', 'Reset')}
           </GhostButton>
           <div>
             <select
@@ -469,14 +528,13 @@ function CalculatorTab({ frameworks }: { frameworks: FrameworkSummary[] }) {
                 </option>
               ))}
             </select>
-            <GhostButton onClick={loadRealData}>Use real data</GhostButton>
+            <GhostButton onClick={loadRealData}>{t('Use real data', 'Use real data')}</GhostButton>
           </div>
         </div>
       </Card>
-
       <div>
         <Card>
-          <CardTitle>Result</CardTitle>
+          <CardTitle>{t('Result', 'Result')}</CardTitle>
           <div
             style={{
               fontSize: 36,
@@ -511,13 +569,15 @@ total_weight = ${areas.reduce((acc, a) => acc + a.weight, 0)}
 score = ${live.toFixed(1)}%`}
           </pre>
           <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 8 }}>
-            This calculator simulates the framework rollup math — it does NOT mutate live tenant data. Hit Re-evaluate now
-            in the topbar to score against actual evidence.
+            {t(
+              'This calculator simulates the framework rollup math — it does NOT mutate live tenant data. Hit Re-evaluate now\n            in the topbar to score against actual evidence.',
+              'This calculator simulates the framework rollup math — it does NOT mutate live tenant data. Hit Re-evaluate now\n            in the topbar to score against actual evidence.'
+            )}
           </div>
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 function computeWeighted(areas: typeof DEFAULT_AREAS): number {

@@ -1,10 +1,11 @@
-'use client'
-
+'use client';
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import brandLogo from '../assets/brand-logo.png.png'
 import { defaultSettings, loadSettings } from '../lib/settings'
 import { Button, Card, ErrorBox } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type TrustCenterFramework = {
   key: string
@@ -42,6 +43,10 @@ function joinUrl(base: string, path: string) {
 }
 
 export function TrustCenterPage() {
+  const {
+    t
+  } = useI18n();
+
   const [data, setData] = useState<TrustCenterResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -118,40 +123,48 @@ export function TrustCenterPage() {
         <div className="flex items-center gap-3">
           <Image src={brandLogo} alt="Attestiv" className="h-10 w-auto" priority />
           <div>
-            <div className="text-lg font-semibold">Attestiv</div>
-            <div className="text-xs uppercase tracking-wide text-slate-300">Trust Center</div>
+            <div className="text-lg font-semibold">{t('Attestiv', 'Attestiv')}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-300">{t('Trust Center', 'Trust Center')}</div>
           </div>
         </div>
         <Button onClick={() => void loadData()} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </header>
-
       <main className="mx-auto max-w-5xl space-y-6 px-6 pb-12">
         <section className="rounded-2xl border border-[#1f365a] bg-[#0f1f36]/90 p-6 shadow-lg shadow-black/30">
-          <h1 className="text-2xl font-semibold">Compliance frameworks supported</h1>
+          <h1 className="text-2xl font-semibold">{t('Compliance frameworks supported', 'Compliance frameworks supported')}</h1>
           <p className="mt-2 text-sm text-slate-300">
-            Overview of the frameworks currently supported by Compliantly for this tenant.
+            {t(
+              'Overview of the frameworks currently supported by Compliantly for this tenant.',
+              'Overview of the frameworks currently supported by Compliantly for this tenant.'
+            )}
           </p>
         </section>
 
-        {error ? <ErrorBox title="Trust center error" detail={error} /> : null}
+        {error ? <ErrorBox title={t('Trust center error', 'Trust center error')} detail={error} /> : null}
 
         <section className="grid gap-4 md:grid-cols-2">
-          {(data?.frameworks || []).map((framework) => (
-            <Card key={framework.key}>
-              <div className="text-sm font-semibold">{framework.name}</div>
-              <div className="mt-1 text-xs text-slate-400">Key: {framework.key}</div>
-              <div className="mt-2 text-sm text-slate-200">Version: {framework.version}</div>
-            </Card>
-          ))}
+          {(data?.frameworks || []).map(framework => {
+            const {
+              t
+            } = useI18n();
+
+            return (
+              <Card key={framework.key}>
+                <div className="text-sm font-semibold">{framework.name}</div>
+                <div className="mt-1 text-xs text-slate-400">{t('Key:', 'Key:')} {framework.key}</div>
+                <div className="mt-2 text-sm text-slate-200">{t('Version:', 'Version:')} {framework.version}</div>
+              </Card>
+            );
+          })}
           {!loading && data?.frameworks?.length === 0 ? (
-            <div className="text-sm text-slate-400">No frameworks published yet.</div>
+            <div className="text-sm text-slate-400">{t('No frameworks published yet.', 'No frameworks published yet.')}</div>
           ) : null}
         </section>
 
         <section className="rounded-2xl border border-[#1f365a] bg-[#0f1f36]/90 p-6 shadow-lg shadow-black/30">
-          <h2 className="text-xl font-semibold">Latest report</h2>
+          <h2 className="text-xl font-semibold">{t('Latest report', 'Latest report')}</h2>
           <div className="mt-2 text-sm text-slate-300">
             {data?.latest_report?.run_id
               ? `Run: ${data.latest_report.run_id} · ${data.latest_report.timestamp || 'n/a'}`
@@ -163,7 +176,7 @@ export function TrustCenterPage() {
                 href={pdfUrl}
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100 hover:bg-[#132a4a]"
               >
-                Download PDF
+                {t('Download PDF', 'Download PDF')}
               </a>
             ) : null}
             {mdUrl ? (
@@ -171,17 +184,20 @@ export function TrustCenterPage() {
                 href={mdUrl}
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100 hover:bg-[#132a4a]"
               >
-                Download Markdown
+                {t('Download Markdown', 'Download Markdown')}
               </a>
             ) : null}
-            {!pdfUrl && !mdUrl ? <div className="text-sm text-slate-400">No report available.</div> : null}
+            {!pdfUrl && !mdUrl ? <div className="text-sm text-slate-400">{t('No report available.', 'No report available.')}</div> : null}
           </div>
         </section>
 
         <section className="rounded-2xl border border-[#1f365a] bg-[#0f1f36]/90 p-6 shadow-lg shadow-black/30">
-          <h2 className="text-xl font-semibold">Verify report signature</h2>
+          <h2 className="text-xl font-semibold">{t('Verify report signature', 'Verify report signature')}</h2>
           <p className="mt-2 text-sm text-slate-300">
-            Confirm the run manifest signature for the published report.
+            {t(
+              'Confirm the run manifest signature for the published report.',
+              'Confirm the run manifest signature for the published report.'
+            )}
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
             <input
@@ -194,10 +210,10 @@ export function TrustCenterPage() {
               {verifying ? 'Verifying...' : 'Verify'}
             </Button>
           </div>
-          {verifyError ? <ErrorBox title="Verification error" detail={verifyError} /> : null}
-          <div className="mt-3 text-sm text-slate-200">Status: {verificationLabel()}</div>
+          {verifyError ? <ErrorBox title={t('Verification error', 'Verification error')} detail={verifyError} /> : null}
+          <div className="mt-3 text-sm text-slate-200">{t('Status:', 'Status:')} {verificationLabel()}</div>
         </section>
       </main>
     </div>
-  )
+  );
 }

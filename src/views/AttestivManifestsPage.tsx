@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Audit / Manifests browser.
 //
 // Lists every signed compliance manifest the tenant has produced.
@@ -23,6 +22,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type ManifestRow = {
   run_id: string
@@ -69,6 +70,10 @@ const DEMO: ManifestRow[] = [
 ]
 
 export function AttestivManifestsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [rows, setRows] = useState<ManifestRow[]>([])
   const [loading, setLoading] = useState(true)
   const [usingDemo, setUsingDemo] = useState(false)
@@ -122,16 +127,16 @@ export function AttestivManifestsPage() {
   return (
     <>
       <Topbar
-        title="Signed manifests"
-        left={usingDemo ? <Badge tone="amber">Demo data — no signed runs yet</Badge> : null}
+        title={t('Signed manifests', 'Signed manifests')}
+        left={usingDemo ? <Badge tone="amber">{t('Demo data — no signed runs yet', 'Demo data — no signed runs yet')}</Badge> : null}
         right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{rows.length} manifests</span>}
       />
       <div className="attestiv-content">
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 12 }}>
           <Card>
-            <CardTitle>Recent runs</CardTitle>
+            <CardTitle>{t('Recent runs', 'Recent runs')}</CardTitle>
             {loading ? (
-              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
             ) : (
               <div>
                 {rows.map((row) => (
@@ -177,42 +182,46 @@ export function AttestivManifestsPage() {
 
           <div>
             <Card>
-              <CardTitle>Manifest detail</CardTitle>
+              <CardTitle>{t('Manifest detail', 'Manifest detail')}</CardTitle>
               {selected ? (
                 <ManifestDetail row={selected} />
               ) : (
-                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Select a manifest.</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Select a manifest.', 'Select a manifest.')}</div>
               )}
             </Card>
           </div>
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function ManifestDetail({ row }: { row: ManifestRow }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-      <KV label="Run" value={row.run_id} mono />
-      <KV label="Signed at" value={formatTimestamp(row.timestamp)} mono />
-      {row.risk_score !== undefined ? <KV label="Risk score" value={String(row.risk_score)} /> : null}
-      {row.evidence_count !== undefined ? <KV label="Evidence count" value={String(row.evidence_count)} /> : null}
-      {row.frameworks ? <KV label="Frameworks" value={row.frameworks.join(', ')} /> : null}
-      {row.signature ? <SignatureBox label="Signature" value={row.signature} /> : null}
-      {row.manifest_path ? <SignatureBox label="Path" value={row.manifest_path} mono={false} /> : null}
+      <KV label={t('Run', 'Run')} value={row.run_id} mono />
+      <KV label={t('Signed at', 'Signed at')} value={formatTimestamp(row.timestamp)} mono />
+      {row.risk_score !== undefined ? <KV label={t('Risk score', 'Risk score')} value={String(row.risk_score)} /> : null}
+      {row.evidence_count !== undefined ? <KV label={t('Evidence count', 'Evidence count')} value={String(row.evidence_count)} /> : null}
+      {row.frameworks ? <KV label={t('Frameworks', 'Frameworks')} value={row.frameworks.join(', ')} /> : null}
+      {row.signature ? <SignatureBox label={t('Signature', 'Signature')} value={row.signature} /> : null}
+      {row.manifest_path ? <SignatureBox label={t('Path', 'Path')} value={row.manifest_path} mono={false} /> : null}
       <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
         <PrimaryButton onClick={() => undefined}>
           <i className="ti ti-file-download" aria-hidden="true" />
-          Download manifest
+          {t('Download manifest', 'Download manifest')}
         </PrimaryButton>
         <GhostButton onClick={() => undefined}>
           <i className="ti ti-key" aria-hidden="true" />
-          Public key
+          {t('Public key', 'Public key')}
         </GhostButton>
       </div>
     </div>
-  )
+  );
 }
 
 function KV({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {

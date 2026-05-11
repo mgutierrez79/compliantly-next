@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Exception detail page — single record + manual resolve.
 //
 // Three blocks:
@@ -24,6 +23,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Exception = {
   id: string
@@ -63,6 +64,10 @@ const SEVERITY_TONE: Record<string, 'amber' | 'red' | 'gray' | 'navy'> = {
 }
 
 export function AttestivExceptionDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -139,10 +144,10 @@ export function AttestivExceptionDetailPage() {
     return (
       <>
         <Topbar
-          title="Exception"
+          title={t('Exception', 'Exception')}
           left={
             <GhostButton onClick={() => router.push('/exceptions')}>
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
             </GhostButton>
           }
         />
@@ -150,18 +155,21 @@ export function AttestivExceptionDetailPage() {
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!exception) {
     return (
       <>
-        <Topbar title="Exception" />
+        <Topbar title={t('Exception', 'Exception')} />
         <div className="attestiv-content">
-          <EmptyState icon="ti-shield-half-filled" title="Exception not found" description="The exception may have been deleted or you may not have access." />
+          <EmptyState icon="ti-shield-half-filled" title={t('Exception not found', 'Exception not found')} description={t(
+            'The exception may have been deleted or you may not have access.',
+            'The exception may have been deleted or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   const status = (exception.status || 'active').toLowerCase()
@@ -175,7 +183,7 @@ export function AttestivExceptionDetailPage() {
         title={exception.title || 'Exception'}
         left={
           <GhostButton onClick={() => router.push('/exceptions')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
@@ -188,22 +196,24 @@ export function AttestivExceptionDetailPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {status === 'active' && expiryDays !== null && expiryDays <= 14 ? (
           <Banner tone="warning" title={expiryDays < 0 ? 'Past expiry' : `Expires in ${expiryDays} day${expiryDays === 1 ? '' : 's'}`}>
-            Once expired, the suppression stops applying — the underlying control will fail again
-            on the next evaluation tick.
+            {t(
+              'Once expired, the suppression stops applying — the underlying control will fail again\n            on the next evaluation tick.',
+              'Once expired, the suppression stops applying — the underlying control will fail again\n            on the next evaluation tick.'
+            )}
           </Banner>
         ) : null}
 
         <Card>
-          <CardTitle right={<Badge tone={statusTone}>{status}</Badge>}>Summary</CardTitle>
+          <CardTitle right={<Badge tone={statusTone}>{status}</Badge>}>{t('Summary', 'Summary')}</CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <Field label="Control">
+            <Field label={t('Control', 'Control')}>
               <code>{exception.framework_id}/{exception.control_id}</code>
               {exception.control_name ? <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{exception.control_name}</div> : null}
             </Field>
-            <Field label="Severity">
+            <Field label={t('Severity', 'Severity')}>
               <Badge tone={sevTone}>{severity}</Badge>
             </Field>
-            <Field label="Accepted by">
+            <Field label={t('Accepted by', 'Accepted by')}>
               {exception.accepted_by_user_id || '—'}
               {exception.accepted_at ? (
                 <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -211,7 +221,7 @@ export function AttestivExceptionDetailPage() {
                 </div>
               ) : null}
             </Field>
-            <Field label="Detection">
+            <Field label={t('Detection', 'Detection')}>
               {exception.detection_method || 'manual'}
               {exception.detected_at ? (
                 <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -219,7 +229,7 @@ export function AttestivExceptionDetailPage() {
                 </div>
               ) : null}
             </Field>
-            <Field label="Expires">
+            <Field label={t('Expires', 'Expires')}>
               {exception.expires_at ? exception.expires_at.slice(0, 10) : '—'}
               {expiryDays !== null ? (
                 <div style={{ fontSize: 11, color: expiryDays < 0 ? 'var(--color-status-red-mid)' : 'var(--color-text-tertiary)' }}>
@@ -228,7 +238,7 @@ export function AttestivExceptionDetailPage() {
               ) : null}
             </Field>
             {exception.resolved_at ? (
-              <Field label="Resolved">
+              <Field label={t('Resolved', 'Resolved')}>
                 {exception.resolved_at.slice(0, 10)}
                 {exception.resolution_notes ? (
                   <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -246,7 +256,10 @@ export function AttestivExceptionDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Justification & mitigating controls</CardTitle>
+          <CardTitle>{t(
+            'Justification & mitigating controls',
+            'Justification & mitigating controls'
+          )}</CardTitle>
           <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0, whiteSpace: 'pre-wrap' }}>
             {exception.acceptance_justification || '(none recorded)'}
           </p>
@@ -261,13 +274,14 @@ export function AttestivExceptionDetailPage() {
 
         {status === 'active' ? (
           <Card style={{ marginTop: 12 }}>
-            <CardTitle>Resolve manually</CardTitle>
+            <CardTitle>{t('Resolve manually', 'Resolve manually')}</CardTitle>
             <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0 }}>
-              If the underlying control passes (or you've decided to remove the acceptance), record
-              the resolution. Auto-resolution happens whenever the control transitions back to PASS
-              on its own.
+              {t(
+                'If the underlying control passes (or you\'ve decided to remove the acceptance), record\n              the resolution. Auto-resolution happens whenever the control transitions back to PASS\n              on its own.',
+                'If the underlying control passes (or you\'ve decided to remove the acceptance), record\n              the resolution. Auto-resolution happens whenever the control transitions back to PASS\n              on its own.'
+              )}
             </p>
-            <FormRow label="Resolution notes">
+            <FormRow label={t('Resolution notes', 'Resolution notes')}>
               <textarea
                 value={resolveNotes}
                 onChange={(e) => setResolveNotes(e.target.value)}
@@ -275,7 +289,10 @@ export function AttestivExceptionDetailPage() {
                 style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
               />
             </FormRow>
-            <FormRow label="Resolution evidence IDs (one per line)">
+            <FormRow label={t(
+              'Resolution evidence IDs (one per line)',
+              'Resolution evidence IDs (one per line)'
+            )}>
               <textarea
                 value={resolveEvidence}
                 onChange={(e) => setResolveEvidence(e.target.value)}
@@ -293,7 +310,7 @@ export function AttestivExceptionDetailPage() {
         ) : null}
       </div>
     </>
-  )
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

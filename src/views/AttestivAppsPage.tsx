@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Application registry page.
 //
 // One row per registered application — its display name, owner, the
@@ -20,6 +19,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type AppSummary = {
   application_id: string
@@ -45,6 +46,10 @@ const TIER_TONE: Record<string, 'red' | 'amber' | 'navy' | 'gray'> = {
 }
 
 export function AttestivAppsPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [apps, setApps] = useState<AppSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -101,7 +106,7 @@ export function AttestivAppsPage() {
   return (
     <>
       <Topbar
-        title="Applications"
+        title={t('Applications', 'Applications')}
         left={<Badge tone="navy">{apps.length} registered</Badge>}
         right={
           <FilterBar value={filter} onChange={setFilter} />
@@ -117,22 +122,25 @@ export function AttestivAppsPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Total" value={summary.total} icon="ti-apps" tone="navy" />
-          <SummaryCard label="Tier 1" value={summary.tier1} icon="ti-flame" tone="red" />
-          <SummaryCard label="GxP-validated" value={summary.gxp} icon="ti-flask" tone="navy" />
+          <SummaryCard label={t('Total', 'Total')} value={summary.total} icon="ti-apps" tone="navy" />
+          <SummaryCard label={t('Tier 1', 'Tier 1')} value={summary.tier1} icon="ti-flame" tone="red" />
+          <SummaryCard label={t('GxP-validated', 'GxP-validated')} value={summary.gxp} icon="ti-flask" tone="navy" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} shown</span>}>
-            Application registry
+            {t('Application registry', 'Application registry')}
           </CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : filtered.length === 0 ? (
             <EmptyState
               icon="ti-apps"
-              title="No applications"
-              description="Applications are configured via YAML in the policies/applications/ directory. Once registered they show up here for browsing + cascade analysis."
+              title={t('No applications', 'No applications')}
+              description={t(
+                'Applications are configured via YAML in the policies/applications/ directory. Once registered they show up here for browsing + cascade analysis.',
+                'Applications are configured via YAML in the policies/applications/ directory. Once registered they show up here for browsing + cascade analysis.'
+              )}
             />
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -146,16 +154,20 @@ export function AttestivAppsPage() {
                     textAlign: 'left',
                   }}
                 >
-                  <th style={{ padding: '6px 10px 6px 0' }}>Application</th>
-                  <th style={{ padding: '6px 10px' }}>Tier</th>
-                  <th style={{ padding: '6px 10px' }}>GxP</th>
-                  <th style={{ padding: '6px 10px' }}>Owner</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>Components</th>
-                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>Dependencies</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Application', 'Application')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Tier', 'Tier')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('GxP', 'GxP')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Owner', 'Owner')}</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('Components', 'Components')}</th>
+                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>{t('Dependencies', 'Dependencies')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((app) => {
+                  const {
+                    t
+                  } = useI18n();
+
                   const tier = (app.criticality_tier ?? '').toLowerCase()
                   const tierTone = TIER_TONE[tier] ?? 'gray'
                   return (
@@ -181,7 +193,7 @@ export function AttestivAppsPage() {
                         )}
                       </td>
                       <td style={{ padding: '10px' }}>
-                        {app.gxp_validated ? <Badge tone="navy" icon="ti-flask">GxP</Badge> : <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>—</span>}
+                        {app.gxp_validated ? <Badge tone="navy" icon="ti-flask">{t('GxP', 'GxP')}</Badge> : <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>—</span>}
                       </td>
                       <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
                         {app.owner_email || '—'}
@@ -193,7 +205,7 @@ export function AttestivAppsPage() {
                         {app.dependency_count ?? '—'}
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -201,7 +213,7 @@ export function AttestivAppsPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -254,22 +266,26 @@ function FilterBar({
   value: { tier?: string; gxp?: string }
   onChange: (next: { tier?: string; gxp?: string }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Tier"
+        label={t('Tier', 'Tier')}
         value={value.tier}
         options={['tier_1', 'tier_2', 'tier_3']}
         onChange={(v) => onChange({ ...value, tier: v })}
       />
       <SelectChip
-        label="GxP"
+        label={t('GxP', 'GxP')}
         value={value.gxp}
         options={['true', 'false']}
         onChange={(v) => onChange({ ...value, gxp: v })}
       />
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -283,6 +299,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -297,12 +317,12 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }

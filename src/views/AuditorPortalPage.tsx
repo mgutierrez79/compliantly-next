@@ -1,10 +1,11 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, Label, PageTitle } from '../components/Ui'
 import { formatTimestamp } from '../lib/time'
+
+import { useI18n } from '../lib/i18n';
 
 type FrameworkSummary = { key: string; name?: string; version?: string }
 type FrameworksResponse = { frameworks: FrameworkSummary[] }
@@ -19,6 +20,10 @@ type RunItem = {
 type RunsResponse = { items: RunItem[]; count: number }
 
 export function AuditorPortalPage() {
+  const {
+    t
+  } = useI18n();
+
   const [frameworks, setFrameworks] = useState<FrameworkSummary[]>([])
   const [runs, setRuns] = useState<RunItem[]>([])
   const [error, setError] = useState<ApiError | null>(null)
@@ -79,42 +84,39 @@ export function AuditorPortalPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageTitle>Auditor Portal</PageTitle>
-        <div className="text-xs text-slate-400">Read-only access</div>
+        <PageTitle>{t('Auditor Portal', 'Auditor Portal')}</PageTitle>
+        <div className="text-xs text-slate-400">{t('Read-only access', 'Read-only access')}</div>
       </div>
-
-      {error ? <ErrorBox title="Auditor portal error" detail={error.message} /> : null}
-
+      {error ? <ErrorBox title={t('Auditor portal error', 'Auditor portal error')} detail={error.message} /> : null}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-100">Latest report</div>
+            <div className="text-sm font-semibold text-slate-100">{t('Latest report', 'Latest report')}</div>
             <div className="text-xs text-slate-400">
               {latestRun ? `Run ${latestRun.run_id} (${formatTimestamp(latestRun.timestamp)})` : 'No runs yet.'}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={() => openReport('md')} disabled={!latestRun}>
-              View report
+              {t('View report', 'View report')}
             </Button>
             <Button onClick={() => openReport('pdf')} disabled={!latestRun}>
               PDF
             </Button>
             <Link href="/runs" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-              All reports
+              {t('All reports', 'All reports')}
             </Link>
           </div>
         </div>
       </Card>
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Label>Enabled regulations</Label>
-            <div className="text-xs text-slate-400">Audit scope overview</div>
+            <Label>{t('Enabled regulations', 'Enabled regulations')}</Label>
+            <div className="text-xs text-slate-400">{t('Audit scope overview', 'Audit scope overview')}</div>
           </div>
           <Link href="/regulations" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            View regulations
+            {t('View regulations', 'View regulations')}
           </Link>
         </div>
         <div className="mt-3 grid gap-2 text-sm text-slate-200 md:grid-cols-2">
@@ -127,29 +129,28 @@ export function AuditorPortalPage() {
             : 'No regulations configured.'}
         </div>
       </Card>
-
       <Card>
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/audit-log" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            Audit log
+            {t('Audit log', 'Audit log')}
           </Link>
           <Link href="/evidence-log" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            Evidence log
+            {t('Evidence log', 'Evidence log')}
           </Link>
           <Link href="/evidence-requests" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            Evidence requests
+            {t('Evidence requests', 'Evidence requests')}
           </Link>
           <Link href="/exceptions" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            Exceptions
+            {t('Exceptions', 'Exceptions')}
           </Link>
           <Link href="/inventory" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            Inventory
+            {t('Inventory', 'Inventory')}
           </Link>
           <Link href="/trust-center" className="rounded-md border border-[#274266] px-3 py-2 text-sm text-slate-200">
-            Trust center
+            {t('Trust center', 'Trust center')}
           </Link>
         </div>
       </Card>
     </div>
-  )
+  );
 }

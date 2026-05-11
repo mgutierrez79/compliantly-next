@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // API keys management.
 //
 // Keys are configured via the COMPLIANCE_AUTH_API_KEYS env var on the
@@ -30,6 +29,8 @@ import {
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 
+import { useI18n } from '../lib/i18n';
+
 type Principal = {
   subject: string
   roles: string[]
@@ -46,6 +47,10 @@ const ROLE_TONE: Record<string, 'navy' | 'blue' | 'green' | 'gray'> = {
 }
 
 export function AttestivApiKeysPage() {
+  const {
+    t
+  } = useI18n();
+
   const [principal, setPrincipal] = useState<Principal | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -73,11 +78,11 @@ export function AttestivApiKeysPage() {
   return (
     <>
       <Topbar
-        title="API keys"
+        title={t('API keys', 'API keys')}
         right={
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-book" aria-hidden="true" />
-            Tenant onboarding runbook
+            {t('Tenant onboarding runbook', 'Tenant onboarding runbook')}
           </GhostButton>
         }
       />
@@ -90,9 +95,9 @@ export function AttestivApiKeysPage() {
           }}
         >
           <Card>
-            <CardTitle>Current credential</CardTitle>
+            <CardTitle>{t('Current credential', 'Current credential')}</CardTitle>
             {loading ? (
-              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
             ) : error ? (
               <div
                 style={{
@@ -107,10 +112,10 @@ export function AttestivApiKeysPage() {
               </div>
             ) : principal ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-                <KV label="Subject" value={principal.subject} mono />
-                <KV label="Tenant" value={principal.tenant_id || '—'} mono={!!principal.tenant_id} />
+                <KV label={t('Subject', 'Subject')} value={principal.subject} mono />
+                <KV label={t('Tenant', 'Tenant')} value={principal.tenant_id || '—'} mono={!!principal.tenant_id} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                  <span style={{ color: 'var(--color-text-tertiary)' }}>Roles</span>
+                  <span style={{ color: 'var(--color-text-tertiary)' }}>{t('Roles', 'Roles')}</span>
                   <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {principal.roles.map((role) => (
                       <Badge key={role} tone={ROLE_TONE[role.toLowerCase()] ?? 'gray'}>
@@ -130,7 +135,10 @@ export function AttestivApiKeysPage() {
                       marginTop: 4,
                     }}
                   >
-                    Non-admin keys MUST bind a tenant. This key has no tenant — every tenant-scoped endpoint will reject it.
+                    {t(
+                      'Non-admin keys MUST bind a tenant. This key has no tenant — every tenant-scoped endpoint will reject it.',
+                      'Non-admin keys MUST bind a tenant. This key has no tenant — every tenant-scoped endpoint will reject it.'
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -138,14 +146,19 @@ export function AttestivApiKeysPage() {
           </Card>
 
           <Card>
-            <CardTitle>Key entry format</CardTitle>
+            <CardTitle>{t('Key entry format', 'Key entry format')}</CardTitle>
             <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
-              Keys are a comma-separated list in the <code>COMPLIANCE_AUTH_API_KEYS</code> env var.
-              Each entry has four pipe-delimited fields:
+              {t(
+                'Keys are a comma-separated list in the',
+                'Keys are a comma-separated list in the'
+              )} <code>COMPLIANCE_AUTH_API_KEYS</code> {t(
+                'env var.\n              Each entry has four pipe-delimited fields:',
+                'env var.\n              Each entry has four pipe-delimited fields:'
+              )}
             </div>
-            <SignatureBox label="Format" value="key|subject|roles|tenant" />
+            <SignatureBox label={t('Format', 'Format')} value="key|subject|roles|tenant" />
             <div style={{ marginTop: 8 }}>
-              <SignatureBox label="Example" value="k-7a3f|reporter@acme.example|reporter|acme" />
+              <SignatureBox label={t('Example', 'Example')} value="k-7a3f|reporter@acme.example|reporter|acme" />
             </div>
             <ul
               style={{
@@ -156,33 +169,50 @@ export function AttestivApiKeysPage() {
                 lineHeight: 1.7,
               }}
             >
-              <li><strong>key</strong> — the bearer string the client sends. Treat as a credential.</li>
-              <li><strong>subject</strong> — identity for audit-trail attribution.</li>
-              <li><strong>roles</strong> — semicolon-separated. Any of admin, engineer, reporter, auditor, reader, worker.</li>
-              <li><strong>tenant</strong> — required for non-admin roles. Admin keys may omit it.</li>
+              <li><strong>key</strong> {t(
+                  '— the bearer string the client sends. Treat as a credential.',
+                  '— the bearer string the client sends. Treat as a credential.'
+                )}</li>
+              <li><strong>subject</strong> {t(
+                  '— identity for audit-trail attribution.',
+                  '— identity for audit-trail attribution.'
+                )}</li>
+              <li><strong>roles</strong> {t(
+                  '— semicolon-separated. Any of admin, engineer, reporter, auditor, reader, worker.',
+                  '— semicolon-separated. Any of admin, engineer, reporter, auditor, reader, worker.'
+                )}</li>
+              <li><strong>tenant</strong> {t(
+                  '— required for non-admin roles. Admin keys may omit it.',
+                  '— required for non-admin roles. Admin keys may omit it.'
+                )}</li>
             </ul>
           </Card>
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Rotation policy</CardTitle>
+          <CardTitle>{t('Rotation policy', 'Rotation policy')}</CardTitle>
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
             <p style={{ margin: '0 0 8px' }}>
-              Rotate keys on a 90-day cadence and after any team change touching credentials.
-              The signing key (used to mint Ed25519 manifests) rotates separately — see the
-              <code> docs/runbooks/key-rotation.md</code> runbook. Multi-key signing means
-              evidence signed before a rotation continues to verify.
+              {t(
+                'Rotate keys on a 90-day cadence and after any team change touching credentials.\n              The signing key (used to mint Ed25519 manifests) rotates separately — see the',
+                'Rotate keys on a 90-day cadence and after any team change touching credentials.\n              The signing key (used to mint Ed25519 manifests) rotates separately — see the'
+              )}
+              <code> {t('docs/runbooks/key-rotation.md', 'docs/runbooks/key-rotation.md')}</code> {t(
+                'runbook. Multi-key signing means\n              evidence signed before a rotation continues to verify.',
+                'runbook. Multi-key signing means\n              evidence signed before a rotation continues to verify.'
+              )}
             </p>
             <p style={{ margin: 0 }}>
-              When you rotate an API key, update <code>COMPLIANCE_AUTH_API_KEYS</code>, restart
-              the API process, then revoke the old key entry on the next deploy. The frontend
-              re-prompts for credentials automatically when a request 401s.
+              {t('When you rotate an API key, update', 'When you rotate an API key, update')} <code>COMPLIANCE_AUTH_API_KEYS</code>{t(
+                ', restart\n              the API process, then revoke the old key entry on the next deploy. The frontend\n              re-prompts for credentials automatically when a request 401s.',
+                ', restart\n              the API process, then revoke the old key entry on the next deploy. The frontend\n              re-prompts for credentials automatically when a request 401s.'
+              )}
             </p>
           </div>
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function KV({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {

@@ -186,7 +186,9 @@ export function HelpTip({ text }: { text: string }) {
 function translateChildren(children: ReactNode, t: (key: string) => string): ReactNode {
   if (children === null || children === undefined) return children
   if (Array.isArray(children)) {
-    return children.map((child) => (typeof child === 'string' ? t(child) : child))
+    return children.map(child => {
+      return (typeof child === 'string' ? t(child) : child);
+    });
   }
   return typeof children === 'string' ? t(children) : children
 }

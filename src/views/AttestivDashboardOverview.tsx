@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Dashboard > Overview — the Phase A vertical slice.
 //
 // Pixel-faithful to the Attestiv mockup but wired to real backend
@@ -30,6 +29,8 @@ import {
 } from '../components/AttestivUi'
 import { ApiError, apiJson } from '../lib/api'
 import { ConnectorLogo, connectorBrandHex } from '../components/ConnectorLogo'
+
+import { useI18n } from '../lib/i18n';
 
 type ConnectorStatus = {
   name: string
@@ -141,6 +142,10 @@ const EMPTY_GRC: GRCMetrics = {
 }
 
 export function AttestivDashboardOverview() {
+  const {
+    t
+  } = useI18n();
+
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [grc, setGRC] = useState<GRCMetrics>(EMPTY_GRC)
@@ -274,15 +279,15 @@ export function AttestivDashboardOverview() {
   return (
     <>
       <Topbar
-        title="Overview"
-        left={<Badge tone="green"><Pulse /> Live</Badge>}
+        title={t('Overview', 'Overview')}
+        left={<Badge tone="green"><Pulse /> {t('Live', 'Live')}</Badge>}
         right={
           <>
             <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-              Last evidence: {lastEvidence}
+              {t('Last evidence:', 'Last evidence:')} {lastEvidence}
             </span>
             <GhostButton>
-              <i className="ti ti-download" aria-hidden="true" style={{ fontSize: 13 }} /> Export
+              <i className="ti ti-download" aria-hidden="true" style={{ fontSize: 13 }} /> {t('Export', 'Export')}
             </GhostButton>
           </>
         }
@@ -291,7 +296,7 @@ export function AttestivDashboardOverview() {
         {error ? (
           <Card>
             <div style={{ color: 'var(--color-status-red-deep)', fontSize: 12 }}>
-              Failed to load connector data: {error.message}
+              {t('Failed to load connector data:', 'Failed to load connector data:')} {error.message}
             </div>
           </Card>
         ) : null}
@@ -305,25 +310,25 @@ export function AttestivDashboardOverview() {
           }}
         >
           <MetricCard
-            label="Evidence collected"
+            label={t('Evidence collected', 'Evidence collected')}
             value={metricEvidenceCollected}
             sub={summary?.generated_at ? `as of ${relativeTime(summary.generated_at)}` : null}
           />
           <MetricCard
-            label="Controls passing"
+            label={t('Controls passing', 'Controls passing')}
             value={metricControlsPassing.value}
             sub={metricControlsPassing.sub}
             valueColor="var(--color-status-green-deep)"
           />
           <MetricCard
-            label="Active connectors"
+            label={t('Active connectors', 'Active connectors')}
             value={metricActiveConnectors}
             sub={metricConnectorWarning ? `${metricConnectorWarning} warning` : 'all healthy'}
           />
           <MetricCard
-            label="DORA tier"
+            label={t('DORA tier', 'DORA tier')}
             value="High"
-            sub="Towards elite"
+            sub={t('Towards elite', 'Towards elite')}
             valueColor="var(--color-brand-blue)"
           />
         </div>
@@ -337,19 +342,19 @@ export function AttestivDashboardOverview() {
           }}
         >
           <MetricCard
-            label="Open risks"
+            label={t('Open risks', 'Open risks')}
             value={grc.risksOpenCriticalAndHigh != null ? String(grc.risksOpenCriticalAndHigh) : '—'}
-            sub="critical + high"
+            sub={t('critical + high', 'critical + high')}
             valueColor={grc.risksOpenCriticalAndHigh && grc.risksOpenCriticalAndHigh > 0 ? 'var(--color-status-amber-mid)' : undefined}
           />
           <MetricCard
-            label="Active exceptions"
+            label={t('Active exceptions', 'Active exceptions')}
             value={grc.exceptionsActive != null ? String(grc.exceptionsActive) : '—'}
             sub={grc.exceptionsNearestExpiryDays != null ? `next expiry: ${grc.exceptionsNearestExpiryDays}d` : 'no active'}
             valueColor={grc.exceptionsNearestExpiryDays != null && grc.exceptionsNearestExpiryDays <= 7 ? 'var(--color-status-red-mid)' : undefined}
           />
           <MetricCard
-            label="Overdue NIS2"
+            label={t('Overdue NIS2', 'Overdue NIS2')}
             value={grc.overdueNIS2Notifications != null ? String(grc.overdueNIS2Notifications) : '—'}
             sub={grc.overdueNIS2Notifications && grc.overdueNIS2Notifications > 0 ? 'submit immediately' : 'on track'}
             valueColor={
@@ -359,7 +364,7 @@ export function AttestivDashboardOverview() {
             }
           />
           <MetricCard
-            label="Policies needing review"
+            label={t('Policies needing review', 'Policies needing review')}
             value={grc.policiesOverdue != null ? String(grc.policiesOverdue) : '—'}
             sub={grc.policiesOverdue && grc.policiesOverdue > 0 ? '−10% per linked control' : 'all current'}
             valueColor={grc.policiesOverdue && grc.policiesOverdue > 0 ? 'var(--color-status-amber-mid)' : undefined}
@@ -376,22 +381,22 @@ export function AttestivDashboardOverview() {
         >
           <Card>
             <CardTitle right={<Badge tone="gray">{connectors.length} sources</Badge>}>
-              Source health
+              {t('Source health', 'Source health')}
             </CardTitle>
             {connectorRows.length ? connectorRows : (
               <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                No connectors configured yet.
+                {t('No connectors configured yet.', 'No connectors configured yet.')}
               </div>
             )}
           </Card>
           <Card>
-            <CardTitle>Framework posture</CardTitle>
+            <CardTitle>{t('Framework posture', 'Framework posture')}</CardTitle>
             {frameworkRows}
           </Card>
         </div>
 
         <Card>
-          <CardTitle>Recent pipeline activity</CardTitle>
+          <CardTitle>{t('Recent pipeline activity', 'Recent pipeline activity')}</CardTitle>
           <PipelineStep
             dotColor="var(--color-status-green-mid)"
             name="Evidence processor — 4 subscribers active"
@@ -421,5 +426,5 @@ export function AttestivDashboardOverview() {
         </Card>
       </div>
     </>
-  )
+  );
 }

@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, Input, Label, PageTitle } from '../components/Ui'
 import { formatTimestamp } from '../lib/time'
+
+import { useI18n } from '../lib/i18n';
 
 type AuditLogEntry = {
   timestamp: string
@@ -35,6 +36,10 @@ function formatMetadata(entry: AuditLogEntry): string {
 }
 
 export function AuditLogPage() {
+  const {
+    t
+  } = useI18n();
+
   const [items, setItems] = useState<AuditLogEntry[]>([])
   const [count, setCount] = useState(0)
   const [limit, setLimit] = useState(200)
@@ -89,38 +94,36 @@ export function AuditLogPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageTitle>Audit Log</PageTitle>
+        <PageTitle>{t('Audit Log', 'Audit Log')}</PageTitle>
         <div className="text-xs text-slate-400">{count} event(s)</div>
       </div>
-
-      {error ? <ErrorBox title="Audit log error" detail={error.message} /> : null}
-
+      {error ? <ErrorBox title={t('Audit log error', 'Audit log error')} detail={error.message} /> : null}
       <Card>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
-            <Label>Action contains</Label>
+            <Label>{t('Action contains', 'Action contains')}</Label>
             <Input
               value={actionFilter}
               onChange={(event) => {
                 setActionFilter(event.target.value)
                 setOffset(0)
               }}
-              placeholder="connector.update"
+              placeholder={t('connector.update', 'connector.update')}
             />
           </div>
           <div className="space-y-2">
-            <Label>Actor contains</Label>
+            <Label>{t('Actor contains', 'Actor contains')}</Label>
             <Input
               value={actorFilter}
               onChange={(event) => {
                 setActorFilter(event.target.value)
                 setOffset(0)
               }}
-              placeholder="user@company.com"
+              placeholder={t('user@company.com', 'user@company.com')}
             />
           </div>
           <div className="space-y-2">
-            <Label>Since</Label>
+            <Label>{t('Since', 'Since')}</Label>
             <Input
               type="datetime-local"
               value={sinceFilter}
@@ -131,7 +134,7 @@ export function AuditLogPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Until</Label>
+            <Label>{t('Until', 'Until')}</Label>
             <Input
               type="datetime-local"
               value={untilFilter}
@@ -142,7 +145,7 @@ export function AuditLogPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Page size</Label>
+            <Label>{t('Page size', 'Page size')}</Label>
             <Input
               type="number"
               min={1}
@@ -161,14 +164,13 @@ export function AuditLogPage() {
             {loading ? 'Loading...' : 'Refresh'}
           </Button>
           <Button onClick={clearFilters} disabled={loading}>
-            Clear filters
+            {t('Clear filters', 'Clear filters')}
           </Button>
           <span className="text-xs text-slate-400">
-            Showing {count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, count)} of {count}
+            {t('Showing', 'Showing')} {count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, count)}of {count}
           </span>
         </div>
       </Card>
-
       <Card>
         <div className="grid gap-3">
           {items.length ? (
@@ -191,19 +193,18 @@ export function AuditLogPage() {
               </div>
             ))
           ) : (
-            <div className="text-sm text-slate-400">No audit events recorded yet.</div>
+            <div className="text-sm text-slate-400">{t('No audit events recorded yet.', 'No audit events recorded yet.')}</div>
           )}
         </div>
       </Card>
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button onClick={() => setOffset(Math.max(0, offset - limit))} disabled={!hasPrev || loading}>
-          Previous
+          {t('Previous', 'Previous')}
         </Button>
         <Button onClick={() => setOffset(offset + limit)} disabled={!hasNext || loading}>
-          Next
+          {t('Next', 'Next')}
         </Button>
       </div>
     </div>
-  )
+  );
 }

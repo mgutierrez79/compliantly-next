@@ -1,10 +1,11 @@
-'use client'
-
+'use client';
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { formatTimestamp } from '../lib/time'
 import { Button, Card, DangerButton, ErrorBox, HelpTip, Input, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type WorkerJobResponse = {
   job_id: string
@@ -71,6 +72,10 @@ const JOB_KINDS = [
 ]
 
 export function JobsPage() {
+  const {
+    t
+  } = useI18n();
+
   const STALLED_HOURS = 4
   const [jobKind, setJobKind] = useState('generate_report')
   const [language, setLanguage] = useState('en')
@@ -277,44 +282,46 @@ export function JobsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <PageTitle>Tasks</PageTitle>
+        <PageTitle>{t('Tasks', 'Tasks')}</PageTitle>
         <HelpTip text={'Track worker tasks, then submit async jobs and poll their status. Use a sample asset to sanity-check the report pipeline.'} />
       </div>
       <p className="text-sm text-slate-400">
-        Monitor running and completed tasks, then submit async worker jobs and check their status.
+        {t(
+          'Monitor running and completed tasks, then submit async worker jobs and check their status.',
+          'Monitor running and completed tasks, then submit async worker jobs and check their status.'
+        )}
       </p>
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
       {actionError ? <ErrorBox title={actionError.message} detail={actionError.bodyText} /> : null}
-
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <div className="flex items-center justify-between">
-            <Label>Worker status</Label>
+            <Label>{t('Worker status', 'Worker status')}</Label>
             <Button onClick={refreshJobs} disabled={jobListLoading}>
               {jobListLoading ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2 text-sm text-slate-200">
             <div>
-              <Label>Queue mode</Label>
+              <Label>{t('Queue mode', 'Queue mode')}</Label>
               <div className="mt-1">{workerStatus?.queue_mode ?? 'n/a'}</div>
             </div>
             <div>
-              <Label>In flight</Label>
+              <Label>{t('In flight', 'In flight')}</Label>
               <div className="mt-1">{workerStatus?.inflight ?? 0}</div>
             </div>
             <div>
-              <Label>Avg duration</Label>
+              <Label>{t('Avg duration', 'Avg duration')}</Label>
               <div className="mt-1">
                 {workerStatus?.avg_duration_seconds ? `${workerStatus.avg_duration_seconds.toFixed(1)}s` : 'n/a'}
               </div>
             </div>
             <div>
-              <Label>Last completed</Label>
+              <Label>{t('Last completed', 'Last completed')}</Label>
               <div className="mt-1">{formatTimestamp(workerStatus?.last_completed_at ?? undefined)}</div>
             </div>
             <div>
-              <Label>Redis queue</Label>
+              <Label>{t('Redis queue', 'Redis queue')}</Label>
               <div className="mt-1">
                 {workerStatus?.redis
                   ? `${workerStatus.redis.queue} queued / ${workerStatus.redis.processing} processing`
@@ -322,48 +329,47 @@ export function JobsPage() {
               </div>
             </div>
             <div className="md:col-span-2 text-xs text-slate-400">
-              Sample size: {workerStatus?.sample_size ?? 0}
+              {t('Sample size:', 'Sample size:')} {workerStatus?.sample_size ?? 0}
             </div>
           </div>
         </Card>
 
         <Card>
           <div className="flex items-center gap-2">
-            <Label>Task summary</Label>
+            <Label>{t('Task summary', 'Task summary')}</Label>
             <HelpTip text={'Recent task counts by status (from cached job records).'} />
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-slate-200">
             <div>
-              <Label>Queued</Label>
+              <Label>{t('Queued', 'Queued')}</Label>
               <div className="mt-1">{workerStatus?.totals?.queued ?? 0}</div>
             </div>
             <div>
-              <Label>Running</Label>
+              <Label>{t('Running', 'Running')}</Label>
               <div className="mt-1">{workerStatus?.totals?.running ?? 0}</div>
             </div>
             <div>
-              <Label>Retrying</Label>
+              <Label>{t('Retrying', 'Retrying')}</Label>
               <div className="mt-1">{workerStatus?.totals?.retrying ?? 0}</div>
             </div>
             <div>
-              <Label>Completed</Label>
+              <Label>{t('Completed', 'Completed')}</Label>
               <div className="mt-1">{workerStatus?.totals?.completed ?? 0}</div>
             </div>
             <div>
-              <Label>Failed</Label>
+              <Label>{t('Failed', 'Failed')}</Label>
               <div className="mt-1">{workerStatus?.totals?.failed ?? 0}</div>
             </div>
             <div>
-              <Label>Unknown</Label>
+              <Label>{t('Unknown', 'Unknown')}</Label>
               <div className="mt-1">{workerStatus?.totals?.unknown ?? 0}</div>
             </div>
           </div>
         </Card>
       </div>
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Recent tasks</Label>
+          <Label>{t('Recent tasks', 'Recent tasks')}</Label>
           <div className="flex flex-wrap gap-2">
             {(['running', 'completed', 'failed', 'all'] as const).map((filter) => {
               const isActive = jobFilter === filter
@@ -385,7 +391,10 @@ export function JobsPage() {
         </div>
         {workerStatus?.totals?.queued && !workerStatus?.totals?.running && !workerStatus?.totals?.retrying ? (
           <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-            Queue has {workerStatus.totals.queued} job(s) waiting but none running. Worker may be down or connected to a different Redis.
+            {t('Queue has', 'Queue has')} {workerStatus.totals.queued} {t(
+              'job(s) waiting but none running. Worker may be down or connected to a different Redis.',
+              'job(s) waiting but none running. Worker may be down or connected to a different Redis.'
+            )}
           </div>
         ) : null}
         <div className="mt-3 overflow-x-auto">
@@ -393,78 +402,84 @@ export function JobsPage() {
             <table className="min-w-full text-sm text-slate-200">
               <thead>
                 <tr className="text-left text-xs uppercase text-slate-400">
-                  <th className="py-2 pr-4">Job ID</th>
-                  <th className="py-2 pr-4">Kind</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Updated</th>
-                  <th className="py-2 pr-4">Age</th>
-                  <th className="py-2 pr-4">Duration</th>
-                  <th className="py-2 pr-4">Attempts</th>
-                  <th className="py-2 pr-4">Actions</th>
+                  <th className="py-2 pr-4">{t('Job ID', 'Job ID')}</th>
+                  <th className="py-2 pr-4">{t('Kind', 'Kind')}</th>
+                  <th className="py-2 pr-4">{t('Status', 'Status')}</th>
+                  <th className="py-2 pr-4">{t('Updated', 'Updated')}</th>
+                  <th className="py-2 pr-4">{t('Age', 'Age')}</th>
+                  <th className="py-2 pr-4">{t('Duration', 'Duration')}</th>
+                  <th className="py-2 pr-4">{t('Attempts', 'Attempts')}</th>
+                  <th className="py-2 pr-4">{t('Actions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {filteredJobs.map((entry) => {
+                  const {
+                    t
+                  } = useI18n();
+
                   const updatedAge = secondsSince(entry.updated_at ?? entry.created_at)
                   const isStalled = updatedAge !== null && updatedAge >= STALLED_HOURS * 3600
                   return (
-                  <tr key={entry.job_id} className="text-slate-100">
-                    <td className="py-2 pr-4 font-mono text-xs">{entry.job_id}</td>
-                    <td className="py-2 pr-4">{entry.kind || 'generate_report'}</td>
-                    <td className="py-2 pr-4">
-                      <span>{entry.status}</span>
-                      {isStalled ? (
-                        <span className="ml-2 rounded-full border border-amber-400/50 px-2 py-0.5 text-[10px] uppercase text-amber-200">
-                          stalled
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4">{formatTimestamp(entry.updated_at ?? entry.created_at ?? undefined)}</td>
-                    <td className="py-2 pr-4">{formatAge(entry.updated_at ?? entry.created_at)}</td>
-                    <td className="py-2 pr-4">
-                      {entry.status === 'completed' || entry.status === 'failed'
-                        ? formatDuration(entry.created_at, entry.updated_at)
-                        : formatDuration(entry.created_at, null)}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {entry.attempts ?? 0}/{entry.max_retries ?? 0}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {entry.status !== 'completed' && entry.status !== 'failed' ? (
-                          <Button
-                            size="sm"
-                            onClick={() => cancelJob(entry.job_id)}
-                          >
-                            Cancel
-                          </Button>
+                    <tr key={entry.job_id} className="text-slate-100">
+                      <td className="py-2 pr-4 font-mono text-xs">{entry.job_id}</td>
+                      <td className="py-2 pr-4">{entry.kind || 'generate_report'}</td>
+                      <td className="py-2 pr-4">
+                        <span>{entry.status}</span>
+                        {isStalled ? (
+                          <span className="ml-2 rounded-full border border-amber-400/50 px-2 py-0.5 text-[10px] uppercase text-amber-200">
+                            stalled
+                          </span>
                         ) : null}
-                        <DangerButton size="sm" onClick={() => eraseJob(entry.job_id)}>
-                          Erase
-                        </DangerButton>
-                      </div>
-                    </td>
-                  </tr>
-                  )
+                      </td>
+                      <td className="py-2 pr-4">{formatTimestamp(entry.updated_at ?? entry.created_at ?? undefined)}</td>
+                      <td className="py-2 pr-4">{formatAge(entry.updated_at ?? entry.created_at)}</td>
+                      <td className="py-2 pr-4">
+                        {entry.status === 'completed' || entry.status === 'failed'
+                          ? formatDuration(entry.created_at, entry.updated_at)
+                          : formatDuration(entry.created_at, null)}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {entry.attempts ?? 0}/{entry.max_retries ?? 0}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {entry.status !== 'completed' && entry.status !== 'failed' ? (
+                            <Button
+                              size="sm"
+                              onClick={() => cancelJob(entry.job_id)}
+                            >
+                              {t('Cancel', 'Cancel')}
+                            </Button>
+                          ) : null}
+                          <DangerButton size="sm" onClick={() => eraseJob(entry.job_id)}>
+                            {t('Erase', 'Erase')}
+                          </DangerButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>
           ) : (
-            <div className="text-sm text-slate-400">No tasks to show.</div>
+            <div className="text-sm text-slate-400">{t('No tasks to show.', 'No tasks to show.')}</div>
           )}
         </div>
         <div className="mt-2 text-xs text-slate-400">
-          Cancel/retry controls are not available yet in the API.
+          {t(
+            'Cancel/retry controls are not available yet in the API.',
+            'Cancel/retry controls are not available yet in the API.'
+          )}
         </div>
       </Card>
-
       <Card>
-        <Label>Submit job (async)</Label>
+        <Label>{t('Submit job (async)', 'Submit job (async)')}</Label>
         <form className="mt-3 space-y-3" onSubmit={submitJob}>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <div className="flex items-center gap-2">
-                <Label>Job type</Label>
+                <Label>{t('Job type', 'Job type')}</Label>
                 <HelpTip text={'Choose which async worker task to queue.'} />
               </div>
               <select
@@ -481,7 +496,7 @@ export function JobsPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <Label>Language</Label>
+                <Label>{t('Language', 'Language')}</Label>
                 <HelpTip text={'Report language code. Example: en, fr, es.'} />
               </div>
               <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="en|fr|es" />
@@ -489,7 +504,7 @@ export function JobsPage() {
             {requiresFramework ? (
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Framework</Label>
+                  <Label>{t('Framework', 'Framework')}</Label>
                   <HelpTip text={'Framework key for PDF generation. Example: dora, nis2, iso27001.'} />
                 </div>
                 <select
@@ -508,7 +523,7 @@ export function JobsPage() {
             {supportsRunId ? (
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Run ID (optional)</Label>
+                  <Label>{t('Run ID (optional)', 'Run ID (optional)')}</Label>
                   <HelpTip text={'Target a specific run id or leave empty for the latest run.'} />
                 </div>
                 <Input value={runId} onChange={(e) => setRunId(e.target.value)} placeholder="run-YYYYMMDD-HHMMSS" />
@@ -518,21 +533,21 @@ export function JobsPage() {
               <>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Asset ID</Label>
+                    <Label>{t('Asset ID', 'Asset ID')}</Label>
                     <HelpTip text={'Unique asset identifier used in findings. Example: asset-123.'} />
                   </div>
                   <Input value={assetId} onChange={(e) => setAssetId(e.target.value)} placeholder="asset-123" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Asset environment</Label>
+                    <Label>{t('Asset environment', 'Asset environment')}</Label>
                     <HelpTip text={'Optional environment tag. Example: prod, dev, lab.'} />
                   </div>
                   <Input value={assetEnv} onChange={(e) => setAssetEnv(e.target.value)} placeholder="prod|dev|lab" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Patch status</Label>
+                    <Label>{t('Patch status', 'Patch status')}</Label>
                     <HelpTip text={'Patch status used for scoring. Example: missing or ok.'} />
                   </div>
                   <Input
@@ -543,7 +558,7 @@ export function JobsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Exposure type</Label>
+                    <Label>{t('Exposure type', 'Exposure type')}</Label>
                     <HelpTip text={'Exposure category for identity risk. Example: public or none.'} />
                   </div>
                   <Input
@@ -560,39 +575,38 @@ export function JobsPage() {
           </Button>
         </form>
       </Card>
-
       <Card>
-        <Label>Job status</Label>
+        <Label>{t('Job status', 'Job status')}</Label>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
-              <Label>Job ID</Label>
+              <Label>{t('Job ID', 'Job ID')}</Label>
               <HelpTip text={'Paste the job_id returned by the async request. Example: 6f2c...'} />
             </div>
             <Input value={jobId} onChange={(e) => setJobId(e.target.value)} placeholder="job_id" />
           </div>
           <div className="md:col-span-1">
             <Button onClick={refreshStatus} disabled={!jobId}>
-              Refresh
+              {t('Refresh', 'Refresh')}
             </Button>
           </div>
         </div>
         {job ? (
           <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-slate-200">
             <div>
-              <Label>Status</Label>
+              <Label>{t('Status', 'Status')}</Label>
               <div className="mt-1">{job.status}</div>
             </div>
             <div>
-              <Label>Attempts</Label>
+              <Label>{t('Attempts', 'Attempts')}</Label>
               <div className="mt-1">{job.attempts ?? 0}</div>
             </div>
             <div>
-              <Label>Max retries</Label>
+              <Label>{t('Max retries', 'Max retries')}</Label>
               <div className="mt-1">{job.max_retries ?? 0}</div>
             </div>
             <div className="md:col-span-3">
-              <Label>Result</Label>
+              <Label>{t('Result', 'Result')}</Label>
               <div className="mt-1 text-xs text-slate-300">
                 {job.result && Object.keys(job.result).length
                   ? Object.entries(job.result).map(([key, value]) => (
@@ -606,15 +620,15 @@ export function JobsPage() {
             </div>
             {job.error ? (
               <div className="md:col-span-3">
-                <Label>Error</Label>
+                <Label>{t('Error', 'Error')}</Label>
                 <div className="mt-1 text-xs text-rose-200">{job.error}</div>
               </div>
             ) : null}
           </div>
         ) : (
-          <div className="mt-3 text-sm text-slate-400">No job loaded.</div>
+          <div className="mt-3 text-sm text-slate-400">{t('No job loaded.', 'No job loaded.')}</div>
         )}
       </Card>
     </div>
-  )
+  );
 }

@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, InfoBox, Input, Label, PageTitle, Textarea } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type EvidenceStatus = 'requested' | 'received' | 'approved' | 'rejected' | 'expired'
 
@@ -143,6 +144,10 @@ function getAuditEvents(metadata: Record<string, unknown>): AuditEvent[] {
 }
 
 export function EvidenceRequestsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [items, setItems] = useState<EvidenceRequestEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
@@ -578,34 +583,38 @@ export function EvidenceRequestsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <PageTitle>Evidence Requests</PageTitle>
+          <PageTitle>{t('Evidence Requests', 'Evidence Requests')}</PageTitle>
           <p className="text-sm text-slate-400">
-            Create, track, and approve evidence requests with audit trails.
+            {t(
+              'Create, track, and approve evidence requests with audit trails.',
+              'Create, track, and approve evidence requests with audit trails.'
+            )}
           </p>
         </div>
         <Button onClick={loadRequests} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
-
-      {error ? <ErrorBox title="Evidence requests error" detail={error.message} /> : null}
+      {error ? <ErrorBox title={t('Evidence requests error', 'Evidence requests error')} detail={error.message} /> : null}
       {message ? <InfoBox title={message} /> : null}
-
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Label>New request</Label>
-            <div className="mt-1 text-sm text-slate-100">Role: {roleLabel}</div>
+            <Label>{t('New request', 'New request')}</Label>
+            <div className="mt-1 text-sm text-slate-100">{t('Role:', 'Role:')} {roleLabel}</div>
           </div>
           <div className="max-w-md text-xs text-slate-400">
-            Auditors can create requests and approve evidence. Read-only auditors can review only.
+            {t(
+              'Auditors can create requests and approve evidence. Read-only auditors can review only.',
+              'Auditors can create requests and approve evidence. Read-only auditors can review only.'
+            )}
           </div>
         </div>
         {canReview ? (
           <>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Template source</Label>
+                <Label>{t('Template source', 'Template source')}</Label>
                 <select
                   value={templateSource}
                   onChange={(event) => {
@@ -615,13 +624,13 @@ export function EvidenceRequestsPage() {
                   }}
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
                 >
-                  <option value="framework">framework templates</option>
-                  <option value="connector">connector templates</option>
+                  <option value="framework">{t('framework templates', 'framework templates')}</option>
+                  <option value="connector">{t('connector templates', 'connector templates')}</option>
                 </select>
               </div>
               {templateSource === 'framework' ? (
                 <div>
-                  <Label>Template framework</Label>
+                  <Label>{t('Template framework', 'Template framework')}</Label>
                   <select
                     value={templateFramework}
                     onChange={(event) => {
@@ -647,7 +656,7 @@ export function EvidenceRequestsPage() {
                 </div>
               ) : (
                 <div>
-                  <Label>Connector</Label>
+                  <Label>{t('Connector', 'Connector')}</Label>
                   <select
                     value={templateConnector}
                     onChange={(event) => {
@@ -658,7 +667,7 @@ export function EvidenceRequestsPage() {
                     }}
                     className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
                   >
-                    <option value="">Select connector</option>
+                    <option value="">{t('Select connector', 'Select connector')}</option>
                     {connectorOptions.map((connector) => (
                       <option key={connector} value={connector}>
                         {connector}
@@ -669,7 +678,7 @@ export function EvidenceRequestsPage() {
               )}
               {templateSource === 'connector' ? (
                 <div>
-                  <Label>Framework filter</Label>
+                  <Label>{t('Framework filter', 'Framework filter')}</Label>
                   <select
                     value={connectorFrameworkFilter}
                     onChange={(event) => {
@@ -678,7 +687,7 @@ export function EvidenceRequestsPage() {
                     }}
                     className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
                   >
-                    <option value="">All frameworks</option>
+                    <option value="">{t('All frameworks', 'All frameworks')}</option>
                     {frameworkOptions.map((framework) => (
                       <option key={framework} value={framework}>
                         {framework}
@@ -689,7 +698,7 @@ export function EvidenceRequestsPage() {
               ) : null}
               {templateSource === 'connector' && connectorInstanceOptions.length ? (
                 <div>
-                  <Label>Connector instance</Label>
+                  <Label>{t('Connector instance', 'Connector instance')}</Label>
                   <select
                     value={templateConnectorInstance}
                     onChange={(event) => {
@@ -698,7 +707,7 @@ export function EvidenceRequestsPage() {
                     }}
                     className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
                   >
-                    <option value="">All instances</option>
+                    <option value="">{t('All instances', 'All instances')}</option>
                     {connectorInstanceOptions.map((instance) => (
                       <option key={instance} value={instance}>
                         {instance}
@@ -709,7 +718,7 @@ export function EvidenceRequestsPage() {
               ) : null}
               {templateSource === 'framework' && templateFramework === 'custom' ? (
                 <div className="md:col-span-2">
-                  <Label>Custom framework key</Label>
+                  <Label>{t('Custom framework key', 'Custom framework key')}</Label>
                   <Input
                     value={customTemplateFramework}
                     onChange={(event) => setCustomTemplateFramework(event.target.value)}
@@ -718,14 +727,14 @@ export function EvidenceRequestsPage() {
                 </div>
               ) : null}
               <div className="md:col-span-2">
-                <Label>Template</Label>
+                <Label>{t('Template', 'Template')}</Label>
                 <select
                   value={templateId}
                   onChange={(event) => setTemplateId(event.target.value)}
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
                   disabled={templateSource === 'framework' ? !activeTemplateFramework : !templateConnector}
                 >
-                  <option value="">Select template</option>
+                  <option value="">{t('Select template', 'Select template')}</option>
                   {templateSource === 'framework'
                     ? templateOptions.map((template) => (
                         <option key={template.id} value={template.id}>
@@ -745,35 +754,35 @@ export function EvidenceRequestsPage() {
               </div>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                 <Button onClick={applyTemplate} disabled={!activeTemplate}>
-                  Apply template
+                  {t('Apply template', 'Apply template')}
                 </Button>
                 {activeTemplate ? (
                   <div className="text-xs text-slate-400">
-                    Due +{activeTemplate.due_in_days ?? 'n/a'} days | SLA +{activeTemplate.sla_in_days ?? 'n/a'} days
-                  </div>
+                    {t('Due +', 'Due +')}{activeTemplate.due_in_days ?? 'n/a'} {t('days | SLA +', 'days | SLA +')}{activeTemplate.sla_in_days ?? 'n/a'}days
+                                      </div>
                 ) : null}
               </div>
               {activeTemplate?.evidence_urls?.length ? (
                 <div className="md:col-span-2 text-xs text-slate-400">
-                  Suggested evidence: {activeTemplate.evidence_urls.join(', ')}
+                  {t('Suggested evidence:', 'Suggested evidence:')} {activeTemplate.evidence_urls.join(', ')}
                 </div>
               ) : null}
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Title</Label>
+                <Label>{t('Title', 'Title')}</Label>
                 <Input value={createTitle} onChange={(event) => setCreateTitle(event.target.value)} />
               </div>
               <div>
-                <Label>Owner</Label>
+                <Label>{t('Owner', 'Owner')}</Label>
                 <Input value={createOwner} onChange={(event) => setCreateOwner(event.target.value)} />
               </div>
               <div>
-                <Label>Run ID</Label>
+                <Label>{t('Run ID', 'Run ID')}</Label>
                 <Input value={createRunId} onChange={(event) => setCreateRunId(event.target.value)} />
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>{t('Status', 'Status')}</Label>
                 <select
                   value={createStatus}
                   onChange={(event) => setCreateStatus(event.target.value as EvidenceStatus)}
@@ -787,19 +796,22 @@ export function EvidenceRequestsPage() {
                 </select>
               </div>
               <div>
-                <Label>Due date (ISO)</Label>
+                <Label>{t('Due date (ISO)', 'Due date (ISO)')}</Label>
                 <Input value={createDueDate} onChange={(event) => setCreateDueDate(event.target.value)} />
               </div>
               <div>
-                <Label>SLA date (ISO)</Label>
+                <Label>{t('SLA date (ISO)', 'SLA date (ISO)')}</Label>
                 <Input value={createSlaDate} onChange={(event) => setCreateSlaDate(event.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <Label>Required artifacts (comma separated)</Label>
+                <Label>{t(
+                  'Required artifacts (comma separated)',
+                  'Required artifacts (comma separated)'
+                )}</Label>
                 <Input value={createArtifacts} onChange={(event) => setCreateArtifacts(event.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <Label>Description</Label>
+                <Label>{t('Description', 'Description')}</Label>
                 <Textarea
                   value={createDescription}
                   onChange={(event) => setCreateDescription(event.target.value)}
@@ -808,34 +820,42 @@ export function EvidenceRequestsPage() {
               </div>
             </div>
             <div className="mt-4">
-              <Button onClick={handleCreate}>Create request</Button>
+              <Button onClick={handleCreate}>{t('Create request', 'Create request')}</Button>
             </div>
           </>
         ) : isReadOnlyAuditor ? (
           <div className="mt-3 text-sm text-slate-300">
-            Read-only auditors can review evidence and audit exports, but cannot create or update requests.
+            {t(
+              'Read-only auditors can review evidence and audit exports, but cannot create or update requests.',
+              'Read-only auditors can review evidence and audit exports, but cannot create or update requests.'
+            )}
           </div>
         ) : (
           <div className="mt-3 text-sm text-slate-300">
-            Collaborators can submit evidence URLs and attachments, but cannot create or approve requests.
+            {t(
+              'Collaborators can submit evidence URLs and attachments, but cannot create or approve requests.',
+              'Collaborators can submit evidence URLs and attachments, but cannot create or approve requests.'
+            )}
           </div>
         )}
       </Card>
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Filters</Label>
-          <div className="text-xs text-slate-400">Filter requests by status, owner, or run id.</div>
+          <Label>{t('Filters', 'Filters')}</Label>
+          <div className="text-xs text-slate-400">{t(
+            'Filter requests by status, owner, or run id.',
+            'Filter requests by status, owner, or run id.'
+          )}</div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <div className="min-w-[180px]">
-            <Label>Status</Label>
+            <Label>{t('Status', 'Status')}</Label>
             <select
               value={filterStatus}
               onChange={(event) => setFilterStatus(event.target.value)}
               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
             >
-              <option value="">All</option>
+              <option value="">{t('All', 'All')}</option>
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
                   {status}
@@ -844,19 +864,22 @@ export function EvidenceRequestsPage() {
             </select>
           </div>
           <div className="min-w-[220px]">
-            <Label>Owner</Label>
+            <Label>{t('Owner', 'Owner')}</Label>
             <Input value={filterOwner} onChange={(event) => setFilterOwner(event.target.value)} />
           </div>
           <div className="min-w-[220px]">
-            <Label>Run ID</Label>
+            <Label>{t('Run ID', 'Run ID')}</Label>
             <Input value={filterRun} onChange={(event) => setFilterRun(event.target.value)} />
           </div>
         </div>
       </Card>
-
       <div className="space-y-4">
-        {items.length === 0 && !loading ? <div className="text-sm text-slate-400">No evidence requests yet.</div> : null}
+        {items.length === 0 && !loading ? <div className="text-sm text-slate-400">{t('No evidence requests yet.', 'No evidence requests yet.')}</div> : null}
         {items.map((item) => {
+          const {
+            t
+          } = useI18n();
+
           const isExpanded = expandedId === item.request_id
           const hasEvidence = item.evidence_urls.length > 0 || item.attachments.length > 0
           const canMarkReceived = item.status === 'requested' && hasEvidence
@@ -870,31 +893,30 @@ export function EvidenceRequestsPage() {
                 <div>
                   <div className="text-base font-semibold text-slate-100">{item.title}</div>
                   <div className="mt-1 text-xs text-slate-400">
-                    Status: {item.status_label || item.status} · Owner: {item.owner || 'unassigned'} · Due:{' '}
+                    {t('Status:', 'Status:')} {item.status_label || item.status} {t('· Owner:', '· Owner:')} {item.owner || 'unassigned'} {t('· Due:', '· Due:')}{' '}
                     {formatDate(item.due_date)}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Run: {item.run_id || 'n/a'} · Updated: {formatDate(item.updated_at)}
+                    {t('Run:', 'Run:')} {item.run_id || 'n/a'} {t('· Updated:', '· Updated:')} {formatDate(item.updated_at)}
                   </div>
                 </div>
                 <Button onClick={() => setExpandedId(isExpanded ? null : item.request_id)}>
                   {isExpanded ? 'Hide details' : 'View details'}
                 </Button>
               </div>
-
               {isExpanded ? (
                 <div className="mt-4 space-y-4 border-t border-[#1f365a] pt-4">
                   {item.description ? <div className="text-sm text-slate-200">{item.description}</div> : null}
 
                   <div>
-                    <Label>Required artifacts</Label>
+                    <Label>{t('Required artifacts', 'Required artifacts')}</Label>
                     <div className="mt-1 text-sm text-slate-200">
                       {item.required_artifacts.length ? item.required_artifacts.join(', ') : 'n/a'}
                     </div>
                   </div>
 
                   <div>
-                    <Label>Evidence URLs</Label>
+                    <Label>{t('Evidence URLs', 'Evidence URLs')}</Label>
                     <div className="mt-1 space-y-1 text-sm">
                       {item.evidence_urls.length ? (
                         item.evidence_urls.map((url) => (
@@ -905,37 +927,43 @@ export function EvidenceRequestsPage() {
                           </div>
                         ))
                       ) : (
-                        <div className="text-slate-400">No evidence URLs submitted.</div>
+                        <div className="text-slate-400">{t('No evidence URLs submitted.', 'No evidence URLs submitted.')}</div>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <Label>Attachments</Label>
+                    <Label>{t('Attachments', 'Attachments')}</Label>
                     <div className="mt-1 space-y-1 text-sm">
                       {item.attachments.length ? (
-                        item.attachments.map((name) => (
-                          <div key={name} className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => downloadAttachment(item.request_id, name)}
-                              className="text-left text-blue-300 underline"
-                            >
-                              {name}
-                            </button>
-                            {canReview && item.status !== 'approved' ? (
+                        item.attachments.map(name => {
+                          const {
+                            t
+                          } = useI18n();
+
+                          return (
+                            <div key={name} className="flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => deleteAttachment(item.request_id, name)}
-                                className="text-xs text-rose-300 hover:text-rose-200"
+                                onClick={() => downloadAttachment(item.request_id, name)}
+                                className="text-left text-blue-300 underline"
                               >
-                                Delete
+                                {name}
                               </button>
-                            ) : null}
-                          </div>
-                        ))
+                              {canReview && item.status !== 'approved' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => deleteAttachment(item.request_id, name)}
+                                  className="text-xs text-rose-300 hover:text-rose-200"
+                                >
+                                  {t('Delete', 'Delete')}
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })
                       ) : (
-                        <div className="text-slate-400">No attachments uploaded.</div>
+                        <div className="text-slate-400">{t('No attachments uploaded.', 'No attachments uploaded.')}</div>
                       )}
                     </div>
                   </div>
@@ -944,7 +972,7 @@ export function EvidenceRequestsPage() {
                     <div>
                       {canSubmitEvidence ? (
                         <>
-                          <Label>Add evidence URL</Label>
+                          <Label>{t('Add evidence URL', 'Add evidence URL')}</Label>
                           <Input
                             value={urlDraft}
                             onChange={(event) =>
@@ -953,7 +981,7 @@ export function EvidenceRequestsPage() {
                             placeholder="https://..."
                           />
                           <div className="mt-3">
-                            <Label>Submission note</Label>
+                            <Label>{t('Submission note', 'Submission note')}</Label>
                           </div>
                           <Textarea
                             value={noteDraft}
@@ -961,7 +989,7 @@ export function EvidenceRequestsPage() {
                               setNoteDrafts((prev) => ({ ...prev, [item.request_id]: event.target.value }))
                             }
                             rows={2}
-                            placeholder="Optional message to auditor."
+                            placeholder={t('Optional message to auditor.', 'Optional message to auditor.')}
                           />
                           <div className="mt-3">
                             <Button
@@ -973,14 +1001,17 @@ export function EvidenceRequestsPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="text-sm text-slate-300">Read-only auditors cannot submit evidence.</div>
+                        <div className="text-sm text-slate-300">{t(
+                          'Read-only auditors cannot submit evidence.',
+                          'Read-only auditors cannot submit evidence.'
+                        )}</div>
                       )}
                     </div>
 
                     <div>
                       {canSubmitEvidence ? (
                         <>
-                          <Label>Upload attachment</Label>
+                          <Label>{t('Upload attachment', 'Upload attachment')}</Label>
                           <input
                             type="file"
                             className="mt-2 w-full text-sm text-slate-200 file:mr-3 file:rounded-md file:border-0 file:bg-[#1f365a] file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-100 hover:file:bg-[#2b4b73]"
@@ -994,11 +1025,14 @@ export function EvidenceRequestsPage() {
                             disabled={uploadingId === item.request_id}
                           />
                           {uploadingId === item.request_id ? (
-                            <div className="mt-2 text-xs text-slate-400">Uploading...</div>
+                            <div className="mt-2 text-xs text-slate-400">{t('Uploading...', 'Uploading...')}</div>
                           ) : null}
                         </>
                       ) : (
-                        <div className="text-sm text-slate-300">Read-only auditors cannot upload attachments.</div>
+                        <div className="text-sm text-slate-300">{t(
+                          'Read-only auditors cannot upload attachments.',
+                          'Read-only auditors cannot upload attachments.'
+                        )}</div>
                       )}
 
                       {canReview ? (
@@ -1008,26 +1042,29 @@ export function EvidenceRequestsPage() {
                               onClick={() => handleStatusChange(item.request_id, 'approved')}
                               disabled={statusUpdatingId === item.request_id || !canApproveReject}
                             >
-                              Approve
+                              {t('Approve', 'Approve')}
                             </Button>
                             <Button
                               onClick={() => handleStatusChange(item.request_id, 'rejected')}
                               disabled={statusUpdatingId === item.request_id || !canApproveReject}
                             >
-                              Reject
+                              {t('Reject', 'Reject')}
                             </Button>
                             <Button
                               onClick={() => handleStatusChange(item.request_id, 'received')}
                               disabled={statusUpdatingId === item.request_id || !canMarkReceived}
                             >
-                              Mark received
+                              {t('Mark received', 'Mark received')}
                             </Button>
                           </div>
                           {!hasEvidence ? (
-                            <div className="text-xs text-slate-400">Approvals are locked until evidence is submitted.</div>
+                            <div className="text-xs text-slate-400">{t(
+                              'Approvals are locked until evidence is submitted.',
+                              'Approvals are locked until evidence is submitted.'
+                            )}</div>
                           ) : null}
                           {hasEvidence && item.status === 'requested' ? (
-                            <div className="text-xs text-slate-400">Mark as received before approval.</div>
+                            <div className="text-xs text-slate-400">{t('Mark as received before approval.', 'Mark as received before approval.')}</div>
                           ) : null}
                         </div>
                       ) : null}
@@ -1035,7 +1072,7 @@ export function EvidenceRequestsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <Label>Audit export</Label>
+                    <Label>{t('Audit export', 'Audit export')}</Label>
                     <Button
                       onClick={() => downloadAudit(item.request_id, 'csv')}
                       disabled={auditDownloadingId === item.request_id}
@@ -1046,13 +1083,13 @@ export function EvidenceRequestsPage() {
                       onClick={() => downloadAudit(item.request_id, 'json')}
                       disabled={auditDownloadingId === item.request_id}
                     >
-                      Download JSON
+                      {t('Download JSON', 'Download JSON')}
                     </Button>
                   </div>
 
                   {auditEvents.length ? (
                     <div>
-                      <Label>Recent audit events</Label>
+                      <Label>{t('Recent audit events', 'Recent audit events')}</Label>
                       <div className="mt-1 space-y-1 text-xs text-slate-300">
                         {auditEvents.slice(-5).map((event, index) => (
                           <div key={`${event.timestamp}-${index}`}>
@@ -1066,9 +1103,9 @@ export function EvidenceRequestsPage() {
                 </div>
               ) : null}
             </Card>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

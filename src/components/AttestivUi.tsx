@@ -446,6 +446,10 @@ export function SignatureBox({
   value: string
   mono?: boolean
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div
       style={{
@@ -502,12 +506,12 @@ export function SignatureBox({
           padding: 2,
           flexShrink: 0,
         }}
-        aria-label="Copy"
+        aria-label={t('Copy', 'Copy')}
       >
         <i className="ti ti-copy" aria-hidden="true" style={{ fontSize: 14 }} />
       </button>
     </div>
-  )
+  );
 }
 
 // RTODisplay: large recovery-time-objective number with target
@@ -918,6 +922,10 @@ export function Banner({
   title?: string
   onDismiss?: () => void
 }>) {
+  const {
+    t
+  } = useI18n();
+
   const palette: Record<typeof tone, { bg: string; fg: string; icon: string }> = {
     info:    { bg: 'var(--color-status-blue-bg)',  fg: 'var(--color-status-blue-deep)',  icon: 'ti-info-circle' },
     success: { bg: 'var(--color-status-green-bg)', fg: 'var(--color-status-green-deep)', icon: 'ti-circle-check' },
@@ -948,7 +956,7 @@ export function Banner({
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Dismiss"
+          aria-label={t('Dismiss', 'Dismiss')}
           style={{
             background: 'transparent',
             border: 'none',
@@ -962,7 +970,7 @@ export function Banner({
         </button>
       ) : null}
     </div>
-  )
+  );
 }
 
 // ClickableCard is a Card that responds to hover + provides keyboard
@@ -1021,11 +1029,15 @@ export function PagePlaceholder({
   title: string
   description: string
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
       <Topbar
         title={title}
-        left={<Badge tone="gray">Under construction</Badge>}
+        left={<Badge tone="gray">{t('Under construction', 'Under construction')}</Badge>}
       />
       <div className="attestiv-content">
         <div
@@ -1065,7 +1077,7 @@ export function PagePlaceholder({
               marginBottom: 6,
             }}
           >
-            Under construction
+            {t('Under construction', 'Under construction')}
           </div>
           <div
             style={{
@@ -1079,5 +1091,5 @@ export function PagePlaceholder({
         </div>
       </div>
     </>
-  )
+  );
 }

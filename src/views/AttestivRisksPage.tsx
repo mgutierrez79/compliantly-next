@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Risk register page (Phase-2 GRC, chunk 1).
 //
 // What's on screen:
@@ -26,6 +25,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Risk = {
   risk_id: string
@@ -73,6 +74,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 
 export function AttestivRisksPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [risks, setRisks] = useState<Risk[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
@@ -146,11 +151,11 @@ export function AttestivRisksPage() {
   return (
     <>
       <Topbar
-        title="Risk register"
+        title={t('Risk register', 'Risk register')}
         left={<Badge tone="navy">{risks.length} entries</Badge>}
         right={
           <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> Add risk
+            <i className="ti ti-plus" aria-hidden="true" /> {t('Add risk', 'Add risk')}
           </PrimaryButton>
         }
       />
@@ -164,15 +169,15 @@ export function AttestivRisksPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Open total" value={openTotal} tone="amber" icon="ti-alert-triangle" />
-          <SummaryCard label="Open critical" value={openCritical} tone="red" icon="ti-flame" />
-          <SummaryCard label="Open high" value={openHigh} tone="amber" icon="ti-flame" />
-          <SummaryCard label="Auto-created" value={autoCreated} tone="navy" icon="ti-rocket" />
+          <SummaryCard label={t('Open total', 'Open total')} value={openTotal} tone="amber" icon="ti-alert-triangle" />
+          <SummaryCard label={t('Open critical', 'Open critical')} value={openCritical} tone="red" icon="ti-flame" />
+          <SummaryCard label={t('Open high', 'Open high')} value={openHigh} tone="amber" icon="ti-flame" />
+          <SummaryCard label={t('Auto-created', 'Auto-created')} value={autoCreated} tone="navy" icon="ti-rocket" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>likelihood × impact</span>}>
-            Risk heat-map
+          <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{t('likelihood × impact', 'likelihood × impact')}</span>}>
+            {t('Risk heat-map', 'Risk heat-map')}
           </CardTitle>
           <RiskMatrix matrix={matrix} onCellClick={(level) => setFilter((f) => ({ ...f, status: undefined }))} />
         </Card>
@@ -187,15 +192,18 @@ export function AttestivRisksPage() {
               />
             }
           >
-            Risks
+            {t('Risks', 'Risks')}
           </CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : risks.length === 0 ? (
             <EmptyState
               icon="ti-alert-octagon"
-              title="Register is empty"
-              description="No risks match these filters. Auto-risks appear when scoring detects a control transition; manual risks come from the Add risk button above."
+              title={t('Register is empty', 'Register is empty')}
+              description={t(
+                'No risks match these filters. Auto-risks appear when scoring detects a control transition; manual risks come from the Add risk button above.',
+                'No risks match these filters. Auto-risks appear when scoring detects a control transition; manual risks come from the Add risk button above.'
+              )}
             />
           ) : (
             <div>
@@ -210,12 +218,11 @@ export function AttestivRisksPage() {
           )}
         </Card>
       </div>
-
       {showCreate ? (
         <CreateRiskModal busy={createBusy} onCancel={() => setShowCreate(false)} onSubmit={createRisk} />
       ) : null}
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -274,88 +281,100 @@ function RiskMatrix({
         <thead>
           <tr>
             <th style={{ width: 90 }}></th>
-            {LEVELS.map((impact) => (
-              <th
-                key={impact}
-                style={{
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  color: 'var(--color-text-tertiary)',
-                  padding: '4px 6px',
-                  fontWeight: 500,
-                  fontSize: 10,
-                }}
-              >
-                Impact: {impact}
-              </th>
-            ))}
+            {LEVELS.map(impact => {
+              const {
+                t
+              } = useI18n();
+
+              return (
+                <th
+                  key={impact}
+                  style={{
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--color-text-tertiary)',
+                    padding: '4px 6px',
+                    fontWeight: 500,
+                    fontSize: 10,
+                  }}
+                >
+                  {t('Impact:', 'Impact:')} {impact}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
-          {LEVELS.map((likelihood) => (
-            <tr key={likelihood}>
-              <td
-                style={{
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  color: 'var(--color-text-tertiary)',
-                  padding: '4px 8px 4px 0',
-                  fontWeight: 500,
-                  fontSize: 10,
-                  textAlign: 'right',
-                }}
-              >
-                Likelihood: {likelihood}
-              </td>
-              {LEVELS.map((impact) => {
-                const risks = matrix[likelihood][impact]
-                const score = scoreFor(likelihood) * scoreFor(impact)
-                const tone = cellTone(score)
-                return (
-                  <td
-                    key={impact}
-                    onClick={() => onCellClick(likelihood)}
-                    style={{
-                      padding: 6,
-                      border: '0.5px solid var(--color-border-tertiary)',
-                      background: tone.bg,
-                      verticalAlign: 'top',
-                      minHeight: 60,
-                      cursor: risks.length > 0 ? 'pointer' : 'default',
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                      {risks.slice(0, 9).map((r) => (
-                        <span
-                          key={r.risk_id}
-                          title={r.title}
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: 5,
-                            background: tone.dot,
-                            display: 'inline-block',
-                          }}
-                        />
-                      ))}
-                      {risks.length > 9 ? (
-                        <span style={{ fontSize: 9, color: 'var(--color-text-tertiary)' }}>
-                          +{risks.length - 9}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div style={{ fontSize: 9, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
-                      score {score}
-                    </div>
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
+          {LEVELS.map(likelihood => {
+            const {
+              t
+            } = useI18n();
+
+            return (
+              <tr key={likelihood}>
+                <td
+                  style={{
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--color-text-tertiary)',
+                    padding: '4px 8px 4px 0',
+                    fontWeight: 500,
+                    fontSize: 10,
+                    textAlign: 'right',
+                  }}
+                >
+                  {t('Likelihood:', 'Likelihood:')} {likelihood}
+                </td>
+                {LEVELS.map((impact) => {
+                  const risks = matrix[likelihood][impact]
+                  const score = scoreFor(likelihood) * scoreFor(impact)
+                  const tone = cellTone(score)
+                  return (
+                    <td
+                      key={impact}
+                      onClick={() => onCellClick(likelihood)}
+                      style={{
+                        padding: 6,
+                        border: '0.5px solid var(--color-border-tertiary)',
+                        background: tone.bg,
+                        verticalAlign: 'top',
+                        minHeight: 60,
+                        cursor: risks.length > 0 ? 'pointer' : 'default',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                        {risks.slice(0, 9).map((r) => (
+                          <span
+                            key={r.risk_id}
+                            title={r.title}
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              background: tone.dot,
+                              display: 'inline-block',
+                            }}
+                          />
+                        ))}
+                        {risks.length > 9 ? (
+                          <span style={{ fontSize: 9, color: 'var(--color-text-tertiary)' }}>
+                            +{risks.length - 9}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+                        score {score}
+                      </div>
+                    </td>
+                  )
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 function FilterBar({
@@ -367,33 +386,36 @@ function FilterBar({
   onChange: (next: { status?: string; source?: string; category?: string }) => void
   summary: Summary | null
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Status"
+        label={t('Status', 'Status')}
         value={value.status}
         options={['open', 'in_treatment', 'accepted', 'closed']}
         onChange={(v) => onChange({ ...value, status: v })}
       />
       <SelectChip
-        label="Source"
+        label={t('Source', 'Source')}
         value={value.source}
         options={['manual', 'auto_scoring', 'auto_evidence']}
         onChange={(v) => onChange({ ...value, source: v })}
       />
       <SelectChip
-        label="Category"
+        label={t('Category', 'Category')}
         value={value.category}
         options={['operational', 'compliance', 'infrastructure', 'third_party']}
         onChange={(v) => onChange({ ...value, category: v })}
       />
       {summary ? (
-        <span style={{ color: 'var(--color-text-tertiary)' }}>
-          showing {summary.open_total} open / {summary.total} total
-        </span>
+        <span style={{ color: 'var(--color-text-tertiary)' }}>showing {summary.open_total} {t('open /', 'open /')} {summary.total}total
+                  </span>
       ) : null}
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -407,6 +429,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -421,14 +447,14 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }
 
 function RiskRow({ risk, onOpen }: { risk: Risk; onOpen: () => void }) {
@@ -500,6 +526,10 @@ function CreateRiskModal({
   onCancel: () => void
   onSubmit: (payload: Record<string, unknown>) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('operational')
@@ -531,20 +561,25 @@ function CreateRiskModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>Add risk</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>{t('Add risk', 'Add risk')}</h3>
         <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 0 }}>
-          Manual risks are tagged <code>manual</code> and never auto-close. Auto-risks appear directly from the
-          scoring engine — you don't create those by hand.
+          {t('Manual risks are tagged', 'Manual risks are tagged')} <code>manual</code> {t(
+            'and never auto-close. Auto-risks appear directly from the\n          scoring engine — you don\'t create those by hand.',
+            'and never auto-close. Auto-risks appear directly from the\n          scoring engine — you don\'t create those by hand.'
+          )}
         </p>
-        <FormRow label="Title">
+        <FormRow label={t('Title', 'Title')}>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             style={inputStyle}
-            placeholder="e.g. Privileged access drift on vCenter"
+            placeholder={t(
+              'e.g. Privileged access drift on vCenter',
+              'e.g. Privileged access drift on vCenter'
+            )}
           />
         </FormRow>
-        <FormRow label="Description">
+        <FormRow label={t('Description', 'Description')}>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -553,7 +588,7 @@ function CreateRiskModal({
           />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Category">
+          <FormRow label={t('Category', 'Category')}>
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
               {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
@@ -562,17 +597,17 @@ function CreateRiskModal({
           </FormRow>
           <FormRow label={`Score: ${score}`}>
             <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-              likelihood × impact, range 1–16
+              {t('likelihood × impact, range 1–16', 'likelihood × impact, range 1–16')}
             </span>
           </FormRow>
-          <FormRow label="Likelihood">
+          <FormRow label={t('Likelihood', 'Likelihood')}>
             <select value={likelihood} onChange={(e) => setLikelihood(e.target.value as Level)} style={inputStyle}>
               {LEVELS.map((level) => (
                 <option key={level} value={level}>{level}</option>
               ))}
             </select>
           </FormRow>
-          <FormRow label="Impact">
+          <FormRow label={t('Impact', 'Impact')}>
             <select value={impact} onChange={(e) => setImpact(e.target.value as Level)} style={inputStyle}>
               {LEVELS.map((level) => (
                 <option key={level} value={level}>{level}</option>
@@ -581,7 +616,7 @@ function CreateRiskModal({
           </FormRow>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 12 }}>
-          <GhostButton onClick={onCancel} disabled={busy}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel} disabled={busy}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             onClick={() => onSubmit({ title, description, category, likelihood, impact })}
             disabled={busy || !title.trim()}
@@ -591,7 +626,7 @@ function CreateRiskModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {

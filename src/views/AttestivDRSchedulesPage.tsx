@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // DR schedules page — wired to /v1/dr/schedules + /v1/dr/approvals
 // + /v1/dr/runs.
 //
@@ -25,6 +24,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Schedule = {
   id: string
@@ -63,6 +64,10 @@ type Run = {
 }
 
 export function AttestivDRSchedulesPage() {
+  const {
+    t
+  } = useI18n();
+
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
   const [runs, setRuns] = useState<Run[]>([])
@@ -137,11 +142,11 @@ export function AttestivDRSchedulesPage() {
   return (
     <>
       <Topbar
-        title="DR test schedules"
+        title={t('DR test schedules', 'DR test schedules')}
         right={
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-history" aria-hidden="true" />
-            Test history
+            {t('Test history', 'Test history')}
           </GhostButton>
         }
       />
@@ -150,15 +155,16 @@ export function AttestivDRSchedulesPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
 
         {loading ? (
-          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
         ) : schedules.length === 0 ? (
           <Card>
-            <CardTitle>No schedules configured</CardTitle>
+            <CardTitle>{t('No schedules configured', 'No schedules configured')}</CardTitle>
             <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               <p style={{ margin: 0 }}>
-                An admin can create a schedule via <code>POST /v1/dr/schedules</code> with a name,
-                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts
-                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.
+                {t('An admin can create a schedule via', 'An admin can create a schedule via')} <code>{t('POST /v1/dr/schedules', 'POST /v1/dr/schedules')}</code> {t(
+                  'with a name,\n                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts\n                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.',
+                  'with a name,\n                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts\n                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.'
+                )}
               </p>
             </div>
           </Card>
@@ -184,7 +190,10 @@ export function AttestivDRSchedulesPage() {
         )}
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Approval gate rules (server-enforced)</CardTitle>
+          <CardTitle>{t(
+            'Approval gate rules (server-enforced)',
+            'Approval gate rules (server-enforced)'
+          )}</CardTitle>
           <ul
             style={{
               margin: 0,
@@ -194,16 +203,28 @@ export function AttestivDRSchedulesPage() {
               lineHeight: 1.7,
             }}
           >
-            <li>Run requires an approval in <code>granted</code> state. Pending, denied, expired, or consumed approvals are not honored.</li>
-            <li>Approvals are <strong>single-use</strong>. Running consumes the approval; the next run requires a fresh request.</li>
-            <li>Approvals expire <strong>24 hours after grant</strong>. Stale grants transition to <code>expired</code> on the next list call.</li>
-            <li>The schedule's <strong>maintenance window must be open</strong>. A closed window blocks the run without consuming the approval.</li>
-            <li>Every approval, run start, and run completion writes to the audit trail with the actor's principal.</li>
+            <li>{t('Run requires an approval in', 'Run requires an approval in')} <code>granted</code> {t(
+                'state. Pending, denied, expired, or consumed approvals are not honored.',
+                'state. Pending, denied, expired, or consumed approvals are not honored.'
+              )}</li>
+            <li>{t('Approvals are', 'Approvals are')} <strong>single-use</strong>{t(
+                '. Running consumes the approval; the next run requires a fresh request.',
+                '. Running consumes the approval; the next run requires a fresh request.'
+              )}</li>
+            <li>{t('Approvals expire', 'Approvals expire')} <strong>{t('24 hours after grant', '24 hours after grant')}</strong>{t('. Stale grants transition to', '. Stale grants transition to')} <code>expired</code> {t('on the next list call.', 'on the next list call.')}</li>
+            <li>{t('The schedule\'s', 'The schedule\'s')} <strong>{t('maintenance window must be open', 'maintenance window must be open')}</strong>{t(
+                '. A closed window blocks the run without consuming the approval.',
+                '. A closed window blocks the run without consuming the approval.'
+              )}</li>
+            <li>{t(
+              'Every approval, run start, and run completion writes to the audit trail with the actor\'s principal.',
+              'Every approval, run start, and run completion writes to the audit trail with the actor\'s principal.'
+            )}</li>
           </ul>
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function ScheduleCard({
@@ -219,6 +240,10 @@ function ScheduleCard({
   onRequestApproval: () => void
   onRun: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const latestApproval = approvals[0] // already sorted desc by store
   const latestRun = runs[0]
   const canRun = latestApproval?.status === 'granted' && schedule.maintenance_window_open === true
@@ -231,7 +256,6 @@ function ScheduleCard({
       {schedule.rule ? (
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 10 }}>{schedule.rule}</div>
       ) : null}
-
       {latestRun ? (
         <>
           <div style={{ marginBottom: 10 }}>
@@ -260,12 +284,13 @@ function ScheduleCard({
             marginBottom: 12,
           }}
         >
-          No prior run. First execution will establish the baseline.
+          {t(
+            'No prior run. First execution will establish the baseline.',
+            'No prior run. First execution will establish the baseline.'
+          )}
         </div>
       )}
-
       <ApprovalRow approval={latestApproval} windowOpen={schedule.maintenance_window_open === true} />
-
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 10 }}>
         <GhostButton
           onClick={onRequestApproval}
@@ -280,11 +305,11 @@ function ScheduleCard({
         </GhostButton>
         <PrimaryButton onClick={onRun} disabled={!canRun}>
           <i className="ti ti-player-play" aria-hidden="true" />
-          Run test
+          {t('Run test', 'Run test')}
         </PrimaryButton>
       </div>
     </Card>
-  )
+  );
 }
 
 function ApprovalRow({
@@ -294,20 +319,24 @@ function ApprovalRow({
   approval: Approval | undefined
   windowOpen: boolean
 }) {
+  const {
+    t
+  } = useI18n();
+
   const status: Approval['status'] | 'none' = approval?.status ?? 'none'
   const statusBadge =
     status === 'granted' ? (
-      <Badge tone="green">Approval granted{approval?.approver ? ` · ${approval.approver}` : ''}</Badge>
+      <Badge tone="green">{t('Approval granted', 'Approval granted')}{approval?.approver ? ` · ${approval.approver}` : ''}</Badge>
     ) : status === 'pending' ? (
-      <Badge tone="amber">Approval pending</Badge>
+      <Badge tone="amber">{t('Approval pending', 'Approval pending')}</Badge>
     ) : status === 'expired' ? (
-      <Badge tone="red">Approval expired</Badge>
+      <Badge tone="red">{t('Approval expired', 'Approval expired')}</Badge>
     ) : status === 'denied' ? (
-      <Badge tone="red">Approval denied</Badge>
+      <Badge tone="red">{t('Approval denied', 'Approval denied')}</Badge>
     ) : status === 'consumed' ? (
-      <Badge tone="gray">Approval consumed</Badge>
+      <Badge tone="gray">{t('Approval consumed', 'Approval consumed')}</Badge>
     ) : (
-      <Badge tone="gray">No approval</Badge>
+      <Badge tone="gray">{t('No approval', 'No approval')}</Badge>
     )
   return (
     <div
@@ -324,7 +353,7 @@ function ApprovalRow({
     >
       {statusBadge}
       <Badge tone={windowOpen ? 'green' : 'gray'}>
-        Maintenance window {windowOpen ? 'open' : 'closed'}
+        {t('Maintenance window', 'Maintenance window')} {windowOpen ? 'open' : 'closed'}
       </Badge>
       {approval?.expires_at ? (
         <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -332,7 +361,7 @@ function ApprovalRow({
         </span>
       ) : null}
     </div>
-  )
+  );
 }
 
 // Local Banner removed in favour of the shared one from AttestivUi.

@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Remediation tasks page (Phase-2 GRC, chunk 4).
 //
 // What's on screen:
@@ -27,6 +26,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Task = {
   id: string
@@ -65,6 +66,10 @@ const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const
 const STATUSES = ['open', 'in_progress', 'resolved', 'wont_fix'] as const
 
 export function AttestivRemediationPage() {
+  const {
+    t
+  } = useI18n();
+
   const [tasks, setTasks] = useState<Task[]>([])
   const [overdue, setOverdue] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
@@ -160,11 +165,11 @@ export function AttestivRemediationPage() {
   return (
     <>
       <Topbar
-        title="Remediation"
+        title={t('Remediation', 'Remediation')}
         left={<Badge tone="navy">{tasks.length} tasks</Badge>}
         right={
           <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> Add task
+            <i className="ti ti-plus" aria-hidden="true" /> {t('Add task', 'Add task')}
           </PrimaryButton>
         }
       />
@@ -172,8 +177,10 @@ export function AttestivRemediationPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {overdue.length > 0 ? (
           <Banner tone="warning" title={`${overdue.length} task${overdue.length === 1 ? '' : 's'} overdue`}>
-            Overdue remediation work signals control failures that aren't being addressed within the
-            agreed grace period. Reassign or extend the due date if the constraint has changed.
+            {t(
+              'Overdue remediation work signals control failures that aren\'t being addressed within the\n            agreed grace period. Reassign or extend the due date if the constraint has changed.',
+              'Overdue remediation work signals control failures that aren\'t being addressed within the\n            agreed grace period. Reassign or extend the due date if the constraint has changed.'
+            )}
           </Banner>
         ) : null}
 
@@ -184,24 +191,27 @@ export function AttestivRemediationPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Open" value={summary.open} icon="ti-circle-dot" tone="amber" />
-          <SummaryCard label="In progress" value={summary.in_progress} icon="ti-tools" tone="navy" />
-          <SummaryCard label="Overdue" value={overdue.length} icon="ti-clock-exclamation" tone="red" />
-          <SummaryCard label="Resolved" value={summary.resolved} icon="ti-circle-check" tone="green" />
+          <SummaryCard label={t('Open', 'Open')} value={summary.open} icon="ti-circle-dot" tone="amber" />
+          <SummaryCard label={t('In progress', 'In progress')} value={summary.in_progress} icon="ti-tools" tone="navy" />
+          <SummaryCard label={t('Overdue', 'Overdue')} value={overdue.length} icon="ti-clock-exclamation" tone="red" />
+          <SummaryCard label={t('Resolved', 'Resolved')} value={summary.resolved} icon="ti-circle-check" tone="green" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>Tasks</CardTitle>
+          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>{t('Tasks', 'Tasks')}</CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : tasks.length === 0 ? (
             <EmptyState
               icon="ti-checklist"
-              title="No remediation tasks"
-              description="Auto-tasks appear when scoring detects a control dropping to REVIEW/WARN/FAIL. Add one manually for any work the engine can't see."
+              title={t('No remediation tasks', 'No remediation tasks')}
+              description={t(
+                'Auto-tasks appear when scoring detects a control dropping to REVIEW/WARN/FAIL. Add one manually for any work the engine can\'t see.',
+                'Auto-tasks appear when scoring detects a control dropping to REVIEW/WARN/FAIL. Add one manually for any work the engine can\'t see.'
+              )}
               action={
                 <PrimaryButton onClick={() => setShowCreate(true)}>
-                  <i className="ti ti-plus" aria-hidden="true" /> Add task
+                  <i className="ti ti-plus" aria-hidden="true" /> {t('Add task', 'Add task')}
                 </PrimaryButton>
               }
             />
@@ -214,12 +224,11 @@ export function AttestivRemediationPage() {
           )}
         </Card>
       </div>
-
       {showCreate ? (
         <CreateTaskModal busy={createBusy} onCancel={() => setShowCreate(false)} onSubmit={createTask} />
       ) : null}
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -272,16 +281,20 @@ function FilterBar({
   value: { status?: string; priority?: string; framework_id?: string; assigned_to?: string }
   onChange: (next: { status?: string; priority?: string; framework_id?: string; assigned_to?: string }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Status"
+        label={t('Status', 'Status')}
         value={value.status}
         options={STATUSES.slice()}
         onChange={(v) => onChange({ ...value, status: v })}
       />
       <SelectChip
-        label="Priority"
+        label={t('Priority', 'Priority')}
         value={value.priority}
         options={PRIORITIES.slice()}
         onChange={(v) => onChange({ ...value, priority: v })}
@@ -303,7 +316,7 @@ function FilterBar({
         }}
       />
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -317,6 +330,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -331,14 +348,14 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }
 
 function TaskRow({ task, onPatch }: { task: Task; onPatch: (updates: Record<string, unknown>) => void }) {
@@ -412,6 +429,10 @@ function CreateTaskModal({
   onCancel: () => void
   onSubmit: (payload: Record<string, unknown>) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [framework, setFramework] = useState('iso27001')
@@ -444,25 +465,30 @@ function CreateTaskModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>Add remediation task</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>{t('Add remediation task', 'Add remediation task')}</h3>
         <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 0 }}>
-          Manual tasks are tagged <code>manual</code> and don't auto-close when the control
-          recovers. Auto-tasks are created by the scoring engine and resolve themselves.
+          {t('Manual tasks are tagged', 'Manual tasks are tagged')} <code>manual</code> {t(
+            'and don\'t auto-close when the control\n          recovers. Auto-tasks are created by the scoring engine and resolve themselves.',
+            'and don\'t auto-close when the control\n          recovers. Auto-tasks are created by the scoring engine and resolve themselves.'
+          )}
         </p>
-        <FormRow label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Refresh access reviews for vCenter" style={inputStyle} />
+        <FormRow label={t('Title', 'Title')}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t(
+            'e.g. Refresh access reviews for vCenter',
+            'e.g. Refresh access reviews for vCenter'
+          )} style={inputStyle} />
         </FormRow>
-        <FormRow label="Description">
+        <FormRow label={t('Description', 'Description')}>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Framework">
+          <FormRow label={t('Framework', 'Framework')}>
             <input value={framework} onChange={(e) => setFramework(e.target.value)} placeholder="iso27001" style={inputStyle} />
           </FormRow>
-          <FormRow label="Control">
-            <input value={control} onChange={(e) => setControl(e.target.value)} placeholder="A.9.2.5" style={inputStyle} />
+          <FormRow label={t('Control', 'Control')}>
+            <input value={control} onChange={(e) => setControl(e.target.value)} placeholder={t('A.9.2.5', 'A.9.2.5')} style={inputStyle} />
           </FormRow>
-          <FormRow label="Priority">
+          <FormRow label={t('Priority', 'Priority')}>
             <select
               value={priority}
               onChange={(e) => {
@@ -477,15 +503,18 @@ function CreateTaskModal({
               ))}
             </select>
           </FormRow>
-          <FormRow label="Due date">
+          <FormRow label={t('Due date', 'Due date')}>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} />
           </FormRow>
         </div>
-        <FormRow label="Assignee (defaults to control owner)">
+        <FormRow label={t(
+          'Assignee (defaults to control owner)',
+          'Assignee (defaults to control owner)'
+        )}>
           <input value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} placeholder="alice@acme" style={inputStyle} />
         </FormRow>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 12 }}>
-          <GhostButton onClick={onCancel} disabled={busy}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel} disabled={busy}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             onClick={() =>
               onSubmit({
@@ -505,7 +534,7 @@ function CreateTaskModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {

@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Third-party provider detail page — full DORA Art.28 record.
 //
 // Two blocks:
@@ -23,6 +22,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Provider = {
   id: string
@@ -55,6 +56,10 @@ const CRITICALITY_TONE: Record<string, 'red' | 'amber' | 'gray'> = {
 }
 
 export function AttestivThirdPartyDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -171,10 +176,10 @@ export function AttestivThirdPartyDetailPage() {
     return (
       <>
         <Topbar
-          title="Provider"
+          title={t('Provider', 'Provider')}
           left={
             <GhostButton onClick={() => router.push('/third-parties')}>
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
             </GhostButton>
           }
         />
@@ -182,18 +187,21 @@ export function AttestivThirdPartyDetailPage() {
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!provider) {
     return (
       <>
-        <Topbar title="Provider" />
+        <Topbar title={t('Provider', 'Provider')} />
         <div className="attestiv-content">
-          <EmptyState icon="ti-building" title="Provider not found" description="The provider may have been deleted or you may not have access." />
+          <EmptyState icon="ti-building" title={t('Provider not found', 'Provider not found')} description={t(
+            'The provider may have been deleted or you may not have access.',
+            'The provider may have been deleted or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   const overdue = provider.next_assessment_due && new Date(provider.next_assessment_due).getTime() < Date.now()
@@ -205,7 +213,7 @@ export function AttestivThirdPartyDetailPage() {
         title={provider.provider_name}
         left={
           <GhostButton onClick={() => router.push('/third-parties')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
@@ -220,29 +228,31 @@ export function AttestivThirdPartyDetailPage() {
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
         {overdue ? (
-          <Banner tone="warning" title="Overdue for assessment">
-            DORA Art.28(1) requires periodic monitoring. Update the assessment date once you've
-            reviewed the provider.
+          <Banner tone="warning" title={t('Overdue for assessment', 'Overdue for assessment')}>
+            {t(
+              'DORA Art.28(1) requires periodic monitoring. Update the assessment date once you\'ve\n            reviewed the provider.',
+              'DORA Art.28(1) requires periodic monitoring. Update the assessment date once you\'ve\n            reviewed the provider.'
+            )}
           </Banner>
         ) : null}
 
         <Card>
-          <CardTitle>Edit</CardTitle>
+          <CardTitle>{t('Edit', 'Edit')}</CardTitle>
           <FormGrid>
-            <FormRow label="Provider name">
+            <FormRow label={t('Provider name', 'Provider name')}>
               <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
             </FormRow>
-            <FormRow label="Country (ISO 3166)">
+            <FormRow label={t('Country (ISO 3166)', 'Country (ISO 3166)')}>
               <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="IE" style={inputStyle} />
             </FormRow>
-            <FormRow label="Criticality">
+            <FormRow label={t('Criticality', 'Criticality')}>
               <select value={criticality} onChange={(e) => setCriticality(e.target.value as typeof CRITICALITIES[number])} style={inputStyle}>
                 {CRITICALITIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </FormRow>
-            <FormRow label="Status">
+            <FormRow label={t('Status', 'Status')}>
               <select value={status} onChange={(e) => setStatus(e.target.value as typeof STATUSES[number])} style={inputStyle}>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
@@ -250,30 +260,39 @@ export function AttestivThirdPartyDetailPage() {
               </select>
             </FormRow>
           </FormGrid>
-          <FormRow label="Services provided">
+          <FormRow label={t('Services provided', 'Services provided')}>
             <textarea value={services} onChange={(e) => setServices(e.target.value)} rows={2} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
           </FormRow>
-          <FormRow label="Functions supported (comma-separated)">
-            <input value={functions} onChange={(e) => setFunctions(e.target.value)} placeholder="payments, transaction-history" style={inputStyle} />
+          <FormRow label={t(
+            'Functions supported (comma-separated)',
+            'Functions supported (comma-separated)'
+          )}>
+            <input value={functions} onChange={(e) => setFunctions(e.target.value)} placeholder={t('payments, transaction-history', 'payments, transaction-history')} style={inputStyle} />
           </FormRow>
           <FormGrid>
-            <FormRow label="Contract start">
+            <FormRow label={t('Contract start', 'Contract start')}>
               <input type="date" value={contractStart} onChange={(e) => setContractStart(e.target.value)} style={inputStyle} />
             </FormRow>
-            <FormRow label="Contract end">
+            <FormRow label={t('Contract end', 'Contract end')}>
               <input type="date" value={contractEnd} onChange={(e) => setContractEnd(e.target.value)} style={inputStyle} />
             </FormRow>
-            <FormRow label="Last assessment">
+            <FormRow label={t('Last assessment', 'Last assessment')}>
               <input type="date" value={lastAssessment} onChange={(e) => setLastAssessment(e.target.value)} style={inputStyle} />
             </FormRow>
-            <FormRow label="Next assessment due">
+            <FormRow label={t('Next assessment due', 'Next assessment due')}>
               <input type="date" value={nextAssessment} onChange={(e) => setNextAssessment(e.target.value)} style={inputStyle} />
             </FormRow>
           </FormGrid>
-          <FormRow label="Data processing locations (comma-separated)">
-            <input value={locations} onChange={(e) => setLocations(e.target.value)} placeholder="IE, DE" style={inputStyle} />
+          <FormRow label={t(
+            'Data processing locations (comma-separated)',
+            'Data processing locations (comma-separated)'
+          )}>
+            <input value={locations} onChange={(e) => setLocations(e.target.value)} placeholder={t('IE, DE', 'IE, DE')} style={inputStyle} />
           </FormRow>
-          <FormRow label="Provider compliance evidence (one URL per line)">
+          <FormRow label={t(
+            'Provider compliance evidence (one URL per line)',
+            'Provider compliance evidence (one URL per line)'
+          )}>
             <textarea
               value={evidence}
               onChange={(e) => setEvidence(e.target.value)}
@@ -285,24 +304,27 @@ export function AttestivThirdPartyDetailPage() {
           <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <input type="checkbox" checked={subOutsourcing} onChange={(e) => setSubOutsourcing(e.target.checked)} />
-              Sub-outsourcing
+              {t('Sub-outsourcing', 'Sub-outsourcing')}
             </label>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <input type="checkbox" checked={exitPlan} onChange={(e) => setExitPlan(e.target.checked)} />
-              Exit plan documented
+              {t('Exit plan documented', 'Exit plan documented')}
             </label>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <input type="checkbox" checked={roiIncluded} onChange={(e) => setRoiIncluded(e.target.checked)} />
-              Include in RoI export
+              {t('Include in RoI export', 'Include in RoI export')}
             </label>
           </div>
           {subOutsourcing ? (
-            <FormRow label="Sub-outsourcing details">
+            <FormRow label={t('Sub-outsourcing details', 'Sub-outsourcing details')}>
               <textarea value={subDetails} onChange={(e) => setSubDetails(e.target.value)} rows={2} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
             </FormRow>
           ) : null}
-          <FormRow label="LEI (entity identifier — for RoI submission)">
-            <input value={lei} onChange={(e) => setLei(e.target.value)} placeholder="20-character LEI" style={inputStyle} />
+          <FormRow label={t(
+            'LEI (entity identifier — for RoI submission)',
+            'LEI (entity identifier — for RoI submission)'
+          )}>
+            <input value={lei} onChange={(e) => setLei(e.target.value)} placeholder={t('20-character LEI', '20-character LEI')} style={inputStyle} />
           </FormRow>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <PrimaryButton onClick={save} disabled={busy}>
@@ -312,7 +334,7 @@ export function AttestivThirdPartyDetailPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function FormGrid({ children }: { children: React.ReactNode }) {

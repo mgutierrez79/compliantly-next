@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Card, ErrorBox, HelpTip, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type TrendPoint = {
   run_id?: string | null
@@ -17,6 +18,10 @@ type TrendResponse = {
 }
 
 export function AnalyticsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [frameworks, setFrameworks] = useState<string[] | null>(null)
   const [selected, setSelected] = useState<string>('iso27001')
   const [trend, setTrend] = useState<TrendResponse | null>(null)
@@ -118,12 +123,12 @@ export function AnalyticsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <PageTitle>Analytics</PageTitle>
+          <PageTitle>{t('Analytics', 'Analytics')}</PageTitle>
           <HelpTip text={'Pick a framework to see recent trend points (risk score and finding counts) pulled from stored runs.'} />
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
-            <Label>Framework</Label>
+            <Label>{t('Framework', 'Framework')}</Label>
             <HelpTip text={'Framework to view. Example: iso27001, nis2, dora.'} />
           </div>
           <select
@@ -140,13 +145,14 @@ export function AnalyticsPage() {
         </div>
       </div>
       <p className="text-sm text-slate-300">
-        Track framework trends over time. Pick a framework to view recent score and finding changes.
+        {t(
+          'Track framework trends over time. Pick a framework to view recent score and finding changes.',
+          'Track framework trends over time. Pick a framework to view recent score and finding changes.'
+        )}
       </p>
-
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
-
       <Card>
-        <Label>Trend points</Label>
+        <Label>{t('Trend points', 'Trend points')}</Label>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-400">
@@ -157,7 +163,7 @@ export function AnalyticsPage() {
                     className="text-left"
                     onClick={() => toggleSort('timestamp')}
                   >
-                    Timestamp{sortLabel('timestamp')}
+                    {t('Timestamp', 'Timestamp')}{sortLabel('timestamp')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
@@ -166,7 +172,7 @@ export function AnalyticsPage() {
                     className="text-left"
                     onClick={() => toggleSort('risk_score')}
                   >
-                    Risk score{sortLabel('risk_score')}
+                    {t('Risk score', 'Risk score')}{sortLabel('risk_score')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
@@ -175,7 +181,7 @@ export function AnalyticsPage() {
                     className="text-left"
                     onClick={() => toggleSort('finding_count')}
                   >
-                    Findings{sortLabel('finding_count')}
+                    {t('Findings', 'Findings')}{sortLabel('finding_count')}
                   </button>
                 </th>
               </tr>
@@ -185,8 +191,8 @@ export function AnalyticsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.timestamp}
                     onChange={(e) => setFilters({ ...filters, timestamp: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter timestamp"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter timestamp', 'Filter timestamp')}
                   />
                 </th>
                 <th className="pb-2 pr-4">
@@ -194,8 +200,8 @@ export function AnalyticsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.risk_score}
                     onChange={(e) => setFilters({ ...filters, risk_score: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter risk score"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter risk score', 'Filter risk score')}
                   />
                 </th>
                 <th className="pb-2 pr-4">
@@ -203,8 +209,8 @@ export function AnalyticsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.finding_count}
                     onChange={(e) => setFilters({ ...filters, finding_count: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter findings"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter findings', 'Filter findings')}
                   />
                 </th>
               </tr>
@@ -220,7 +226,7 @@ export function AnalyticsPage() {
               {!visiblePoints.length ? (
                 <tr>
                   <td className="py-4 text-sm text-slate-300" colSpan={3}>
-                    No trend data returned.
+                    {t('No trend data returned.', 'No trend data returned.')}
                   </td>
                 </tr>
               ) : null}
@@ -229,5 +235,5 @@ export function AnalyticsPage() {
         </div>
       </Card>
     </div>
-  )
+  );
 }

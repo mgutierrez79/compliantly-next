@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Frameworks / Controls.
 //
 // Flat library view across all frameworks. Each row is one control:
@@ -24,6 +23,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Control = {
   framework: string
@@ -66,6 +67,10 @@ function keyFor(framework: string, controlID: string): string {
 }
 
 export function AttestivFrameworkControlsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [controls, setControls] = useState<Control[]>([])
   const [tasksByControl, setTasksByControl] = useState<Map<string, number>>(new Map())
   const [exceptionsByControl, setExceptionsByControl] = useState<Map<string, ExceptionRow[]>>(new Map())
@@ -173,8 +178,11 @@ export function AttestivFrameworkControlsPage() {
   return (
     <>
       <Topbar
-        title="Controls library"
-        left={usingDemo ? <Badge tone="amber">Demo mappings — no control library configured</Badge> : null}
+        title={t('Controls library', 'Controls library')}
+        left={usingDemo ? <Badge tone="amber">{t(
+          'Demo mappings — no control library configured',
+          'Demo mappings — no control library configured'
+        )}</Badge> : null}
         right={
           <div style={{ display: 'flex', gap: 6 }}>
             <select
@@ -190,7 +198,7 @@ export function AttestivFrameworkControlsPage() {
                 outline: 'none',
               }}
             >
-              <option value="">All frameworks</option>
+              <option value="">{t('All frameworks', 'All frameworks')}</option>
               {frameworks.map((entry) => (
                 <option key={entry} value={entry}>
                   {entry}
@@ -200,7 +208,7 @@ export function AttestivFrameworkControlsPage() {
             <input
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
-              placeholder="Filter by id, name, area"
+              placeholder={t('Filter by id, name, area', 'Filter by id, name, area')}
               style={{
                 padding: '6px 10px',
                 fontSize: 12,
@@ -218,12 +226,12 @@ export function AttestivFrameworkControlsPage() {
       <div className="attestiv-content">
         <Card>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} controls</span>}>
-            Cross-framework controls
+            {t('Cross-framework controls', 'Cross-framework controls')}
           </CardTitle>
           {loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
           ) : filtered.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No controls match.</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No controls match.', 'No controls match.')}</div>
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
@@ -236,13 +244,13 @@ export function AttestivFrameworkControlsPage() {
                     textAlign: 'left',
                   }}
                 >
-                  <th style={{ padding: '6px 10px 6px 0' }}>Framework</th>
-                  <th style={{ padding: '6px 10px' }}>Control</th>
-                  <th style={{ padding: '6px 10px' }}>Area</th>
-                  <th style={{ padding: '6px 10px', minWidth: 180 }}>Coverage</th>
-                  <th style={{ padding: '6px 10px' }}>Tasks</th>
-                  <th style={{ padding: '6px 10px' }}>Exception</th>
-                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>Evidence</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Framework', 'Framework')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Control', 'Control')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Area', 'Area')}</th>
+                  <th style={{ padding: '6px 10px', minWidth: 180 }}>{t('Coverage', 'Coverage')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Tasks', 'Tasks')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Exception', 'Exception')}</th>
+                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>{t('Evidence', 'Evidence')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -304,5 +312,5 @@ export function AttestivFrameworkControlsPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }

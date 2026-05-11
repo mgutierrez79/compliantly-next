@@ -25,7 +25,10 @@ type SystemConfig = {
 }
 
 export function SettingsPage() {
-  const { setLanguage: setUiLanguage } = useI18n()
+  const {
+    setLanguage: setUiLanguage,
+    t
+  } = useI18n()
   const current = defaultSettings()
   const [apiBaseUrl, setApiBaseUrl] = useState(current.apiBaseUrl)
   const [apiKey, setApiKey] = useState(current.apiKey)
@@ -453,31 +456,32 @@ export function SettingsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <PageTitle>Settings</PageTitle>
+        <PageTitle>{t('Settings', 'Settings')}</PageTitle>
         <HelpTip text={'Configure how the UI talks to the API. System tab controls API auth/base URL; Tenants tab manages DB-backed admin config.'} />
       </div>
       <p className="text-sm text-slate-400">
-        Configure how the UI connects to your API, and choose API key, OIDC, or local authentication. DB-backed admin endpoints drive system
-        config, tenants, secrets, users, and bindings.
+        {t(
+          'Configure how the UI connects to your API, and choose API key, OIDC, or local authentication. DB-backed admin endpoints drive system\n        config, tenants, secrets, users, and bindings.',
+          'Configure how the UI connects to your API, and choose API key, OIDC, or local authentication. DB-backed admin endpoints drive system\n        config, tenants, secrets, users, and bindings.'
+        )}
       </p>
       <div className="flex gap-2">
         <Button type="button" onClick={() => onTabChange('system')} disabled={activeTab === 'system'}>
-          System
+          {t('System', 'System')}
         </Button>
         <Button type="button" onClick={() => onTabChange('tenants')} disabled={activeTab === 'tenants'}>
-          Tenants & Users
+          {t('Tenants & Users', 'Tenants & Users')}
         </Button>
       </div>
-
       {activeTab === 'system' ? (
         <>
-          {sysError ? <ErrorBox title="System config error" detail={sysError} /> : null}
+          {sysError ? <ErrorBox title={t('System config error', 'System config error')} detail={sysError} /> : null}
           <Card>
-            <Label>API connection</Label>
+            <Label>{t('API connection', 'API connection')}</Label>
             <form className="mt-3 space-y-3" onSubmit={onSubmit}>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>API base URL</Label>
+                  <Label>{t('API base URL', 'API base URL')}</Label>
                   <HelpTip text={'Base URL for the backend API. Example: http://127.0.0.1:8001.'} />
                 </div>
                 <Input value={apiBaseUrl} onChange={(e) => setApiBaseUrl(e.target.value)} placeholder="http://127.0.0.1:8001" />
@@ -485,7 +489,7 @@ export function SettingsPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Language</Label>
+                  <Label>{t('Language', 'Language')}</Label>
                   <HelpTip text={'UI language. Example: English, Espanol, Francais.'} />
                 </div>
                 <select
@@ -493,14 +497,14 @@ export function SettingsPage() {
                   onChange={(e) => setLanguage(e.target.value as 'en' | 'es' | 'fr')}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
                 >
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                  <option value="fr">French</option>
+                  <option value="en">{t('English', 'English')}</option>
+                  <option value="es">{t('Spanish', 'Spanish')}</option>
+                  <option value="fr">{t('French', 'French')}</option>
                 </select>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Time zone</Label>
+                  <Label>{t('Time zone', 'Time zone')}</Label>
                   <HelpTip text={'Time zone for timestamps (IANA format). Example: Europe/Paris or America/New_York.'} />
                 </div>
                 <Input
@@ -508,11 +512,14 @@ export function SettingsPage() {
                   onChange={(e) => setTimeZone(e.target.value)}
                   placeholder="America/New_York"
                 />
-                <div className="mt-1 text-xs text-slate-400">Used for dashboard timestamps. Leave blank to use browser default.</div>
+                <div className="mt-1 text-xs text-slate-400">{t(
+                  'Used for dashboard timestamps. Leave blank to use browser default.',
+                  'Used for dashboard timestamps. Leave blank to use browser default.'
+                )}</div>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Log verbosity</Label>
+                  <Label>{t('Log verbosity', 'Log verbosity')}</Label>
                   <HelpTip text={'Controls UI log capture and console output. Example: warning for errors only.'} />
                 </div>
                 <select
@@ -520,17 +527,17 @@ export function SettingsPage() {
                   onChange={(e) => setLogLevel(e.target.value as LogEntry['level'])}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
                 >
-                  <option value="critical">Critical</option>
-                  <option value="error">Error</option>
-                  <option value="warning">Warning</option>
-                  <option value="info">Info</option>
-                  <option value="debug">Debug</option>
+                  <option value="critical">{t('Critical', 'Critical')}</option>
+                  <option value="error">{t('Error', 'Error')}</option>
+                  <option value="warning">{t('Warning', 'Warning')}</option>
+                  <option value="info">{t('Info', 'Info')}</option>
+                  <option value="debug">{t('Debug', 'Debug')}</option>
                 </select>
-                <div className="mt-1 text-xs text-slate-400">Stored locally in your browser.</div>
+                <div className="mt-1 text-xs text-slate-400">{t('Stored locally in your browser.', 'Stored locally in your browser.')}</div>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Auth mode</Label>
+                  <Label>{t('Auth mode', 'Auth mode')}</Label>
                   <HelpTip text={'Choose API key, OIDC (SSO), or local login for UI access.'} />
                 </div>
                 <select
@@ -543,14 +550,14 @@ export function SettingsPage() {
                   }}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
                 >
-                  <option value="apiKey">API key</option>
-                  <option value="oidc">OIDC (SSO)</option>
-                  <option value="local">Local username/password</option>
+                  <option value="apiKey">{t('API key', 'API key')}</option>
+                  <option value="oidc">{t('OIDC (SSO)', 'OIDC (SSO)')}</option>
+                  <option value="local">{t('Local username/password', 'Local username/password')}</option>
                 </select>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Tenant ID (optional)</Label>
+                  <Label>{t('Tenant ID (optional)', 'Tenant ID (optional)')}</Label>
                   <HelpTip text={'Optional tenant scope header. Example: acme.'} />
                 </div>
                 <Input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="acme" />
@@ -558,27 +565,30 @@ export function SettingsPage() {
               {authMode === 'apiKey' ? (
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>API key (Bearer)</Label>
+                    <Label>{t('API key (Bearer)', 'API key (Bearer)')}</Label>
                     <HelpTip text={'Bearer token from COMPLIANCE_AUTH_API_KEYS.'} />
                   </div>
-                  <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="key-..." />
-                  <div className="mt-1 text-xs text-slate-400">Stored locally in your browser.</div>
+                  <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t('key-...', 'key-...')} />
+                  <div className="mt-1 text-xs text-slate-400">{t('Stored locally in your browser.', 'Stored locally in your browser.')}</div>
                 </div>
               ) : authMode === 'oidc' ? (
                 <div className="space-y-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Label>OIDC issuer (authority)</Label>
+                      <Label>{t('OIDC issuer (authority)', 'OIDC issuer (authority)')}</Label>
                       <HelpTip text={'OIDC issuer URL. Example: https://login.microsoftonline.com/...'} />
                     </div>
                     <Input value={oidcIssuer} onChange={(e) => setOidcIssuer(e.target.value)} placeholder="https://issuer.example.com" />
                     <div className="mt-1 text-xs text-slate-400">
-                      Must expose OIDC discovery at `{oidcIssuer || '<issuer>'}/.well-known/openid-configuration`.
+                      {t('Must expose OIDC discovery at `', 'Must expose OIDC discovery at `')}{oidcIssuer || '<issuer>'}{t(
+                        '/.well-known/openid-configuration`.',
+                        '/.well-known/openid-configuration`.'
+                      )}
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <Label>OIDC client id</Label>
+                      <Label>{t('OIDC client id', 'OIDC client id')}</Label>
                       <HelpTip text={'Client ID from your IdP app registration.'} />
                     </div>
                     <Input value={oidcClientId} onChange={(e) => setOidcClientId(e.target.value)} placeholder="client-id" />
@@ -586,14 +596,14 @@ export function SettingsPage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <Label>Scope</Label>
+                        <Label>{t('Scope', 'Scope')}</Label>
                         <HelpTip text={'OIDC scopes. Example: openid profile email.'} />
                       </div>
-                      <Input value={oidcScope} onChange={(e) => setOidcScope(e.target.value)} placeholder="openid profile email" />
+                      <Input value={oidcScope} onChange={(e) => setOidcScope(e.target.value)} placeholder={t('openid profile email', 'openid profile email')} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <Label>Audience (optional)</Label>
+                        <Label>{t('Audience (optional)', 'Audience (optional)')}</Label>
                         <HelpTip text={'Optional API audience. Example: api://compliantly.'} />
                       </div>
                       <Input value={oidcAudience} onChange={(e) => setOidcAudience(e.target.value)} placeholder="api://..." />
@@ -601,74 +611,83 @@ export function SettingsPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button type="button" disabled={!oidcConfigured} onClick={() => oidcSignIn()}>
-                      Login (OIDC)
+                      {t('Login (OIDC)', 'Login (OIDC)')}
                     </Button>
                     <Button type="button" onClick={() => oidcSignOut()}>
-                      Logout
+                      {t('Logout', 'Logout')}
                     </Button>
-                    {!oidcConfigured ? <div className="text-sm text-rose-200">Set issuer + client id, then Save.</div> : null}
+                    {!oidcConfigured ? <div className="text-sm text-rose-200">{t('Set issuer + client id, then Save.', 'Set issuer + client id, then Save.')}</div> : null}
                   </div>
                   <div className="text-xs text-slate-400">
-                    Callback URL to register in your IdP: <span className="font-mono">{`${window.location.origin}/auth/callback`}</span>
+                    {t(
+                      'Callback URL to register in your IdP:',
+                      'Callback URL to register in your IdP:'
+                    )} <span className="font-mono">{`${window.location.origin}/auth/callback`}</span>
                   </div>
                 </div>
               ) : (
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Local access token</Label>
+                    <Label>{t('Local access token', 'Local access token')}</Label>
                     <HelpTip text={'Token returned by /v1/auth/login for local auth.'} />
                   </div>
                   <Input
                     type="password"
                     value={localToken}
                     onChange={(e) => setLocalToken(e.target.value)}
-                    placeholder="Paste token from /v1/auth/login"
+                    placeholder={t('Paste token from /v1/auth/login', 'Paste token from /v1/auth/login')}
                   />
                   <div className="mt-1 text-xs text-slate-400">
-                    Issued by the local login endpoint; stored only in your browser.
+                    {t(
+                      'Issued by the local login endpoint; stored only in your browser.',
+                      'Issued by the local login endpoint; stored only in your browser.'
+                    )}
                   </div>
                   <div className="mt-2">
                     <Button type="button" onClick={() => setLocalToken('')}>
-                      Clear token
+                      {t('Clear token', 'Clear token')}
                     </Button>
                   </div>
                 </div>
               )}
               <div className="flex items-center gap-3">
-                <Button type="submit">Save</Button>
-                {saved ? <div className="text-sm text-emerald-300">Saved.</div> : null}
+                <Button type="submit">{t('Save', 'Save')}</Button>
+                {saved ? <div className="text-sm text-emerald-300">{t('Saved.', 'Saved.')}</div> : null}
               </div>
             </form>
           </Card>
 
           <Card>
             <div className="flex items-center gap-2">
-              <Label>API performance</Label>
+              <Label>{t('API performance', 'API performance')}</Label>
               <HelpTip text={'Recent API calls captured in your browser. Use this to spot slow endpoints and large payloads.'} />
             </div>
-            <p className="mt-2 text-sm text-slate-400">Updates every 3 seconds, stored locally in your browser.</p>
+            <p className="mt-2 text-sm text-slate-400">{t(
+              'Updates every 3 seconds, stored locally in your browser.',
+              'Updates every 3 seconds, stored locally in your browser.'
+            )}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <Button type="button" onClick={refreshPerf}>
-                Refresh
+                {t('Refresh', 'Refresh')}
               </Button>
               <Button type="button" onClick={clearPerf} disabled={!perfEntries.length}>
-                Clear
+                {t('Clear', 'Clear')}
               </Button>
               {perfNotice ? <div className="text-sm text-emerald-300">{perfNotice}</div> : null}
             </div>
             <div className="mt-3 max-h-72 overflow-auto rounded-lg border border-[#29446c] bg-[#0b1729] p-3 text-xs text-slate-200">
               {perfEntries.length === 0 ? (
-                <div className="text-slate-400">No API calls captured yet.</div>
+                <div className="text-slate-400">{t('No API calls captured yet.', 'No API calls captured yet.')}</div>
               ) : (
                 <table className="min-w-full text-left text-xs">
                   <thead className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
                     <tr>
-                      <th className="pb-2 pr-3">Time</th>
-                      <th className="pb-2 pr-3">Method</th>
-                      <th className="pb-2 pr-3">Status</th>
-                      <th className="pb-2 pr-3">Duration</th>
-                      <th className="pb-2 pr-3">Size</th>
-                      <th className="pb-2 pr-3">Endpoint</th>
+                      <th className="pb-2 pr-3">{t('Time', 'Time')}</th>
+                      <th className="pb-2 pr-3">{t('Method', 'Method')}</th>
+                      <th className="pb-2 pr-3">{t('Status', 'Status')}</th>
+                      <th className="pb-2 pr-3">{t('Duration', 'Duration')}</th>
+                      <th className="pb-2 pr-3">{t('Size', 'Size')}</th>
+                      <th className="pb-2 pr-3">{t('Endpoint', 'Endpoint')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f365a]">
@@ -692,22 +711,25 @@ export function SettingsPage() {
 
           <Card>
             <div className="flex items-center gap-2">
-              <Label>Application logs</Label>
+              <Label>{t('Application logs', 'Application logs')}</Label>
               <HelpTip text={'In-browser logs for troubleshooting UI and API issues. Logs stay in your browser until cleared.'} />
             </div>
-            <p className="mt-2 text-sm text-slate-400">Use this view to copy logs when reporting issues.</p>
+            <p className="mt-2 text-sm text-slate-400">{t(
+              'Use this view to copy logs when reporting issues.',
+              'Use this view to copy logs when reporting issues.'
+            )}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <Button type="button" onClick={() => void copyLogs()} disabled={!logEntries.length}>
-                Copy logs
+                {t('Copy logs', 'Copy logs')}
               </Button>
               <Button type="button" onClick={clearLogBuffer} disabled={!logEntries.length}>
-                Clear logs
+                {t('Clear logs', 'Clear logs')}
               </Button>
               {logNotice ? <div className="text-sm text-emerald-300">{logNotice}</div> : null}
             </div>
             <div className="mt-3 max-h-96 overflow-auto rounded-lg border border-[#29446c] bg-[#0b1729] p-3 text-xs text-slate-200">
               {logEntries.length === 0 ? (
-                <div className="text-slate-400">No logs yet.</div>
+                <div className="text-slate-400">{t('No logs yet.', 'No logs yet.')}</div>
               ) : (
                 [...logEntries]
                   .reverse()
@@ -730,15 +752,18 @@ export function SettingsPage() {
 
           <Card>
             <div className="flex items-center gap-2">
-              <Label>Advanced (DB-backed configuration)</Label>
+              <Label>{t('Advanced (DB-backed configuration)', 'Advanced (DB-backed configuration)')}</Label>
               <HelpTip text={'Persist environment-style key/value settings into the database. Requires DB + COMPLIANCE_SECRET_KEY on the API.'} />
             </div>
-            <p className="mt-2 text-sm text-slate-400">Saved to /admin/db/config (admin role required).</p>
+            <p className="mt-2 text-sm text-slate-400">{t(
+              'Saved to /admin/db/config (admin role required).',
+              'Saved to /admin/db/config (admin role required).'
+            )}</p>
             <form className="mt-3 space-y-4" onSubmit={saveSystemConfig}>
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>DB URL</Label>
+                    <Label>{t('DB URL', 'DB URL')}</Label>
                     <HelpTip text={'Postgres connection string for the main database.'} />
                   </div>
                   <Input
@@ -749,7 +774,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Redis URL</Label>
+                    <Label>{t('Redis URL', 'Redis URL')}</Label>
                     <HelpTip text={'Redis connection string for async jobs.'} />
                   </div>
                   <Input
@@ -760,7 +785,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Auth enabled</Label>
+                    <Label>{t('Auth enabled', 'Auth enabled')}</Label>
                     <HelpTip text={'Set true to require auth for API endpoints.'} />
                   </div>
                   <Input
@@ -771,7 +796,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Tenancy enabled</Label>
+                    <Label>{t('Tenancy enabled', 'Tenancy enabled')}</Label>
                     <HelpTip text={'Set true to require X-Tenant-ID and tenant scoping.'} />
                   </div>
                   <Input
@@ -782,7 +807,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Async jobs enabled</Label>
+                    <Label>{t('Async jobs enabled', 'Async jobs enabled')}</Label>
                     <HelpTip text={'Enable worker queue for heavy jobs.'} />
                   </div>
                   <Input
@@ -793,7 +818,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Async-only heavy endpoints</Label>
+                    <Label>{t('Async-only heavy endpoints', 'Async-only heavy endpoints')}</Label>
                     <HelpTip text={'Force heavy endpoints to use async jobs.'} />
                   </div>
                   <Input
@@ -808,7 +833,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Connectors (csv)</Label>
+                    <Label>{t('Connectors (csv)', 'Connectors (csv)')}</Label>
                     <HelpTip text={'Comma-separated enabled connectors. Example: glpi, service_now.'} />
                   </div>
                   <Input
@@ -822,12 +847,12 @@ export function SettingsPage() {
                           .filter(Boolean),
                       })
                     }
-                    placeholder="glpi, service_now"
+                    placeholder={t('glpi, service_now', 'glpi, service_now')}
                   />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Enabled frameworks (csv)</Label>
+                    <Label>{t('Enabled frameworks (csv)', 'Enabled frameworks (csv)')}</Label>
                     <HelpTip text={'Comma-separated framework keys. Example: dora, nis2, iso27001, soc2, gxp.'} />
                   </div>
                   <Input
@@ -841,12 +866,12 @@ export function SettingsPage() {
                           .filter(Boolean),
                       })
                     }
-                    placeholder="dora, nis2, iso27001"
+                    placeholder={t('dora, nis2, iso27001', 'dora, nis2, iso27001')}
                   />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Default max runs</Label>
+                    <Label>{t('Default max runs', 'Default max runs')}</Label>
                     <HelpTip text={'Maximum runs retained per tenant. Example: 100.'} />
                   </div>
                   <Input
@@ -857,7 +882,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Default max reports</Label>
+                    <Label>{t('Default max reports', 'Default max reports')}</Label>
                     <HelpTip text={'Maximum reports retained per tenant. Example: 50.'} />
                   </div>
                   <Input
@@ -870,7 +895,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label>Default retention days</Label>
+                    <Label>{t('Default retention days', 'Default retention days')}</Label>
                     <HelpTip text={'Retention window in days. Example: 30.'} />
                   </div>
                   <Input
@@ -907,35 +932,37 @@ export function SettingsPage() {
           </Card>
         </>
       ) : null}
-
       {activeTab === 'tenants' ? (
         <>
           <Card>
             <div className="flex items-center gap-2">
-              <Label>Tenants & secrets (DB-backed)</Label>
+              <Label>{t('Tenants & secrets (DB-backed)', 'Tenants & secrets (DB-backed)')}</Label>
               <HelpTip text={'Manage per-tenant config and secrets stored in the database (admin role required).'} />
             </div>
-            <p className="mt-2 text-sm text-slate-400">Config is saved to /admin/db/tenants and /admin/db/tenants/{'<id>'}/secrets.</p>
-            {errors.tenants ? <ErrorBox title="Tenant error" detail={errors.tenants} /> : null}
-            {errors.secrets ? <ErrorBox title="Secret error" detail={errors.secrets} /> : null}
+            <p className="mt-2 text-sm text-slate-400">{t(
+              'Config is saved to /admin/db/tenants and /admin/db/tenants/',
+              'Config is saved to /admin/db/tenants and /admin/db/tenants/'
+            )}{'<id>'}{t('/secrets.', '/secrets.')}</p>
+            {errors.tenants ? <ErrorBox title={t('Tenant error', 'Tenant error')} detail={errors.tenants} /> : null}
+            {errors.secrets ? <ErrorBox title={t('Secret error', 'Secret error')} detail={errors.secrets} /> : null}
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Tenant ID</Label>
+                  <Label>{t('Tenant ID', 'Tenant ID')}</Label>
                   <HelpTip text={'Tenant identifier. Example: tenant-123.'} />
                 </div>
                 <Input value={tenantIdInput} onChange={(e) => setTenantIdInput(e.target.value)} placeholder="tenant-123" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Secret name</Label>
+                  <Label>{t('Secret name', 'Secret name')}</Label>
                   <HelpTip text={'Secret key name. Example: api-token.'} />
                 </div>
                 <Input value={secretName} onChange={(e) => setSecretName(e.target.value)} placeholder="api-token" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Secret value</Label>
+                  <Label>{t('Secret value', 'Secret value')}</Label>
                   <HelpTip text={'Secret value stored encrypted in the DB.'} />
                 </div>
                 <Input
@@ -949,43 +976,49 @@ export function SettingsPage() {
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Tenant metadata (JSON)</Label>
+                  <Label>{t('Tenant metadata (JSON)', 'Tenant metadata (JSON)')}</Label>
                   <HelpTip text={'Optional JSON metadata for tenant. Example: {"region":"us"}.'} />
                 </div>
                 <Textarea
                   rows={4}
                   value={tenantMeta}
                   onChange={(e) => setTenantMeta(e.target.value)}
-                  placeholder='{"region": "us"}'
+                  placeholder={t('{"region": "us"}', '{"region": "us"}')}
                 />
               </div>
               <div className="space-y-2 text-sm text-slate-400">
-                <div>Secrets require COMPLIANCE_SECRET_KEY set on the API.</div>
-                <div>Metadata must be valid JSON; leave blank to skip.</div>
+                <div>{t(
+                  'Secrets require COMPLIANCE_SECRET_KEY set on the API.',
+                  'Secrets require COMPLIANCE_SECRET_KEY set on the API.'
+                )}</div>
+                <div>{t(
+                  'Metadata must be valid JSON; leave blank to skip.',
+                  'Metadata must be valid JSON; leave blank to skip.'
+                )}</div>
                 <div>{busy ? `Working: ${busy}` : ''}</div>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-3">
               <Button onClick={() => void saveTenant()} disabled={!tenantIdInput.trim() || !!busy}>
-                Save tenant
+                {t('Save tenant', 'Save tenant')}
               </Button>
               <Button
                 onClick={() => void saveSecret()}
                 disabled={!tenantIdInput.trim() || !secretName.trim() || !secretValue.trim() || !!busy}
               >
-                Save secret
+                {t('Save secret', 'Save secret')}
               </Button>
               <Button onClick={() => void refreshSecrets(tenantIdInput.trim())} disabled={!tenantIdInput.trim()}>
-                Refresh secrets
+                {t('Refresh secrets', 'Refresh secrets')}
               </Button>
-              <Button onClick={() => void refreshTenants()}>Refresh tenants</Button>
+              <Button onClick={() => void refreshTenants()}>{t('Refresh tenants', 'Refresh tenants')}</Button>
               {notices ? <div className="text-sm text-emerald-300">{notices}</div> : null}
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Tenants</Label>
+                <Label>{t('Tenants', 'Tenants')}</Label>
                 <div className="mt-2 space-y-2 text-sm text-slate-200">
-                  {tenants.length === 0 ? <div className="text-slate-400">No tenants.</div> : null}
+                  {tenants.length === 0 ? <div className="text-slate-400">{t('No tenants.', 'No tenants.')}</div> : null}
                   {tenants.map((t) => (
                     <div key={t.tenant_id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
                       <div className="font-semibold">{t.tenant_id}</div>
@@ -997,15 +1030,21 @@ export function SettingsPage() {
                 </div>
               </div>
               <div>
-                <Label>Secrets for tenant</Label>
+                <Label>{t('Secrets for tenant', 'Secrets for tenant')}</Label>
                 <div className="mt-2 space-y-2 text-sm text-slate-200">
-                  {secrets.length === 0 ? <div className="text-slate-400">No secrets.</div> : null}
-                  {secrets.map((s) => (
-                    <div key={s.name} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                      <div className="font-semibold">{s.name}</div>
-                      <div className="text-xs text-slate-400">Updated: {s.updated_at}</div>
-                    </div>
-                  ))}
+                  {secrets.length === 0 ? <div className="text-slate-400">{t('No secrets.', 'No secrets.')}</div> : null}
+                  {secrets.map(s => {
+                    const {
+                      t
+                    } = useI18n();
+
+                    return (
+                      <div key={s.name} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+                        <div className="font-semibold">{s.name}</div>
+                        <div className="text-xs text-slate-400">{t('Updated:', 'Updated:')} {s.updated_at}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1013,30 +1052,33 @@ export function SettingsPage() {
 
           <Card>
             <div className="flex items-center gap-2">
-              <Label>User & role management</Label>
+              <Label>{t('User & role management', 'User & role management')}</Label>
               <HelpTip text={'Invite users, assign roles (admin/reporter/reader/auditor/worker), and bind roles to tenants/resources.'} />
             </div>
-            <p className="mt-2 text-sm text-slate-400">Backed by /admin/db/users and /admin/db/rbac/bindings.</p>
-            {errors.users ? <ErrorBox title="User error" detail={errors.users} /> : null}
-            {errors.bindings ? <ErrorBox title="Binding error" detail={errors.bindings} /> : null}
+            <p className="mt-2 text-sm text-slate-400">{t(
+              'Backed by /admin/db/users and /admin/db/rbac/bindings.',
+              'Backed by /admin/db/users and /admin/db/rbac/bindings.'
+            )}</p>
+            {errors.users ? <ErrorBox title={t('User error', 'User error')} detail={errors.users} /> : null}
+            {errors.bindings ? <ErrorBox title={t('Binding error', 'Binding error')} detail={errors.bindings} /> : null}
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>User email / subject</Label>
+                  <Label>{t('User email / subject', 'User email / subject')}</Label>
                   <HelpTip text={'Unique user identifier, usually email.'} />
                 </div>
-                <Input value={userSubject} onChange={(e) => setUserSubject(e.target.value)} placeholder="alice@example.com" />
+                <Input value={userSubject} onChange={(e) => setUserSubject(e.target.value)} placeholder={t('alice@example.com', 'alice@example.com')} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>User roles (csv)</Label>
+                  <Label>{t('User roles (csv)', 'User roles (csv)')}</Label>
                   <HelpTip text={'Comma-separated roles. Example: admin, reporter, auditor.'} />
                 </div>
-                <Input value={userRoleList} onChange={(e) => setUserRoleList(e.target.value)} placeholder="admin, reporter" />
+                <Input value={userRoleList} onChange={(e) => setUserRoleList(e.target.value)} placeholder={t('admin, reporter', 'admin, reporter')} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'Required for local auth. Leave blank for SSO-only users.'} />
                 </div>
                 <Input
@@ -1048,21 +1090,21 @@ export function SettingsPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Role (first value used)</Label>
+                  <Label>{t('Role (first value used)', 'Role (first value used)')}</Label>
                   <HelpTip text={'Role used for binding creation. Example: reader.'} />
                 </div>
-                <Input value={userRoles} onChange={(e) => setUserRoles(e.target.value)} placeholder="admin, reporter" />
+                <Input value={userRoles} onChange={(e) => setUserRoles(e.target.value)} placeholder={t('admin, reporter', 'admin, reporter')} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Resource (optional)</Label>
+                  <Label>{t('Resource (optional)', 'Resource (optional)')}</Label>
                   <HelpTip text={'Optional run id to scope the binding. Example: run-2024-01.'} />
                 </div>
-                <Input value={bindingResource} onChange={(e) => setBindingResource(e.target.value)} placeholder="run-*, or specific run id" />
+                <Input value={bindingResource} onChange={(e) => setBindingResource(e.target.value)} placeholder={t('run-*, or specific run id', 'run-*, or specific run id')} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Tenant (optional)</Label>
+                  <Label>{t('Tenant (optional)', 'Tenant (optional)')}</Label>
                   <HelpTip text={'Optional tenant id for the binding. Example: tenant-123.'} />
                 </div>
                 <Input value={bindingTenant} onChange={(e) => setBindingTenant(e.target.value)} placeholder="tenant-123" />
@@ -1070,66 +1112,84 @@ export function SettingsPage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-3">
               <Button onClick={() => void saveUser()} disabled={!canSaveUser || !!busy}>
-                Save user
+                {t('Save user', 'Save user')}
               </Button>
               <Button onClick={() => void saveBinding()} disabled={!canSaveBinding || !!busy}>
-                Save binding
+                {t('Save binding', 'Save binding')}
               </Button>
-              <Button onClick={() => void Promise.all([refreshUsers(), refreshBindings()])}>Refresh</Button>
+              <Button onClick={() => void Promise.all([refreshUsers(), refreshBindings()])}>{t('Refresh', 'Refresh')}</Button>
               {notices ? <div className="text-sm text-emerald-300">{notices}</div> : null}
             </div>
             {!canSaveUser ? (
               <div className="text-xs text-rose-200">
-                User subject and at least one role are required to save.
+                {t(
+                  'User subject and at least one role are required to save.',
+                  'User subject and at least one role are required to save.'
+                )}
                 {passwordRequired && !userPassword.trim() ? ' Password is required for local auth.' : ''}
               </div>
             ) : null}
             {!canSaveBinding ? (
-              <div className="text-xs text-rose-200">Binding requires a subject and at least one role.</div>
+              <div className="text-xs text-rose-200">{t(
+                'Binding requires a subject and at least one role.',
+                'Binding requires a subject and at least one role.'
+              )}</div>
             ) : null}
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Users</Label>
+                <Label>{t('Users', 'Users')}</Label>
                 <div className="mt-2 space-y-2 text-sm text-slate-200">
-                  {users.length === 0 ? <div className="text-slate-400">No users.</div> : null}
-                  {users.map((u) => (
-                    <div key={u.subject} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-semibold">{u.subject}</div>
-                          <div className="text-xs text-slate-400">{u.email || 'n/a'}</div>
-                          <div className="text-xs text-slate-400">Roles: {(u.roles ?? []).join(', ') || 'n/a'}</div>
-                          <div className="text-xs text-slate-400">Status: {u.status || 'n/a'}</div>
+                  {users.length === 0 ? <div className="text-slate-400">{t('No users.', 'No users.')}</div> : null}
+                  {users.map(u => {
+                    const {
+                      t
+                    } = useI18n();
+
+                    return (
+                      <div key={u.subject} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-semibold">{u.subject}</div>
+                            <div className="text-xs text-slate-400">{u.email || 'n/a'}</div>
+                            <div className="text-xs text-slate-400">{t('Roles:', 'Roles:')} {(u.roles ?? []).join(', ') || 'n/a'}</div>
+                            <div className="text-xs text-slate-400">{t('Status:', 'Status:')} {u.status || 'n/a'}</div>
+                          </div>
+                          <Button onClick={() => void deleteUser(u.subject)} disabled={!!busy}>
+                            {t('Delete', 'Delete')}
+                          </Button>
                         </div>
-                        <Button onClick={() => void deleteUser(u.subject)} disabled={!!busy}>
-                          Delete
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               <div>
-                <Label>Bindings</Label>
+                <Label>{t('Bindings', 'Bindings')}</Label>
                 <div className="mt-2 space-y-2 text-sm text-slate-200">
-                  {bindings.length === 0 ? <div className="text-slate-400">No bindings.</div> : null}
-                  {bindings.map((b) => (
-                    <div key={b.binding_id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-semibold">{b.role}</div>
-                          <div className="text-xs text-slate-400">Subject: {b.subject || 'n/a'}</div>
-                          <div className="text-xs text-slate-400">Tenant: {b.tenant_id || 'n/a'}</div>
-                          <div className="text-xs text-slate-400">
-                            Resource: {b.resource_type || 'n/a'} {b.resource_id || ''}
+                  {bindings.length === 0 ? <div className="text-slate-400">{t('No bindings.', 'No bindings.')}</div> : null}
+                  {bindings.map(b => {
+                    const {
+                      t
+                    } = useI18n();
+
+                    return (
+                      <div key={b.binding_id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-semibold">{b.role}</div>
+                            <div className="text-xs text-slate-400">{t('Subject:', 'Subject:')} {b.subject || 'n/a'}</div>
+                            <div className="text-xs text-slate-400">{t('Tenant:', 'Tenant:')} {b.tenant_id || 'n/a'}</div>
+                            <div className="text-xs text-slate-400">
+                              {t('Resource:', 'Resource:')} {b.resource_type || 'n/a'} {b.resource_id || ''}
+                            </div>
                           </div>
+                          <Button onClick={() => void deleteBinding(b.binding_id)} disabled={!!busy}>
+                            {t('Delete', 'Delete')}
+                          </Button>
                         </div>
-                        <Button onClick={() => void deleteBinding(b.binding_id)} disabled={!!busy}>
-                          Delete
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1137,5 +1197,5 @@ export function SettingsPage() {
         </>
       ) : null}
     </div>
-  )
+  );
 }

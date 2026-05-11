@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // ScoringBreakdown — renders one ControlResult.
 //
 // Two modes:
@@ -16,6 +15,8 @@ import { useState } from 'react'
 import { Badge, StatusBadge } from './AttestivUi'
 import { formatPercent, type ControlResult, type RequirementResult } from '../lib/scoring'
 
+import { useI18n } from '../lib/i18n';
+
 export function ScoringBreakdown({
   control,
   compact = false,
@@ -23,6 +24,10 @@ export function ScoringBreakdown({
   control: ControlResult
   compact?: boolean
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [expanded, setExpanded] = useState(!compact)
 
   return (
@@ -72,7 +77,6 @@ export function ScoringBreakdown({
           </button>
         ) : null}
       </div>
-
       {expanded && control.RequirementResults && control.RequirementResults.length > 0 ? (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {control.RequirementResults.map((req, index) => (
@@ -80,7 +84,6 @@ export function ScoringBreakdown({
           ))}
         </div>
       ) : null}
-
       {expanded && control.Findings && control.Findings.length > 0 ? (
         <div style={{ marginTop: 12 }}>
           {control.Findings.map((finding, index) => (
@@ -105,15 +108,14 @@ export function ScoringBreakdown({
           ))}
         </div>
       ) : null}
-
       {expanded && control.EvidenceIDs && control.EvidenceIDs.length > 0 ? (
         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
           <i className="ti ti-paperclip" aria-hidden="true" />{' '}
-          {control.EvidenceIDs.length} evidence record{control.EvidenceIDs.length === 1 ? '' : 's'}
+          {control.EvidenceIDs.length} {t('evidence record', 'evidence record')}{control.EvidenceIDs.length === 1 ? '' : 's'}
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 function RequirementRow({ req }: { req: RequirementResult }) {

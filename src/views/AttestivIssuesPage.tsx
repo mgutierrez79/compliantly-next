@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Issues inbox — mockup 08.
 //
 // One screen, three tabs, every gap surfaced:
@@ -22,6 +21,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Badge, Card, GhostButton, PrimaryButton, Topbar } from '../components/AttestivUi'
 import { formatTimestamp } from '../lib/time'
+
+import { useI18n } from '../lib/i18n';
 
 type Tab = 'dlq' | 'stale' | 'controls' | 'risks' | 'expiring'
 
@@ -121,6 +122,10 @@ function humanDuration(ms: number): string {
 }
 
 export function AttestivIssuesPage() {
+  const {
+    t
+  } = useI18n();
+
   const [tab, setTab] = useState<Tab>('dlq')
   const [dlq, setDlq] = useState<DLQRecord[]>([])
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
@@ -221,8 +226,8 @@ export function AttestivIssuesPage() {
   return (
     <>
       <Topbar
-        title="Issues"
-        left={totalIssues > 0 ? <Badge tone="red">{totalIssues} need attention</Badge> : <Badge tone="green">All clear</Badge>}
+        title={t('Issues', 'Issues')}
+        left={totalIssues > 0 ? <Badge tone="red">{totalIssues} {t('need attention', 'need attention')}</Badge> : <Badge tone="green">{t('All clear', 'All clear')}</Badge>}
         right={
           <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
             {loading ? 'Refreshing…' : 'Updated 12s ago'}
@@ -233,7 +238,7 @@ export function AttestivIssuesPage() {
         {error ? (
           <Card>
             <div style={{ color: 'var(--color-status-red-deep)', fontSize: 12 }}>
-              Failed to load issues: {error.message}
+              {t('Failed to load issues:', 'Failed to load issues:')} {error.message}
             </div>
           </Card>
         ) : null}
@@ -248,19 +253,19 @@ export function AttestivIssuesPage() {
           }}
         >
           <TabButton active={tab === 'dlq'} onClick={() => setTab('dlq')} icon="ti-inbox" tone="red" count={counts.dlq}>
-            Dead-letter queue
+            {t('Dead-letter queue', 'Dead-letter queue')}
           </TabButton>
           <TabButton active={tab === 'stale'} onClick={() => setTab('stale')} icon="ti-clock" tone="amber" count={counts.stale}>
-            Stale connectors
+            {t('Stale connectors', 'Stale connectors')}
           </TabButton>
           <TabButton active={tab === 'controls'} onClick={() => setTab('controls')} icon="ti-shield-x" tone="amber" count={counts.controls}>
-            Failing controls
+            {t('Failing controls', 'Failing controls')}
           </TabButton>
           <TabButton active={tab === 'risks'} onClick={() => setTab('risks')} icon="ti-alert-octagon" tone="amber" count={counts.risks}>
-            Risks
+            {t('Risks', 'Risks')}
           </TabButton>
           <TabButton active={tab === 'expiring'} onClick={() => setTab('expiring')} icon="ti-clock-exclamation" tone="red" count={counts.expiring}>
-            Exceptions expiring
+            {t('Exceptions expiring', 'Exceptions expiring')}
           </TabButton>
         </div>
 
@@ -287,7 +292,7 @@ export function AttestivIssuesPage() {
         {tab === 'expiring' ? <ExpiringExceptionsTab items={expiring} /> : null}
       </div>
     </>
-  )
+  );
 }
 
 function TabButton({
@@ -361,116 +366,150 @@ function DLQTab({
   retrying: string | null
   onRetry: (queueId: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   if (!items.length) {
     return (
       <Card>
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-          No dead-letter records. Every signed envelope and processor output reached its destination.
+          {t(
+            'No dead-letter records. Every signed envelope and processor output reached its destination.',
+            'No dead-letter records. Every signed envelope and processor output reached its destination.'
+          )}
         </div>
       </Card>
-    )
+    );
   }
   return (
     <>
       <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-        Failed jobs that could not process — each represents potentially missing compliance evidence. Missing evidence
-        is a compliance risk, not just a technical error.
+        {t(
+          'Failed jobs that could not process — each represents potentially missing compliance evidence. Missing evidence\n        is a compliance risk, not just a technical error.',
+          'Failed jobs that could not process — each represents potentially missing compliance evidence. Missing evidence\n        is a compliance risk, not just a technical error.'
+        )}
       </p>
-      {items.map((item) => (
-        <Card key={item.queue_id}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 'var(--border-radius-md)',
-                background: 'var(--color-status-red-bg)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            >
-              <i
-                className="ti ti-alert-triangle"
-                aria-hidden="true"
-                style={{ color: 'var(--color-status-red-mid)', fontSize: 15 }}
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 500, marginBottom: 3, fontSize: 12 }}>
-                {item.envelope?.source || item.stage || 'unknown'} —{' '}
-                <span style={{ color: 'var(--color-status-red-deep)' }}>{item.error || 'unknown failure'}</span>
+      {items.map(item => {
+        const {
+          t
+        } = useI18n();
+
+        return (
+          <Card key={item.queue_id}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 'var(--border-radius-md)',
+                  background: 'var(--color-status-red-bg)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+              >
+                <i
+                  className="ti ti-alert-triangle"
+                  aria-hidden="true"
+                  style={{ color: 'var(--color-status-red-mid)', fontSize: 15 }}
+                />
               </div>
-              {item.run_id || item.tenant_id ? (
-                <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 6 }}>
-                  {item.envelope?.section ? `section: ${item.envelope.section} · ` : ''}
-                  {item.run_id ? `run: ${item.run_id} · ` : ''}
-                  {item.tenant_id ? `tenant: ${item.tenant_id}` : ''}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, marginBottom: 3, fontSize: 12 }}>
+                  {item.envelope?.source || item.stage || 'unknown'} —{' '}
+                  <span style={{ color: 'var(--color-status-red-deep)' }}>{item.error || 'unknown failure'}</span>
                 </div>
-              ) : null}
-              <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.5 }}>
-                {item.queue_id} · failed{' '}
-                {formatTimestamp(item.failed_at || item.updated_at || item.created_at || '')} · attempts:{' '}
-                {item.attempts ?? 0}
-              </div>
-              {item.dlq_attempts && item.dlq_attempts.length ? (
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    color: 'var(--color-text-tertiary)',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {item.dlq_attempts.map((attempt) => (
-                    <div key={attempt.attempt}>
-                      Attempt {attempt.attempt}: {formatTimestamp(attempt.started_at)}
-                      {attempt.retried_by ? ` · by ${attempt.retried_by}` : ''}
-                      {attempt.previous_error ? ` — ${attempt.previous_error}` : ''}
-                      {attempt.outcome ? ` · ${attempt.outcome}` : ''}
-                    </div>
-                  ))}
+                {item.run_id || item.tenant_id ? (
+                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 6 }}>
+                    {item.envelope?.section ? `section: ${item.envelope.section} · ` : ''}
+                    {item.run_id ? `run: ${item.run_id} · ` : ''}
+                    {item.tenant_id ? `tenant: ${item.tenant_id}` : ''}
+                  </div>
+                ) : null}
+                <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.5 }}>
+                  {item.queue_id} {t('· failed', '· failed')}{' '}
+                  {formatTimestamp(item.failed_at || item.updated_at || item.created_at || '')} {t('· attempts:', '· attempts:')}{' '}
+                  {item.attempts ?? 0}
                 </div>
-              ) : null}
-              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <PrimaryButton
-                  onClick={() => onRetry(item.queue_id)}
-                  disabled={retrying === item.queue_id}
-                >
-                  {retrying === item.queue_id ? 'Retrying…' : 'Retry now'}
-                </PrimaryButton>
-                <GhostButton>Inspect error</GhostButton>
+                {item.dlq_attempts && item.dlq_attempts.length ? (
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      color: 'var(--color-text-tertiary)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {item.dlq_attempts.map(attempt => {
+                      const {
+                        t
+                      } = useI18n();
+
+                      return (
+                        <div key={attempt.attempt}>
+                          {t('Attempt', 'Attempt')} {attempt.attempt}: {formatTimestamp(attempt.started_at)}
+                          {attempt.retried_by ? ` · by ${attempt.retried_by}` : ''}
+                          {attempt.previous_error ? ` — ${attempt.previous_error}` : ''}
+                          {attempt.outcome ? ` · ${attempt.outcome}` : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <PrimaryButton
+                    onClick={() => onRetry(item.queue_id)}
+                    disabled={retrying === item.queue_id}
+                  >
+                    {retrying === item.queue_id ? 'Retrying…' : 'Retry now'}
+                  </PrimaryButton>
+                  <GhostButton>{t('Inspect error', 'Inspect error')}</GhostButton>
+                </div>
               </div>
+              <Badge tone="red">DLQ</Badge>
             </div>
-            <Badge tone="red">DLQ</Badge>
-          </div>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </>
-  )
+  );
 }
 
 function StaleTab({ connectors }: { connectors: ConnectorStatus[] }) {
+  const {
+    t
+  } = useI18n();
+
   if (!connectors.length) {
     return (
       <Card>
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-          All declared connectors reported within their poll cadence. Evidence is fresh.
+          {t(
+            'All declared connectors reported within their poll cadence. Evidence is fresh.',
+            'All declared connectors reported within their poll cadence. Evidence is fresh.'
+          )}
         </div>
       </Card>
-    )
+    );
   }
   const now = Date.now()
   return (
     <>
       <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-        Connectors that have not reported within their declared poll interval × 2. A silent connector may mean
-        missing evidence.
+        {t(
+          'Connectors that have not reported within their declared poll interval × 2. A silent connector may mean\n        missing evidence.',
+          'Connectors that have not reported within their declared poll interval × 2. A silent connector may mean\n        missing evidence.'
+        )}
       </p>
       {connectors.map((connector) => {
+        const {
+          t
+        } = useI18n();
+
         const seen = lastSeenMs(connector)
         const overdue = seen ? now - seen - staleAfterMs(connector) : null
         const interval = connector.poll_interval_seconds ||
@@ -499,7 +538,7 @@ function StaleTab({ connectors }: { connectors: ConnectorStatus[] }) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 3 }}>
-                  {connector.label || connector.name} — connector silent for{' '}
+                  {connector.label || connector.name} {t('— connector silent for', '— connector silent for')}{' '}
                   {seen ? humanDuration(now - seen) : 'never reported'}
                 </div>
                 <div
@@ -514,7 +553,7 @@ function StaleTab({ connectors }: { connectors: ConnectorStatus[] }) {
                     marginBottom: 6,
                   }}
                 >
-                  Expected every {interval >= 60 ? `${Math.round(interval / 60)}min` : `${interval}s`}
+                  {t('Expected every', 'Expected every')} {interval >= 60 ? `${Math.round(interval / 60)}min` : `${interval}s`}
                   {seen ? ` · last seen ${humanDuration(now - seen)} ago` : ''}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.5 }}>
@@ -532,7 +571,10 @@ function StaleTab({ connectors }: { connectors: ConnectorStatus[] }) {
                         marginBottom: 3,
                       }}
                     >
-                      Time since last contact vs expected interval
+                      {t(
+                        'Time since last contact vs expected interval',
+                        'Time since last contact vs expected interval'
+                      )}
                     </div>
                     <div
                       style={{
@@ -558,104 +600,127 @@ function StaleTab({ connectors }: { connectors: ConnectorStatus[] }) {
                         marginTop: 3,
                       }}
                     >
-                      {Math.floor(overdue / 60_000)} minutes overdue
+                      {Math.floor(overdue / 60_000)} {t('minutes overdue', 'minutes overdue')}
                     </div>
                   </div>
                 ) : null}
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                  <PrimaryButton>Test connection</PrimaryButton>
-                  <GhostButton>View DLQ entries</GhostButton>
+                  <PrimaryButton>{t('Test connection', 'Test connection')}</PrimaryButton>
+                  <GhostButton>{t('View DLQ entries', 'View DLQ entries')}</GhostButton>
                 </div>
               </div>
-              <Badge tone="amber">Stale</Badge>
+              <Badge tone="amber">{t('Stale', 'Stale')}</Badge>
             </div>
           </Card>
-        )
+        );
       })}
     </>
-  )
+  );
 }
 
 function ControlsTab({ controls }: { controls: ControlIssue[] }) {
+  const {
+    t
+  } = useI18n();
+
   if (!controls.length) {
     return (
       <Card>
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-          All controls are passing. The framework engine has not flagged anything for review.
+          {t(
+            'All controls are passing. The framework engine has not flagged anything for review.',
+            'All controls are passing. The framework engine has not flagged anything for review.'
+          )}
         </div>
       </Card>
-    )
+    );
   }
   return (
     <>
       <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-        Controls that are failing or under review. Each requires attention to maintain your compliance posture.
+        {t(
+          'Controls that are failing or under review. Each requires attention to maintain your compliance posture.',
+          'Controls that are failing or under review. Each requires attention to maintain your compliance posture.'
+        )}
       </p>
-      {controls.map((control, index) => (
-        <Card key={`${control.framework}-${control.control}-${index}`}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 'var(--border-radius-md)',
-                background:
-                  control.status === 'failing'
-                    ? 'var(--color-status-red-bg)'
-                    : 'var(--color-status-amber-bg)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                marginTop: 1,
-              }}
-            >
-              <i
-                className={`ti ${control.status === 'failing' ? 'ti-x' : 'ti-alert-triangle'}`}
-                aria-hidden="true"
+      {controls.map((control, index) => {
+        const {
+          t
+        } = useI18n();
+
+        return (
+          <Card key={`${control.framework}-${control.control}-${index}`}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div
                 style={{
-                  color:
+                  width: 32,
+                  height: 32,
+                  borderRadius: 'var(--border-radius-md)',
+                  background:
                     control.status === 'failing'
-                      ? 'var(--color-status-red-mid)'
-                      : 'var(--color-status-amber-mid)',
-                  fontSize: 15,
+                      ? 'var(--color-status-red-bg)'
+                      : 'var(--color-status-amber-bg)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: 1,
                 }}
-              />
+              >
+                <i
+                  className={`ti ${control.status === 'failing' ? 'ti-x' : 'ti-alert-triangle'}`}
+                  aria-hidden="true"
+                  style={{
+                    color:
+                      control.status === 'failing'
+                        ? 'var(--color-status-red-mid)'
+                        : 'var(--color-status-amber-mid)',
+                    fontSize: 15,
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 3 }}>
+                  {control.control} — {control.framework}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                  {control.detail}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <PrimaryButton>{t('Assign remediation', 'Assign remediation')}</PrimaryButton>
+                  <GhostButton>{t('View evidence', 'View evidence')}</GhostButton>
+                </div>
+              </div>
+              <Badge tone={control.status === 'failing' ? 'red' : 'amber'}>
+                {control.status === 'failing' ? 'Fail' : 'Review'}
+              </Badge>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 500, fontSize: 12, marginBottom: 3 }}>
-                {control.control} — {control.framework}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                {control.detail}
-              </div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <PrimaryButton>Assign remediation</PrimaryButton>
-                <GhostButton>View evidence</GhostButton>
-              </div>
-            </div>
-            <Badge tone={control.status === 'failing' ? 'red' : 'amber'}>
-              {control.status === 'failing' ? 'Fail' : 'Review'}
-            </Badge>
-          </div>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </>
-  )
+  );
 }
 
 // RisksTab — open risks (Phase-2 chunk 1). Surfaces auto-created
 // and manual risks side-by-side; the auto badge tells the operator
 // which ones came from the scoring engine.
 function RisksTab({ risks }: { risks: RiskRow[] }) {
+  const {
+    t
+  } = useI18n();
+
   if (risks.length === 0) {
     return (
       <Card>
         <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-          No open risks. Auto-risks appear here when scoring detects a control transition.
+          {t(
+            'No open risks. Auto-risks appear here when scoring detects a control transition.',
+            'No open risks. Auto-risks appear here when scoring detects a control transition.'
+          )}
         </div>
       </Card>
-    )
+    );
   }
   const sorted = [...risks].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   return (
@@ -707,14 +772,21 @@ function RisksTab({ risks }: { risks: RiskRow[] }) {
 // stops being suppressed — the operator either renews acceptance or
 // resolves the gap.
 function ExpiringExceptionsTab({ items }: { items: ExpiringExceptionRow[] }) {
+  const {
+    t
+  } = useI18n();
+
   if (items.length === 0) {
     return (
       <Card>
         <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-          No exceptions expiring in the next 14 days.
+          {t(
+            'No exceptions expiring in the next 14 days.',
+            'No exceptions expiring in the next 14 days.'
+          )}
         </div>
       </Card>
-    )
+    );
   }
   return (
     <>

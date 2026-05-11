@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Sites registry page.
 //
 // One row per registered site. Renders the site identity (city,
@@ -20,6 +19,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type SiteSummary = {
   site_id: string
@@ -44,6 +45,10 @@ type ConcentrationRisk = {
 }
 
 export function AttestivSitesPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [sites, setSites] = useState<SiteSummary[]>([])
   const [concentration, setConcentration] = useState<Map<string, ConcentrationRisk>>(new Map())
@@ -121,7 +126,7 @@ export function AttestivSitesPage() {
   return (
     <>
       <Topbar
-        title="Sites"
+        title={t('Sites', 'Sites')}
         left={<Badge tone="navy">{sites.length} registered</Badge>}
         right={
           <FilterBar value={filter} onChange={setFilter} regions={regions} types={types} />
@@ -131,21 +136,27 @@ export function AttestivSitesPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {exceedingThreshold > 0 ? (
           <Banner tone="warning" title={`${exceedingThreshold} site${exceedingThreshold === 1 ? '' : 's'} exceeding DORA Art.29 concentration threshold`}>
-            A site holding too high a share of tier-1 apps becomes a single point of failure. Move workloads or document compensating controls.
+            {t(
+              'A site holding too high a share of tier-1 apps becomes a single point of failure. Move workloads or document compensating controls.',
+              'A site holding too high a share of tier-1 apps becomes a single point of failure. Move workloads or document compensating controls.'
+            )}
           </Banner>
         ) : null}
 
         <Card>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} shown</span>}>
-            Site registry
+            {t('Site registry', 'Site registry')}
           </CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : filtered.length === 0 ? (
             <EmptyState
               icon="ti-building"
-              title="No sites"
-              description="Sites are configured via YAML in the policies/sites/ directory. Once registered they show up here for cascade + concentration analysis."
+              title={t('No sites', 'No sites')}
+              description={t(
+                'Sites are configured via YAML in the policies/sites/ directory. Once registered they show up here for cascade + concentration analysis.',
+                'Sites are configured via YAML in the policies/sites/ directory. Once registered they show up here for cascade + concentration analysis.'
+              )}
             />
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -159,16 +170,20 @@ export function AttestivSitesPage() {
                     textAlign: 'left',
                   }}
                 >
-                  <th style={{ padding: '6px 10px 6px 0' }}>Site</th>
-                  <th style={{ padding: '6px 10px' }}>Type</th>
-                  <th style={{ padding: '6px 10px' }}>Region</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Site', 'Site')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Region', 'Region')}</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>CIs</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>WAN links</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>Concentration</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('WAN links', 'WAN links')}</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Concentration', 'Concentration')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((site) => {
+                  const {
+                    t
+                  } = useI18n();
+
                   const conc = concentration.get(site.site_id)
                   return (
                     <tr
@@ -202,7 +217,7 @@ export function AttestivSitesPage() {
                       <td style={{ padding: '10px 0 10px 10px' }}>
                         {conc?.exceeds_threshold ? (
                           <Badge tone="red" icon="ti-alert-triangle">
-                            {conc.concentration_pct?.toFixed(0)}% of tier-1
+                            {conc.concentration_pct?.toFixed(0)}{t('% of tier-1', '% of tier-1')}
                           </Badge>
                         ) : conc?.concentration_pct !== undefined ? (
                           <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -213,7 +228,7 @@ export function AttestivSitesPage() {
                         )}
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -221,7 +236,7 @@ export function AttestivSitesPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function FilterBar({
@@ -235,22 +250,26 @@ function FilterBar({
   regions: string[]
   types: string[]
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Region"
+        label={t('Region', 'Region')}
         value={value.region}
         options={regions}
         onChange={(v) => onChange({ ...value, region: v })}
       />
       <SelectChip
-        label="Type"
+        label={t('Type', 'Type')}
         value={value.type}
         options={types}
         onChange={(v) => onChange({ ...value, type: v })}
       />
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -264,6 +283,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -278,12 +301,12 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }

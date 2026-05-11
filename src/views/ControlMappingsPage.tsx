@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, InfoBox, Input, Label, PageTitle, Textarea } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type FrameworkItem = { key: string; name?: string; version?: string }
 type FrameworksResponse = { frameworks: FrameworkItem[] }
@@ -270,279 +271,300 @@ type ControlLibraryPanelProps = {
   onToggleSelectedControlMapping: () => void
 }
 
-const ControlLibraryPanel = ({
-  libraryReady,
-  libraryError,
-  loadingLibrary,
-  retryLibrary,
-  libraryFramework,
-  libraryFrameworkOptions,
-  onLibraryFrameworkChange,
-  librarySearch,
-  onLibrarySearchChange,
-  frameworkLabel,
-  filteredLibrary,
-  visibleLibrary,
-  hasMoreLibrary,
-  onShowMoreLibrary,
-  onShowAllLibrary,
-  selectedControlKey,
-  onSelectControlKey,
-  controlKey,
-  currentMappings,
-  onToggleControlMapping,
-  canEditMappings,
-  mappingScopeLabel,
-  onAddMappingRow,
-  onSuggestMappings,
-  hasControlLibrary,
-  selectedControl,
-  selectedControlMappings,
-  formatSelectedControlMapping,
-  combinedConnectorOptions,
-  selectedConnector,
-  onSelectedConnectorChange,
-  availableInstances,
-  selectedInstance,
-  onSelectedInstanceChange,
-  availableNodes,
-  selectedNode,
-  onSelectedNodeChange,
-  allNodesValue,
-  isSelectedControlMapped,
-  onToggleSelectedControlMapping,
-}: ControlLibraryPanelProps) => (
-  <Card>
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <Label>Control library</Label>
-      <div className="text-xs text-slate-400">Browse the controls loaded from framework policies.</div>
-    </div>
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-      <div className="text-xs text-slate-400">
-        {libraryReady ? 'Control library loaded.' : 'Loading control library...'}
+const ControlLibraryPanel = (
+  {
+    libraryReady,
+    libraryError,
+    loadingLibrary,
+    retryLibrary,
+    libraryFramework,
+    libraryFrameworkOptions,
+    onLibraryFrameworkChange,
+    librarySearch,
+    onLibrarySearchChange,
+    frameworkLabel,
+    filteredLibrary,
+    visibleLibrary,
+    hasMoreLibrary,
+    onShowMoreLibrary,
+    onShowAllLibrary,
+    selectedControlKey,
+    onSelectControlKey,
+    controlKey,
+    currentMappings,
+    onToggleControlMapping,
+    canEditMappings,
+    mappingScopeLabel,
+    onAddMappingRow,
+    onSuggestMappings,
+    hasControlLibrary,
+    selectedControl,
+    selectedControlMappings,
+    formatSelectedControlMapping,
+    combinedConnectorOptions,
+    selectedConnector,
+    onSelectedConnectorChange,
+    availableInstances,
+    selectedInstance,
+    onSelectedInstanceChange,
+    availableNodes,
+    selectedNode,
+    onSelectedNodeChange,
+    allNodesValue,
+    isSelectedControlMapped,
+    onToggleSelectedControlMapping,
+  }: ControlLibraryPanelProps
+) => {
+  const {
+    t
+  } = useI18n();
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Label>{t('Control library', 'Control library')}</Label>
+        <div className="text-xs text-slate-400">{t(
+          'Browse the controls loaded from framework policies.',
+          'Browse the controls loaded from framework policies.'
+        )}</div>
       </div>
-      {libraryError ? <Button onClick={retryLibrary}>Retry</Button> : null}
-    </div>
-    {libraryError ? (
-      <div className="mt-4">
-        <ErrorBox title="Failed to load control library" detail={libraryError.bodyText || libraryError.message} />
-      </div>
-    ) : !libraryReady || loadingLibrary ? (
-      <div className="mt-4">
-        <InfoBox title="Loading control library..." />
-      </div>
-    ) : (
-      <>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div>
-            <Label>Framework</Label>
-            <select
-              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
-              value={libraryFramework}
-              onChange={(event) => onLibraryFrameworkChange(event.target.value)}
-            >
-              <option value="">All frameworks</option>
-              {libraryFrameworkOptions.map((framework) => (
-                <option key={framework} value={framework}>
-                  {frameworkLabel(framework)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label>Search</Label>
-            <Input
-              value={librarySearch}
-              onChange={(event) => onLibrarySearchChange(event.target.value)}
-              placeholder="Search controls, references, tags"
-            />
-          </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs text-slate-400">
+          {libraryReady ? 'Control library loaded.' : 'Loading control library...'}
         </div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <div className="space-y-2">
-            <div className="rounded border border-[#1f365a] bg-[#0b1524] p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <Label>Mapping scope</Label>
-                  <div className="text-xs text-slate-400">{mappingScopeLabel}</div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={onAddMappingRow} disabled={!canEditMappings}>
-                    Add mapping row
-                  </Button>
-                  <Button onClick={onSuggestMappings} disabled={!canEditMappings || !hasControlLibrary}>
-                    Auto-suggest
-                  </Button>
-                </div>
-              </div>
+        {libraryError ? <Button onClick={retryLibrary}>{t('Retry', 'Retry')}</Button> : null}
+      </div>
+      {libraryError ? (
+        <div className="mt-4">
+          <ErrorBox title={t('Failed to load control library', 'Failed to load control library')} detail={libraryError.bodyText || libraryError.message} />
+        </div>
+      ) : !libraryReady || loadingLibrary ? (
+        <div className="mt-4">
+          <InfoBox title={t('Loading control library...', 'Loading control library...')} />
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div>
+              <Label>{t('Framework', 'Framework')}</Label>
+              <select
+                className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
+                value={libraryFramework}
+                onChange={(event) => onLibraryFrameworkChange(event.target.value)}
+              >
+                <option value="">{t('All frameworks', 'All frameworks')}</option>
+                {libraryFrameworkOptions.map((framework) => (
+                  <option key={framework} value={framework}>
+                    {frameworkLabel(framework)}
+                  </option>
+                ))}
+              </select>
             </div>
-            {filteredLibrary.length ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-                  <div>
-                    Showing {Math.min(visibleLibrary.length, filteredLibrary.length)} of {filteredLibrary.length}
-                  </div>
-                  {hasMoreLibrary ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button onClick={onShowMoreLibrary}>Show more</Button>
-                      <Button onClick={onShowAllLibrary}>Show all</Button>
-                    </div>
-                  ) : null}
-                </div>
-                {visibleLibrary.map((item, index) => {
-                  const key = controlKey(item)
-                  const isSelected = key === selectedControlKey
-                  const isMapped = currentMappings.some(
-                    (mapping) =>
-                      mapping.framework === item.framework && mapping.control_ids.includes(item.control_id),
-                  )
-                  return (
-                    <div
-                      key={`${item.framework}-${item.control_id}-${index}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => onSelectControlKey(key)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          onSelectControlKey(key)
-                        }
-                      }}
-                      className={`w-full rounded border p-3 text-left transition ${
-                        isSelected ? 'border-[#4f8cff] bg-[#13213a]' : 'border-[#1f365a] hover:border-[#36507a]'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-sm font-semibold text-slate-100">{item.control_id}</div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className={isMapped ? 'text-emerald-300' : 'text-slate-400'}>
-                            {isMapped ? 'Mapped' : 'Not mapped'}
-                          </span>
-                          <button
-                            type="button"
-                            className="rounded border border-[#274266] px-2 py-1 text-xs text-slate-100 hover:border-[#36507a]"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              onSelectControlKey(key)
-                              onToggleControlMapping(item)
-                            }}
-                            disabled={!canEditMappings}
-                          >
-                            {isMapped ? 'Remove' : 'Add'}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="text-xs text-slate-400">Framework: {frameworkLabel(item.framework)}</div>
-                      {item.description ? <div className="text-sm text-slate-200">{item.description}</div> : null}
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
-                        {item.references?.length ? (
-                          <span>Refs: {item.references.join(', ')}</span>
-                        ) : (
-                          <span>Refs: n/a</span>
-                        )}
-                        {item.evidence_types?.length ? (
-                          <span>Evidence: {item.evidence_types.join(', ')}</span>
-                        ) : (
-                          <span>Evidence: n/a</span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </>
-            ) : (
-              <div className="text-sm text-slate-400">No controls found for this selection.</div>
-            )}
+            <div>
+              <Label>{t('Search', 'Search')}</Label>
+              <Input
+                value={librarySearch}
+                onChange={(event) => onLibrarySearchChange(event.target.value)}
+                placeholder={t('Search controls, references, tags', 'Search controls, references, tags')}
+              />
+            </div>
           </div>
-          <div className="rounded border border-[#1f365a] bg-[#0b1524] p-4 lg:sticky lg:top-24">
-            <div className="text-sm font-semibold text-slate-100">Control details</div>
-            {!selectedControl ? (
-              <div className="mt-2 text-sm text-slate-400">
-                Select a control to review mappings and update coverage.
-              </div>
-            ) : (
-              <>
-                <div className="mt-2 text-sm font-semibold text-slate-100">{selectedControl.control_id}</div>
-                {selectedControl.description ? (
-                  <div className="text-sm text-slate-200">{selectedControl.description}</div>
-                ) : null}
-                <div className="mt-3 text-xs text-slate-400">
-                  Framework: {frameworkLabel(selectedControl.framework)}
-                </div>
-                <div className="mt-3">
-                  <div className="text-xs font-semibold text-slate-200">Mapped in</div>
-                  {selectedControlMappings.length ? (
-                    <div className="mt-2 space-y-2 text-xs text-slate-300">
-                      {selectedControlMappings.map((entry, idx) => (
-                        <div key={`${entry.connector}-${entry.instance}-${entry.node}-${idx}`}>
-                          {formatSelectedControlMapping(entry)}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-2 text-xs text-slate-400">Not mapped yet.</div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <div className="text-xs font-semibold text-slate-200">Edit mapping</div>
-                  <div className="mt-2 grid gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      <Button onClick={onAddMappingRow} disabled={!canEditMappings}>
-                        Add mapping row
-                      </Button>
-                      <Button onClick={onSuggestMappings} disabled={!canEditMappings || !hasControlLibrary}>
-                        Auto-suggest
-                      </Button>
-                    </div>
-                    <select
-                      className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-xs text-slate-100"
-                      value={selectedConnector}
-                      onChange={(event) => onSelectedConnectorChange(event.target.value)}
-                    >
-                      {combinedConnectorOptions.map((connector) => (
-                        <option key={connector} value={connector}>
-                          {connector}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-xs text-slate-100"
-                      value={selectedInstance}
-                      onChange={(event) => onSelectedInstanceChange(event.target.value)}
-                    >
-                      {availableInstances.map((instance) => (
-                        <option key={instance} value={instance}>
-                          {instance}
-                        </option>
-                      ))}
-                    </select>
-                    {availableNodes.length ? (
-                      <select
-                        className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-xs text-slate-100"
-                        value={selectedNode}
-                        onChange={(event) => onSelectedNodeChange(event.target.value)}
-                      >
-                        <option value={allNodesValue}>All nodes</option>
-                        {availableNodes.map((node) => (
-                          <option key={node} value={node}>
-                            {node}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                    <Button onClick={onToggleSelectedControlMapping} disabled={!canEditMappings}>
-                      {isSelectedControlMapped ? 'Remove from selected' : 'Add to selected'}
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <div className="rounded border border-[#1f365a] bg-[#0b1524] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <Label>{t('Mapping scope', 'Mapping scope')}</Label>
+                    <div className="text-xs text-slate-400">{mappingScopeLabel}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={onAddMappingRow} disabled={!canEditMappings}>
+                      {t('Add mapping row', 'Add mapping row')}
+                    </Button>
+                    <Button onClick={onSuggestMappings} disabled={!canEditMappings || !hasControlLibrary}>
+                      {t('Auto-suggest', 'Auto-suggest')}
                     </Button>
                   </div>
                 </div>
-              </>
-            )}
+              </div>
+              {filteredLibrary.length ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                    <div>
+                      {t('Showing', 'Showing')} {Math.min(visibleLibrary.length, filteredLibrary.length)}of {filteredLibrary.length}
+                    </div>
+                    {hasMoreLibrary ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button onClick={onShowMoreLibrary}>{t('Show more', 'Show more')}</Button>
+                        <Button onClick={onShowAllLibrary}>{t('Show all', 'Show all')}</Button>
+                      </div>
+                    ) : null}
+                  </div>
+                  {visibleLibrary.map((item, index) => {
+                    const {
+                      t
+                    } = useI18n();
+
+                    const key = controlKey(item)
+                    const isSelected = key === selectedControlKey
+                    const isMapped = currentMappings.some(
+                      (mapping) =>
+                        mapping.framework === item.framework && mapping.control_ids.includes(item.control_id),
+                    )
+                    return (
+                      <div
+                        key={`${item.framework}-${item.control_id}-${index}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onSelectControlKey(key)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            onSelectControlKey(key)
+                          }
+                        }}
+                        className={`w-full rounded border p-3 text-left transition ${
+                          isSelected ? 'border-[#4f8cff] bg-[#13213a]' : 'border-[#1f365a] hover:border-[#36507a]'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-slate-100">{item.control_id}</div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className={isMapped ? 'text-emerald-300' : 'text-slate-400'}>
+                              {isMapped ? 'Mapped' : 'Not mapped'}
+                            </span>
+                            <button
+                              type="button"
+                              className="rounded border border-[#274266] px-2 py-1 text-xs text-slate-100 hover:border-[#36507a]"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onSelectControlKey(key)
+                                onToggleControlMapping(item)
+                              }}
+                              disabled={!canEditMappings}
+                            >
+                              {isMapped ? 'Remove' : 'Add'}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-400">{t('Framework:', 'Framework:')} {frameworkLabel(item.framework)}</div>
+                        {item.description ? <div className="text-sm text-slate-200">{item.description}</div> : null}
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                          {item.references?.length ? (
+                            <span>{t('Refs:', 'Refs:')} {item.references.join(', ')}</span>
+                          ) : (
+                            <span>{t('Refs: n/a', 'Refs: n/a')}</span>
+                          )}
+                          {item.evidence_types?.length ? (
+                            <span>{t('Evidence:', 'Evidence:')} {item.evidence_types.join(', ')}</span>
+                          ) : (
+                            <span>{t('Evidence: n/a', 'Evidence: n/a')}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              ) : (
+                <div className="text-sm text-slate-400">{t(
+                  'No controls found for this selection.',
+                  'No controls found for this selection.'
+                )}</div>
+              )}
+            </div>
+            <div className="rounded border border-[#1f365a] bg-[#0b1524] p-4 lg:sticky lg:top-24">
+              <div className="text-sm font-semibold text-slate-100">{t('Control details', 'Control details')}</div>
+              {!selectedControl ? (
+                <div className="mt-2 text-sm text-slate-400">
+                  {t(
+                    'Select a control to review mappings and update coverage.',
+                    'Select a control to review mappings and update coverage.'
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="mt-2 text-sm font-semibold text-slate-100">{selectedControl.control_id}</div>
+                  {selectedControl.description ? (
+                    <div className="text-sm text-slate-200">{selectedControl.description}</div>
+                  ) : null}
+                  <div className="mt-3 text-xs text-slate-400">
+                    {t('Framework:', 'Framework:')} {frameworkLabel(selectedControl.framework)}
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold text-slate-200">{t('Mapped in', 'Mapped in')}</div>
+                    {selectedControlMappings.length ? (
+                      <div className="mt-2 space-y-2 text-xs text-slate-300">
+                        {selectedControlMappings.map((entry, idx) => (
+                          <div key={`${entry.connector}-${entry.instance}-${entry.node}-${idx}`}>
+                            {formatSelectedControlMapping(entry)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-slate-400">{t('Not mapped yet.', 'Not mapped yet.')}</div>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-xs font-semibold text-slate-200">{t('Edit mapping', 'Edit mapping')}</div>
+                    <div className="mt-2 grid gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Button onClick={onAddMappingRow} disabled={!canEditMappings}>
+                          {t('Add mapping row', 'Add mapping row')}
+                        </Button>
+                        <Button onClick={onSuggestMappings} disabled={!canEditMappings || !hasControlLibrary}>
+                          {t('Auto-suggest', 'Auto-suggest')}
+                        </Button>
+                      </div>
+                      <select
+                        className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-xs text-slate-100"
+                        value={selectedConnector}
+                        onChange={(event) => onSelectedConnectorChange(event.target.value)}
+                      >
+                        {combinedConnectorOptions.map((connector) => (
+                          <option key={connector} value={connector}>
+                            {connector}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-xs text-slate-100"
+                        value={selectedInstance}
+                        onChange={(event) => onSelectedInstanceChange(event.target.value)}
+                      >
+                        {availableInstances.map((instance) => (
+                          <option key={instance} value={instance}>
+                            {instance}
+                          </option>
+                        ))}
+                      </select>
+                      {availableNodes.length ? (
+                        <select
+                          className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-xs text-slate-100"
+                          value={selectedNode}
+                          onChange={(event) => onSelectedNodeChange(event.target.value)}
+                        >
+                          <option value={allNodesValue}>{t('All nodes', 'All nodes')}</option>
+                          {availableNodes.map((node) => (
+                            <option key={node} value={node}>
+                              {node}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                      <Button onClick={onToggleSelectedControlMapping} disabled={!canEditMappings}>
+                        {isSelectedControlMapped ? 'Remove from selected' : 'Add to selected'}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </>
-    )}
-  </Card>
-)
+        </>
+      )}
+    </Card>
+  );
+}
 
 type ControlCrosswalksPanelProps = {
   crosswalksReady: boolean
@@ -577,193 +599,217 @@ type ControlCrosswalksPanelProps = {
   hasControlLibrary: boolean
 }
 
-const ControlCrosswalksPanel = ({
-  crosswalksReady,
-  crosswalksError,
-  loadingCrosswalks,
-  crosswalks,
-  visibleCrosswalks,
-  hasMoreCrosswalks,
-  onShowMoreCrosswalks,
-  onShowAllCrosswalks,
-  addCrosswalk,
-  suggestCrosswalks,
-  saveCrosswalks,
-  crosswalkSaving,
-  expandAllCrosswalks,
-  collapseAllCrosswalks,
-  retryCrosswalks,
-  updateCrosswalk,
-  addCrosswalkMapping,
-  updateCrosswalkMapping,
-  removeCrosswalkMapping,
-  removeCrosswalk,
-  collapsedCrosswalks,
-  onToggleCrosswalkCollapse,
-  crosswalkKey,
-  frameworkOptions,
-  frameworkLabel,
-  hasControlLibrary,
-}: ControlCrosswalksPanelProps) => (
-  <Card>
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <Label>Control crosswalks</Label>
-        <div className="text-xs text-slate-400">Map equivalent controls across frameworks.</div>
+const ControlCrosswalksPanel = (
+  {
+    crosswalksReady,
+    crosswalksError,
+    loadingCrosswalks,
+    crosswalks,
+    visibleCrosswalks,
+    hasMoreCrosswalks,
+    onShowMoreCrosswalks,
+    onShowAllCrosswalks,
+    addCrosswalk,
+    suggestCrosswalks,
+    saveCrosswalks,
+    crosswalkSaving,
+    expandAllCrosswalks,
+    collapseAllCrosswalks,
+    retryCrosswalks,
+    updateCrosswalk,
+    addCrosswalkMapping,
+    updateCrosswalkMapping,
+    removeCrosswalkMapping,
+    removeCrosswalk,
+    collapsedCrosswalks,
+    onToggleCrosswalkCollapse,
+    crosswalkKey,
+    frameworkOptions,
+    frameworkLabel,
+    hasControlLibrary,
+  }: ControlCrosswalksPanelProps
+) => {
+  const {
+    t
+  } = useI18n();
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Label>{t('Control crosswalks', 'Control crosswalks')}</Label>
+          <div className="text-xs text-slate-400">{t(
+            'Map equivalent controls across frameworks.',
+            'Map equivalent controls across frameworks.'
+          )}</div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={addCrosswalk}>{t('Add crosswalk', 'Add crosswalk')}</Button>
+          <Button onClick={suggestCrosswalks} disabled={!hasControlLibrary}>
+            {t('Auto-suggest', 'Auto-suggest')}
+          </Button>
+          <Button onClick={saveCrosswalks} disabled={crosswalkSaving}>
+            {crosswalkSaving ? 'Saving...' : 'Save crosswalks'}
+          </Button>
+          <Button onClick={expandAllCrosswalks} disabled={!crosswalks.length}>
+            {t('Expand all', 'Expand all')}
+          </Button>
+          <Button onClick={collapseAllCrosswalks} disabled={!crosswalks.length}>
+            {t('Collapse all', 'Collapse all')}
+          </Button>
+          {crosswalksError ? <Button onClick={retryCrosswalks}>{t('Retry', 'Retry')}</Button> : null}
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={addCrosswalk}>Add crosswalk</Button>
-        <Button onClick={suggestCrosswalks} disabled={!hasControlLibrary}>
-          Auto-suggest
-        </Button>
-        <Button onClick={saveCrosswalks} disabled={crosswalkSaving}>
-          {crosswalkSaving ? 'Saving...' : 'Save crosswalks'}
-        </Button>
-        <Button onClick={expandAllCrosswalks} disabled={!crosswalks.length}>
-          Expand all
-        </Button>
-        <Button onClick={collapseAllCrosswalks} disabled={!crosswalks.length}>
-          Collapse all
-        </Button>
-        {crosswalksError ? <Button onClick={retryCrosswalks}>Retry</Button> : null}
-      </div>
-    </div>
-    <div className="mt-4 space-y-3">
-      {crosswalksError ? (
-        <ErrorBox
-          title="Failed to load control crosswalks"
-          detail={crosswalksError.bodyText || crosswalksError.message}
-        />
-      ) : !crosswalksReady || loadingCrosswalks ? (
-        <InfoBox title="Loading crosswalks..." />
-      ) : crosswalks.length === 0 ? (
-        <div className="text-sm text-slate-400">No crosswalks defined yet.</div>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-            <div>
-              Showing {Math.min(visibleCrosswalks.length, crosswalks.length)} of {crosswalks.length}
-            </div>
-            {hasMoreCrosswalks ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={onShowMoreCrosswalks}>Show more</Button>
-                <Button onClick={onShowAllCrosswalks}>Show all</Button>
+      <div className="mt-4 space-y-3">
+        {crosswalksError ? (
+          <ErrorBox
+            title={t('Failed to load control crosswalks', 'Failed to load control crosswalks')}
+            detail={crosswalksError.bodyText || crosswalksError.message}
+          />
+        ) : !crosswalksReady || loadingCrosswalks ? (
+          <InfoBox title={t('Loading crosswalks...', 'Loading crosswalks...')} />
+        ) : crosswalks.length === 0 ? (
+          <div className="text-sm text-slate-400">{t('No crosswalks defined yet.', 'No crosswalks defined yet.')}</div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+              <div>
+                {t('Showing', 'Showing')} {Math.min(visibleCrosswalks.length, crosswalks.length)}of {crosswalks.length}
               </div>
-            ) : null}
-          </div>
-          {visibleCrosswalks.map((entry, index) => {
-            const key = crosswalkKey(entry, index)
-            const isCollapsed = collapsedCrosswalks[key] ?? true
-            return (
-              <Card key={`${entry.primary_framework}-${entry.primary_control_id}-${index}`}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-100">
-                      {entry.primary_control_id?.trim() || 'New crosswalk'}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {`${frameworkLabel(entry.primary_framework)} -> ${entry.mappings.length} mapped`}
-                    </div>
-                  </div>
-                  <button
-                    className="text-xs text-slate-200 hover:text-white"
-                    type="button"
-                    onClick={() => onToggleCrosswalkCollapse(entry, index)}
-                  >
-                    {isCollapsed ? 'Expand' : 'Collapse'}
-                  </button>
+              {hasMoreCrosswalks ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={onShowMoreCrosswalks}>{t('Show more', 'Show more')}</Button>
+                  <Button onClick={onShowAllCrosswalks}>{t('Show all', 'Show all')}</Button>
                 </div>
-                {isCollapsed ? null : (
-                  <>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <div>
-                        <Label>Primary framework</Label>
-                        <select
-                          className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
-                          value={entry.primary_framework}
-                          onChange={(event) => updateCrosswalk(index, { primary_framework: event.target.value })}
-                        >
-                          {frameworkOptions.map((fw) => (
-                            <option key={fw.key} value={fw.key}>
-                              {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
-                            </option>
-                          ))}
-                        </select>
+              ) : null}
+            </div>
+            {visibleCrosswalks.map((entry, index) => {
+              const {
+                t
+              } = useI18n();
+
+              const key = crosswalkKey(entry, index)
+              const isCollapsed = collapsedCrosswalks[key] ?? true
+              return (
+                <Card key={`${entry.primary_framework}-${entry.primary_control_id}-${index}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-100">
+                        {entry.primary_control_id?.trim() || 'New crosswalk'}
                       </div>
-                      <div>
-                        <Label>Primary control ID</Label>
-                        <Input
-                          value={entry.primary_control_id}
-                          onChange={(event) => updateCrosswalk(index, { primary_control_id: event.target.value })}
-                          placeholder="change_management_controls"
-                        />
-                      </div>
-                      <div>
-                        <Label>Notes</Label>
-                        <Textarea
-                          value={entry.notes || ''}
-                          onChange={(event) => updateCrosswalk(index, { notes: event.target.value })}
-                          rows={2}
-                          placeholder="Optional rationale or alignment notes."
-                        />
+                      <div className="text-xs text-slate-400">
+                        {`${frameworkLabel(entry.primary_framework)} -> ${entry.mappings.length} mapped`}
                       </div>
                     </div>
-                    <div className="mt-3 space-y-3">
-                      {entry.mappings.length === 0 ? (
-                        <div className="text-sm text-slate-400">No mapped controls yet.</div>
-                      ) : (
-                        entry.mappings.map((mapping, mappingIndex) => (
-                          <div
-                            key={`${mapping.framework}-${mapping.control_id}-${mappingIndex}`}
-                            className="grid gap-3 md:grid-cols-3"
+                    <button
+                      className="text-xs text-slate-200 hover:text-white"
+                      type="button"
+                      onClick={() => onToggleCrosswalkCollapse(entry, index)}
+                    >
+                      {isCollapsed ? 'Expand' : 'Collapse'}
+                    </button>
+                  </div>
+                  {isCollapsed ? null : (
+                    <>
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                        <div>
+                          <Label>{t('Primary framework', 'Primary framework')}</Label>
+                          <select
+                            className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
+                            value={entry.primary_framework}
+                            onChange={(event) => updateCrosswalk(index, { primary_framework: event.target.value })}
                           >
-                            <div>
-                              <Label>Mapped framework</Label>
-                              <select
-                                className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
-                                value={mapping.framework}
-                                onChange={(event) =>
-                                  updateCrosswalkMapping(index, mappingIndex, { framework: event.target.value })
-                                }
+                            {frameworkOptions.map((fw) => (
+                              <option key={fw.key} value={fw.key}>
+                                {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label>{t('Primary control ID', 'Primary control ID')}</Label>
+                          <Input
+                            value={entry.primary_control_id}
+                            onChange={(event) => updateCrosswalk(index, { primary_control_id: event.target.value })}
+                            placeholder="change_management_controls"
+                          />
+                        </div>
+                        <div>
+                          <Label>{t('Notes', 'Notes')}</Label>
+                          <Textarea
+                            value={entry.notes || ''}
+                            onChange={(event) => updateCrosswalk(index, { notes: event.target.value })}
+                            rows={2}
+                            placeholder={t(
+                              'Optional rationale or alignment notes.',
+                              'Optional rationale or alignment notes.'
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {entry.mappings.length === 0 ? (
+                          <div className="text-sm text-slate-400">{t('No mapped controls yet.', 'No mapped controls yet.')}</div>
+                        ) : (
+                          entry.mappings.map((mapping, mappingIndex) => {
+                            const {
+                              t
+                            } = useI18n();
+
+                            return (
+                              <div
+                                key={`${mapping.framework}-${mapping.control_id}-${mappingIndex}`}
+                                className="grid gap-3 md:grid-cols-3"
                               >
-                                {frameworkOptions.map((fw) => (
-                                  <option key={fw.key} value={fw.key}>
-                                    {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <Label>Mapped control ID</Label>
-                              <Input
-                                value={mapping.control_id}
-                                onChange={(event) =>
-                                  updateCrosswalkMapping(index, mappingIndex, { control_id: event.target.value })
-                                }
-                                placeholder="change_management_controls"
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              <Button onClick={() => removeCrosswalkMapping(index, mappingIndex)}>Remove</Button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <Button onClick={() => addCrosswalkMapping(index)}>Add mapped control</Button>
-                      <Button onClick={() => removeCrosswalk(index)}>Remove crosswalk</Button>
-                    </div>
-                  </>
-                )}
-              </Card>
-            )
-          })}
-        </>
-      )}
-    </div>
-  </Card>
-)
+                                <div>
+                                  <Label>{t('Mapped framework', 'Mapped framework')}</Label>
+                                  <select
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
+                                    value={mapping.framework}
+                                    onChange={(event) =>
+                                      updateCrosswalkMapping(index, mappingIndex, { framework: event.target.value })
+                                    }
+                                  >
+                                    {frameworkOptions.map((fw) => (
+                                      <option key={fw.key} value={fw.key}>
+                                        {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <Label>{t('Mapped control ID', 'Mapped control ID')}</Label>
+                                  <Input
+                                    value={mapping.control_id}
+                                    onChange={(event) =>
+                                      updateCrosswalkMapping(index, mappingIndex, { control_id: event.target.value })
+                                    }
+                                    placeholder="change_management_controls"
+                                  />
+                                </div>
+                                <div className="flex items-end">
+                                  <Button onClick={() => removeCrosswalkMapping(index, mappingIndex)}>{t('Remove', 'Remove')}</Button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <Button onClick={() => addCrosswalkMapping(index)}>{t('Add mapped control', 'Add mapped control')}</Button>
+                        <Button onClick={() => removeCrosswalk(index)}>{t('Remove crosswalk', 'Remove crosswalk')}</Button>
+                      </div>
+                    </>
+                  )}
+                </Card>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 type ControlMappingsPanelProps = {
   displayMappings: ControlMapping[]
@@ -786,152 +832,180 @@ type ControlMappingsPanelProps = {
   splitCsv: (value: string) => string[]
 }
 
-const ControlMappingsPanel = ({
-  displayMappings,
-  visibleMappings,
-  hasSavedMappings,
-  hasMoreMappings,
-  onShowMoreMappings,
-  onShowAllMappings,
-  expandAllMappings,
-  collapseAllMappings,
-  collapsedMappings,
-  onToggleMappingCollapse,
-  mappingKey,
-  frameworkLabel,
-  frameworkOptions,
-  controlIdsByFramework,
-  updateMapping,
-  removeMapping,
-  joinCsv,
-  splitCsv,
-}: ControlMappingsPanelProps) => (
-  <div className="space-y-3">
-    {!displayMappings.length ? (
-      <div className="text-sm text-slate-400">No mappings for this connector yet.</div>
-    ) : (
-      <>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs text-slate-400">
-            {hasSavedMappings ? 'Saved mappings' : 'Draft mappings'} - Showing{' '}
-            {Math.min(visibleMappings.length, displayMappings.length)} of {displayMappings.length}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {hasMoreMappings ? (
-              <>
-                <Button onClick={onShowMoreMappings}>Show more</Button>
-                <Button onClick={onShowAllMappings}>Show all</Button>
-              </>
-            ) : null}
-            <Button onClick={expandAllMappings} disabled={!visibleMappings.length}>
-              Expand all
-            </Button>
-            <Button onClick={collapseAllMappings} disabled={!visibleMappings.length}>
-              Collapse all
-            </Button>
-          </div>
-        </div>
-        {visibleMappings.map((mapping, index) => {
-          const key = mappingKey(mapping, index)
-          const isCollapsed = collapsedMappings[key] ?? true
-          return (
-            <Card key={`${mapping.framework}-${index}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-100">{frameworkLabel(mapping.framework)}</div>
-                  <div className="text-xs text-slate-400">
-                    {mapping.control_ids.length ? joinCsv(mapping.control_ids) : 'No controls selected'}
-                  </div>
-                </div>
-                <button
-                  className="text-xs text-slate-200 hover:text-white"
-                  type="button"
-                  onClick={() => onToggleMappingCollapse(mapping, index)}
-                >
-                  {isCollapsed ? 'Expand' : 'Collapse'}
-                </button>
-              </div>
-              {isCollapsed ? null : (
+const ControlMappingsPanel = (
+  {
+    displayMappings,
+    visibleMappings,
+    hasSavedMappings,
+    hasMoreMappings,
+    onShowMoreMappings,
+    onShowAllMappings,
+    expandAllMappings,
+    collapseAllMappings,
+    collapsedMappings,
+    onToggleMappingCollapse,
+    mappingKey,
+    frameworkLabel,
+    frameworkOptions,
+    controlIdsByFramework,
+    updateMapping,
+    removeMapping,
+    joinCsv,
+    splitCsv,
+  }: ControlMappingsPanelProps
+) => {
+  const {
+    t
+  } = useI18n();
+
+  return (
+    <div className="space-y-3">
+      {!displayMappings.length ? (
+        <div className="text-sm text-slate-400">{t(
+          'No mappings for this connector yet.',
+          'No mappings for this connector yet.'
+        )}</div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-slate-400">
+              {hasSavedMappings ? 'Saved mappings' : 'Draft mappings'} {t('- Showing', '- Showing')}{' '}
+              {Math.min(visibleMappings.length, displayMappings.length)}of {displayMappings.length}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {hasMoreMappings ? (
                 <>
-                  <div className="mt-3 grid gap-3 md:grid-cols-3">
-                    <div>
-                      <Label>Framework</Label>
-                      <select
-                        className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
-                        value={mapping.framework}
-                        onChange={(event) =>
-                          updateMapping(index, { framework: event.target.value, control_ids: [] })
-                        }
-                      >
-                        {frameworkOptions.map((fw) => (
-                          <option key={fw.key} value={fw.key}>
-                            {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label>Control IDs</Label>
-                      {controlIdsByFramework[mapping.framework]?.length ? (
-                        <>
-                          <select
-                            multiple
-                            className="h-36 w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
-                            value={mapping.control_ids}
-                            onChange={(event) => {
-                              const selected = Array.from(event.target.selectedOptions).map(
-                                (option) => option.value,
-                              )
-                              updateMapping(index, { control_ids: selected })
-                            }}
-                          >
-                            {controlIdsByFramework[mapping.framework].map((controlId) => (
-                              <option key={controlId} value={controlId}>
-                                {controlId}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="mt-2 text-xs text-slate-400">
-                            Hold Ctrl/Cmd to select multiple controls.
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Input
-                            value={joinCsv(mapping.control_ids)}
-                            onChange={(event) => updateMapping(index, { control_ids: splitCsv(event.target.value) })}
-                            placeholder="A.5.8, Article 21(2)"
-                          />
-                          <div className="mt-2 text-xs text-slate-400">
-                            No controls loaded for this framework yet.
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div>
-                      <Label>Notes</Label>
-                      <Textarea
-                        value={mapping.notes || ''}
-                        onChange={(event) => updateMapping(index, { notes: event.target.value })}
-                        rows={2}
-                        placeholder="Optional rationale or evidence pointer."
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <Button onClick={() => removeMapping(index)}>Remove</Button>
-                  </div>
+                  <Button onClick={onShowMoreMappings}>{t('Show more', 'Show more')}</Button>
+                  <Button onClick={onShowAllMappings}>{t('Show all', 'Show all')}</Button>
                 </>
-              )}
-            </Card>
-          )
-        })}
-      </>
-    )}
-  </div>
-)
+              ) : null}
+              <Button onClick={expandAllMappings} disabled={!visibleMappings.length}>
+                {t('Expand all', 'Expand all')}
+              </Button>
+              <Button onClick={collapseAllMappings} disabled={!visibleMappings.length}>
+                {t('Collapse all', 'Collapse all')}
+              </Button>
+            </div>
+          </div>
+          {visibleMappings.map((mapping, index) => {
+            const {
+              t
+            } = useI18n();
+
+            const key = mappingKey(mapping, index)
+            const isCollapsed = collapsedMappings[key] ?? true
+            return (
+              <Card key={`${mapping.framework}-${index}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-100">{frameworkLabel(mapping.framework)}</div>
+                    <div className="text-xs text-slate-400">
+                      {mapping.control_ids.length ? joinCsv(mapping.control_ids) : 'No controls selected'}
+                    </div>
+                  </div>
+                  <button
+                    className="text-xs text-slate-200 hover:text-white"
+                    type="button"
+                    onClick={() => onToggleMappingCollapse(mapping, index)}
+                  >
+                    {isCollapsed ? 'Expand' : 'Collapse'}
+                  </button>
+                </div>
+                {isCollapsed ? null : (
+                  <>
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      <div>
+                        <Label>{t('Framework', 'Framework')}</Label>
+                        <select
+                          className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
+                          value={mapping.framework}
+                          onChange={(event) =>
+                            updateMapping(index, { framework: event.target.value, control_ids: [] })
+                          }
+                        >
+                          {frameworkOptions.map((fw) => (
+                            <option key={fw.key} value={fw.key}>
+                              {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label>{t('Control IDs', 'Control IDs')}</Label>
+                        {controlIdsByFramework[mapping.framework]?.length ? (
+                          <>
+                            <select
+                              multiple
+                              className="h-36 w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
+                              value={mapping.control_ids}
+                              onChange={(event) => {
+                                const selected = Array.from(event.target.selectedOptions).map(
+                                  (option) => option.value,
+                                )
+                                updateMapping(index, { control_ids: selected })
+                              }}
+                            >
+                              {controlIdsByFramework[mapping.framework].map((controlId) => (
+                                <option key={controlId} value={controlId}>
+                                  {controlId}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="mt-2 text-xs text-slate-400">
+                              {t(
+                                'Hold Ctrl/Cmd to select multiple controls.',
+                                'Hold Ctrl/Cmd to select multiple controls.'
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              value={joinCsv(mapping.control_ids)}
+                              onChange={(event) => updateMapping(index, { control_ids: splitCsv(event.target.value) })}
+                              placeholder={t('A.5.8, Article 21(2)', 'A.5.8, Article 21(2)')}
+                            />
+                            <div className="mt-2 text-xs text-slate-400">
+                              {t(
+                                'No controls loaded for this framework yet.',
+                                'No controls loaded for this framework yet.'
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div>
+                        <Label>{t('Notes', 'Notes')}</Label>
+                        <Textarea
+                          value={mapping.notes || ''}
+                          onChange={(event) => updateMapping(index, { notes: event.target.value })}
+                          rows={2}
+                          placeholder={t(
+                            'Optional rationale or evidence pointer.',
+                            'Optional rationale or evidence pointer.'
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Button onClick={() => removeMapping(index)}>{t('Remove', 'Remove')}</Button>
+                    </div>
+                  </>
+                )}
+              </Card>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
 
 export function ControlMappingsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [frameworks, setFrameworks] = useState<FrameworkItem[]>([])
   const [controlLibrary, setControlLibrary] = useState<ControlLibraryEntry[]>([])
   const [libraryFramework, setLibraryFramework] = useState('')
@@ -1815,20 +1889,21 @@ export function ControlMappingsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <PageTitle>Control Mappings</PageTitle>
+          <PageTitle>{t('Control Mappings', 'Control Mappings')}</PageTitle>
           <p className="text-sm text-slate-400">
-            Map connector evidence to framework controls to document coverage and gaps.
+            {t(
+              'Map connector evidence to framework controls to document coverage and gaps.',
+              'Map connector evidence to framework controls to document coverage and gaps.'
+            )}
           </p>
         </div>
         <Button onClick={saveMappings} disabled={saving || !selectedConnector || !selectedInstance}>
           {saving ? 'Saving...' : 'Save mappings'}
         </Button>
       </div>
-
-      {error ? <ErrorBox title="Control mappings error" detail={error.message} /> : null}
+      {error ? <ErrorBox title={t('Control mappings error', 'Control mappings error')} detail={error.message} /> : null}
       {message ? <InfoBox title={message} /> : null}
       {crosswalkMessage ? <InfoBox title={crosswalkMessage} /> : null}
-
       <ControlLibraryPanel
         libraryReady={libraryReady}
         libraryError={libraryError}
@@ -1871,7 +1946,6 @@ export function ControlMappingsPage() {
         isSelectedControlMapped={isSelectedControlMapped}
         onToggleSelectedControlMapping={toggleSelectedControlMapping}
       />
-
       <ControlCrosswalksPanel
         crosswalksReady={crosswalksReady}
         crosswalksError={crosswalksError}
@@ -1900,7 +1974,6 @@ export function ControlMappingsPage() {
         frameworkLabel={frameworkLabel}
         hasControlLibrary={hasControlLibrary}
       />
-
       <ControlMappingsPanel
         displayMappings={displayMappings}
         visibleMappings={visibleMappings}
@@ -1921,7 +1994,6 @@ export function ControlMappingsPage() {
         joinCsv={joinCsv}
         splitCsv={splitCsv}
       />
-
     </div>
-  )
+  );
 }

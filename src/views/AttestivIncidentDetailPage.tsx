@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Incident detail page — full Article 23 workflow.
 //
 // Three blocks:
@@ -25,6 +24,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Incident = {
   id: string
@@ -80,6 +81,10 @@ const NOTIFICATION_TYPES: Array<{ key: string; label: string; subtitle: string }
 ]
 
 export function AttestivIncidentDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -200,10 +205,10 @@ export function AttestivIncidentDetailPage() {
     return (
       <>
         <Topbar
-          title="Incident"
+          title={t('Incident', 'Incident')}
           left={
             <GhostButton onClick={() => router.push('/incidents')}>
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
             </GhostButton>
           }
         />
@@ -211,18 +216,21 @@ export function AttestivIncidentDetailPage() {
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!data) {
     return (
       <>
-        <Topbar title="Incident" />
+        <Topbar title={t('Incident', 'Incident')} />
         <div className="attestiv-content">
-          <EmptyState icon="ti-radar-2" title="Incident not found" description="The incident may have been deleted or you may not have access." />
+          <EmptyState icon="ti-radar-2" title={t('Incident not found', 'Incident not found')} description={t(
+            'The incident may have been deleted or you may not have access.',
+            'The incident may have been deleted or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   const { incident, notifications } = data
@@ -235,7 +243,7 @@ export function AttestivIncidentDetailPage() {
         title={incident.title || 'Incident'}
         left={
           <GhostButton onClick={() => router.push('/incidents')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
@@ -249,42 +257,47 @@ export function AttestivIncidentDetailPage() {
         {nextDeadline ? <DeadlineBanner deadline={nextDeadline} /> : null}
 
         <Card>
-          <CardTitle right={<Badge tone="navy">{status.replace(/_/g, ' ')}</Badge>}>Summary</CardTitle>
+          <CardTitle right={<Badge tone="navy">{status.replace(/_/g, ' ')}</Badge>}>{t('Summary', 'Summary')}</CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <Field label="Detected">
+            <Field label={t('Detected', 'Detected')}>
               {incident.detected_at ? incident.detected_at.slice(0, 16).replace('T', ' ') + ' UTC' : '—'}
               <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>by {incident.detected_by || '—'}</div>
             </Field>
-            <Field label="NIS2 significant">
+            <Field label={t('NIS2 significant', 'NIS2 significant')}>
               {incident.nis2_significant === true ? <Badge tone="red">yes</Badge>
                 : incident.nis2_significant === false ? <Badge tone="gray">no</Badge>
-                : <Badge tone="amber">awaiting class.</Badge>}
+                : <Badge tone="amber">{t('awaiting class.', 'awaiting class.')}</Badge>}
             </Field>
-            <Field label="Category">{incident.nis2_category ?? '—'}</Field>
-            <Field label="Affected users">{String(incident.affected_users_count ?? 0)}</Field>
-            <Field label="Affected services">
+            <Field label={t('Category', 'Category')}>{incident.nis2_category ?? '—'}</Field>
+            <Field label={t('Affected users', 'Affected users')}>{String(incident.affected_users_count ?? 0)}</Field>
+            <Field label={t('Affected services', 'Affected services')}>
               {(incident.affected_services && incident.affected_services.length > 0)
                 ? incident.affected_services.join(', ')
                 : '—'}
             </Field>
-            {incident.trigger_code ? <Field label="Detector trigger"><code>{incident.trigger_code}</code></Field> : null}
+            {incident.trigger_code ? <Field label={t('Detector trigger', 'Detector trigger')}><code>{incident.trigger_code}</code></Field> : null}
           </div>
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Classification</CardTitle>
+          <CardTitle>{t('Classification', 'Classification')}</CardTitle>
           <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0 }}>
-            NIS2 Article 23 only requires reporting <strong>significant</strong> incidents. Mark
-            this one accurately — non-significant incidents skip the notification ladder.
+            {t(
+              'NIS2 Article 23 only requires reporting',
+              'NIS2 Article 23 only requires reporting'
+            )} <strong>significant</strong> {t(
+              'incidents. Mark\n            this one accurately — non-significant incidents skip the notification ladder.',
+              'incidents. Mark\n            this one accurately — non-significant incidents skip the notification ladder.'
+            )}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <FormRow label="NIS2 significant?">
+            <FormRow label={t('NIS2 significant?', 'NIS2 significant?')}>
               <select value={classifySig} onChange={(e) => setClassifySig(e.target.value as 'true' | 'false')} style={inputStyle}>
-                <option value="true">Yes — significant</option>
-                <option value="false">No — not reportable</option>
+                <option value="true">{t('Yes — significant', 'Yes — significant')}</option>
+                <option value="false">{t('No — not reportable', 'No — not reportable')}</option>
               </select>
             </FormRow>
-            <FormRow label="Category">
+            <FormRow label={t('Category', 'Category')}>
               <select value={category} onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])} style={inputStyle}>
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
@@ -300,12 +313,15 @@ export function AttestivIncidentDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Notification ladder (Article 23)</CardTitle>
+          <CardTitle>{t('Notification ladder (Article 23)', 'Notification ladder (Article 23)')}</CardTitle>
           {!sigSet || incident.nis2_significant === false ? (
             <EmptyState
               icon="ti-mailbox-off"
-              title="Notification ladder skipped"
-              description="Notifications only apply to NIS2-significant incidents. Classify the incident as significant to unlock the 24h / 72h / 1-month drafts."
+              title={t('Notification ladder skipped', 'Notification ladder skipped')}
+              description={t(
+                'Notifications only apply to NIS2-significant incidents. Classify the incident as significant to unlock the 24h / 72h / 1-month drafts.',
+                'Notifications only apply to NIS2-significant incidents. Classify the incident as significant to unlock the 24h / 72h / 1-month drafts.'
+              )}
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -328,7 +344,7 @@ export function AttestivIncidentDetailPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function NotificationBlock({
@@ -346,6 +362,10 @@ function NotificationBlock({
   onBuildDraft: () => void
   onMarkSubmitted: (referenceNumber: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [refNumber, setRefNumber] = useState('')
   const [showJSON, setShowJSON] = useState(false)
   const submitted = notification?.status === 'submitted'
@@ -367,18 +387,18 @@ function NotificationBlock({
           submitted ? <Badge tone="green">submitted</Badge>
           : <Badge tone="amber">draft</Badge>
         ) : (
-          <Badge tone="gray">not started</Badge>
+          <Badge tone="gray">{t('not started', 'not started')}</Badge>
         )}
       </div>
       {notification ? (
         <>
           <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-            Authority: <strong>{notification.target_authority}</strong>
+            {t('Authority:', 'Authority:')} <strong>{notification.target_authority}</strong>
             {notification.submitted_at ? (
-              <> · submitted {notification.submitted_at.slice(0, 16).replace('T', ' ')}Z</>
+              <> {t('· submitted', '· submitted')} {notification.submitted_at.slice(0, 16).replace('T', ' ')}Z</>
             ) : null}
             {notification.reference_number ? (
-              <> · ref <code>{notification.reference_number}</code></>
+              <> {t('· ref', '· ref')} <code>{notification.reference_number}</code></>
             ) : null}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -391,7 +411,7 @@ function NotificationBlock({
                   type="text"
                   value={refNumber}
                   onChange={(e) => setRefNumber(e.target.value)}
-                  placeholder="ref number from authority"
+                  placeholder={t('ref number from authority', 'ref number from authority')}
                   style={{
                     flex: 1,
                     fontSize: 11,
@@ -404,7 +424,7 @@ function NotificationBlock({
                   }}
                 />
                 <PrimaryButton onClick={() => onMarkSubmitted(refNumber)} disabled={busy || !refNumber.trim()}>
-                  <i className="ti ti-check" aria-hidden="true" /> Mark submitted
+                  <i className="ti ti-check" aria-hidden="true" /> {t('Mark submitted', 'Mark submitted')}
                 </PrimaryButton>
               </>
             ) : null}
@@ -428,14 +448,18 @@ function NotificationBlock({
         </>
       ) : (
         <PrimaryButton onClick={onBuildDraft} disabled={busy}>
-          <i className="ti ti-file-export" aria-hidden="true" /> Build draft
+          <i className="ti ti-file-export" aria-hidden="true" /> {t('Build draft', 'Build draft')}
         </PrimaryButton>
       )}
     </div>
-  )
+  );
 }
 
 function DeadlineBanner({ deadline }: { deadline: Deadline }) {
+  const {
+    t
+  } = useI18n();
+
   const isOverdue = deadline.minutes_until < 0
   const tone = isOverdue ? 'error' : deadline.minutes_until < 60 ? 'warning' : 'info'
   const label = LABEL_FOR_DEADLINE[deadline.type] ?? deadline.type
@@ -444,9 +468,9 @@ function DeadlineBanner({ deadline }: { deadline: Deadline }) {
     : `${humanMinutes(deadline.minutes_until)} remaining`
   return (
     <Banner tone={tone} title={`${label} — ${countdown}`}>
-      Target submission: {deadline.due.slice(0, 16).replace('T', ' ')} UTC.
+      {t('Target submission:', 'Target submission:')} {deadline.due.slice(0, 16).replace('T', ' ')} {t('UTC.', 'UTC.')}
     </Banner>
-  )
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

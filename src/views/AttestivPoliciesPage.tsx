@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Policy register page (Phase-2 GRC, chunk 2).
 //
 // What's on screen:
@@ -25,6 +24,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Policy = {
   id: string
@@ -60,6 +61,10 @@ const CATEGORIES = [
 ] as const
 
 export function AttestivPoliciesPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [policies, setPolicies] = useState<Policy[]>([])
   const [overdue, setOverdue] = useState<Policy[]>([])
@@ -139,11 +144,11 @@ export function AttestivPoliciesPage() {
   return (
     <>
       <Topbar
-        title="Policy register"
+        title={t('Policy register', 'Policy register')}
         left={<Badge tone="navy">{policies.length} policies</Badge>}
         right={
           <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> Add policy
+            <i className="ti ti-plus" aria-hidden="true" /> {t('Add policy', 'Add policy')}
           </PrimaryButton>
         }
       />
@@ -154,8 +159,10 @@ export function AttestivPoliciesPage() {
             tone="warning"
             title={`${overdueCount} policy${overdueCount === 1 ? '' : 'ies'} overdue for review`}
           >
-            Each overdue policy reduces the score of every linked control by 10%. Review and refresh
-            to restore the score.
+            {t(
+              'Each overdue policy reduces the score of every linked control by 10%. Review and refresh\n            to restore the score.',
+              'Each overdue policy reduces the score of every linked control by 10%. Review and refresh\n            to restore the score.'
+            )}
           </Banner>
         ) : null}
 
@@ -166,10 +173,10 @@ export function AttestivPoliciesPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Total" value={summary.total} icon="ti-file-text" tone="navy" />
-          <SummaryCard label="Active" value={summary.active} icon="ti-circle-check" tone="green" />
-          <SummaryCard label="Draft" value={summary.draft} icon="ti-pencil" tone="amber" />
-          <SummaryCard label="Overdue" value={overdueCount} icon="ti-clock-exclamation" tone="red" />
+          <SummaryCard label={t('Total', 'Total')} value={summary.total} icon="ti-file-text" tone="navy" />
+          <SummaryCard label={t('Active', 'Active')} value={summary.active} icon="ti-circle-check" tone="green" />
+          <SummaryCard label={t('Draft', 'Draft')} value={summary.draft} icon="ti-pencil" tone="amber" />
+          <SummaryCard label={t('Overdue', 'Overdue')} value={overdueCount} icon="ti-clock-exclamation" tone="red" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
@@ -178,18 +185,21 @@ export function AttestivPoliciesPage() {
               <FilterBar value={filter} onChange={setFilter} />
             }
           >
-            Policies
+            {t('Policies', 'Policies')}
           </CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : policies.length === 0 ? (
             <EmptyState
               icon="ti-file-text"
-              title="No policies yet"
-              description="Add your first policy to start linking controls. The scoring engine penalises controls whose linked policies are stale, unapproved, or overdue for review."
+              title={t('No policies yet', 'No policies yet')}
+              description={t(
+                'Add your first policy to start linking controls. The scoring engine penalises controls whose linked policies are stale, unapproved, or overdue for review.',
+                'Add your first policy to start linking controls. The scoring engine penalises controls whose linked policies are stale, unapproved, or overdue for review.'
+              )}
               action={
                 <PrimaryButton onClick={() => setShowCreate(true)}>
-                  <i className="ti ti-plus" aria-hidden="true" /> Add policy
+                  <i className="ti ti-plus" aria-hidden="true" /> {t('Add policy', 'Add policy')}
                 </PrimaryButton>
               }
             />
@@ -206,12 +216,11 @@ export function AttestivPoliciesPage() {
           )}
         </Card>
       </div>
-
       {showCreate ? (
         <CreatePolicyModal busy={createBusy} onCancel={() => setShowCreate(false)} onSubmit={createPolicy} />
       ) : null}
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -264,16 +273,20 @@ function FilterBar({
   value: { status?: string; category?: string; overdueOnly?: boolean }
   onChange: (next: { status?: string; category?: string; overdueOnly?: boolean }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Status"
+        label={t('Status', 'Status')}
         value={value.status}
         options={['draft', 'active', 'retired']}
         onChange={(v) => onChange({ ...value, status: v })}
       />
       <SelectChip
-        label="Category"
+        label={t('Category', 'Category')}
         value={value.category}
         options={CATEGORIES.slice()}
         onChange={(v) => onChange({ ...value, category: v })}
@@ -284,10 +297,10 @@ function FilterBar({
           checked={value.overdueOnly ?? false}
           onChange={(e) => onChange({ ...value, overdueOnly: e.target.checked })}
         />
-        <span>Overdue only</span>
+        <span>{t('Overdue only', 'Overdue only')}</span>
       </label>
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -301,6 +314,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -315,14 +332,14 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt.replace(/_/g, ' ')}
         </option>
       ))}
     </select>
-  )
+  );
 }
 
 function PolicyRow({ policy, onOpen }: { policy: Policy; onOpen: () => void }) {
@@ -395,6 +412,10 @@ function CreatePolicyModal({
   onCancel: () => void
   onSubmit: (payload: Record<string, unknown>) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [title, setTitle] = useState('')
   const [version, setVersion] = useState('v1.0')
   const [category, setCategory] = useState<string>('access_control')
@@ -426,19 +447,21 @@ function CreatePolicyModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>Add policy</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>{t('Add policy', 'Add policy')}</h3>
         <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 0 }}>
-          Policies start in <code>draft</code>. Approve them on the detail page to make them count
-          toward control scores.
+          {t('Policies start in', 'Policies start in')} <code>draft</code>{t(
+            '. Approve them on the detail page to make them count\n          toward control scores.',
+            '. Approve them on the detail page to make them count\n          toward control scores.'
+          )}
         </p>
-        <FormRow label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Information Security Policy" style={inputStyle} />
+        <FormRow label={t('Title', 'Title')}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('e.g. Information Security Policy', 'e.g. Information Security Policy')} style={inputStyle} />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Version">
+          <FormRow label={t('Version', 'Version')}>
             <input value={version} onChange={(e) => setVersion(e.target.value)} style={inputStyle} />
           </FormRow>
-          <FormRow label="Category">
+          <FormRow label={t('Category', 'Category')}>
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
@@ -446,17 +469,17 @@ function CreatePolicyModal({
             </select>
           </FormRow>
         </div>
-        <FormRow label="Description">
+        <FormRow label={t('Description', 'Description')}>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
         </FormRow>
-        <FormRow label="Document URL">
+        <FormRow label={t('Document URL', 'Document URL')}>
           <input value={documentUrl} onChange={(e) => setDocumentUrl(e.target.value)} placeholder="https://docs.acme.com/policies/iso27001.pdf" style={inputStyle} />
         </FormRow>
-        <FormRow label="Review due date">
+        <FormRow label={t('Review due date', 'Review due date')}>
           <input type="date" value={reviewDueDate} onChange={(e) => setReviewDueDate(e.target.value)} style={inputStyle} />
         </FormRow>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 12 }}>
-          <GhostButton onClick={onCancel} disabled={busy}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel} disabled={busy}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             onClick={() =>
               onSubmit({
@@ -475,7 +498,7 @@ function CreatePolicyModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {

@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, InfoBox, Input, Label, PageTitle, Textarea } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type EvidenceTemplate = {
   id: string
@@ -78,6 +79,10 @@ function normalizeInstances(payload: unknown): string[] {
 }
 
 export function EvidenceTemplatesPage() {
+  const {
+    t
+  } = useI18n();
+
   const [connectorOptions, setConnectorOptions] = useState<string[]>([])
   const [instanceOptions, setInstanceOptions] = useState<Record<string, string[]>>({})
   const [frameworkOptions, setFrameworkOptions] = useState<string[]>([])
@@ -261,27 +266,31 @@ export function EvidenceTemplatesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <PageTitle>Evidence Templates</PageTitle>
+          <PageTitle>{t('Evidence Templates', 'Evidence Templates')}</PageTitle>
           <p className="text-sm text-slate-400">
-            Build reusable evidence requests scoped by connector, instance, and framework.
+            {t(
+              'Build reusable evidence requests scoped by connector, instance, and framework.',
+              'Build reusable evidence requests scoped by connector, instance, and framework.'
+            )}
           </p>
         </div>
         <Button onClick={saveTemplates} disabled={saving || !selectedConnector}>
           {saving ? 'Saving...' : 'Save templates'}
         </Button>
       </div>
-
-      {error ? <ErrorBox title="Evidence templates error" detail={error.message} /> : null}
+      {error ? <ErrorBox title={t('Evidence templates error', 'Evidence templates error')} detail={error.message} /> : null}
       {message ? <InfoBox title={message} /> : null}
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Template scope</Label>
-          <div className="text-xs text-slate-400">Select the connector and scope to edit templates.</div>
+          <Label>{t('Template scope', 'Template scope')}</Label>
+          <div className="text-xs text-slate-400">{t(
+            'Select the connector and scope to edit templates.',
+            'Select the connector and scope to edit templates.'
+          )}</div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <Label>Connector</Label>
+            <Label>{t('Connector', 'Connector')}</Label>
             <select
               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
               value={selectedConnector}
@@ -295,14 +304,14 @@ export function EvidenceTemplatesPage() {
             </select>
           </div>
           <div>
-            <Label>Instance (optional)</Label>
+            <Label>{t('Instance (optional)', 'Instance (optional)')}</Label>
             {instanceOptions[selectedConnector]?.length ? (
               <select
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
                 value={selectedInstance}
                 onChange={(event) => setSelectedInstance(event.target.value)}
               >
-                <option value="">All instances</option>
+                <option value="">{t('All instances', 'All instances')}</option>
                 {instanceOptions[selectedConnector].map((instance) => (
                   <option key={instance} value={instance}>
                     {instance}
@@ -313,12 +322,12 @@ export function EvidenceTemplatesPage() {
               <Input
                 value={selectedInstance}
                 onChange={(event) => setSelectedInstance(event.target.value)}
-                placeholder="optional instance name"
+                placeholder={t('optional instance name', 'optional instance name')}
               />
             )}
           </div>
           <div>
-            <Label>Framework (optional)</Label>
+            <Label>{t('Framework (optional)', 'Framework (optional)')}</Label>
             <select
               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-100"
               value={frameworkSelection}
@@ -328,7 +337,7 @@ export function EvidenceTemplatesPage() {
                 if (next !== 'custom') setCustomFramework('')
               }}
             >
-              <option value="">All frameworks</option>
+              <option value="">{t('All frameworks', 'All frameworks')}</option>
               {frameworkOptions.map((framework) => (
                 <option key={framework} value={framework}>
                   {framework}
@@ -339,7 +348,7 @@ export function EvidenceTemplatesPage() {
           </div>
           {frameworkSelection === 'custom' ? (
             <div className="md:col-span-3">
-              <Label>Custom framework key</Label>
+              <Label>{t('Custom framework key', 'Custom framework key')}</Label>
               <Input
                 value={customFramework}
                 onChange={(event) => setCustomFramework(event.target.value)}
@@ -349,92 +358,103 @@ export function EvidenceTemplatesPage() {
           ) : null}
           <div className="flex items-end md:col-span-3">
             <Button onClick={addTemplate} disabled={!selectedConnector}>
-              Add template
+              {t('Add template', 'Add template')}
             </Button>
           </div>
         </div>
         <div className="mt-4 text-xs text-slate-400">
-          Define connector-specific evidence requests that can be reused when creating evidence requests.
+          {t(
+            'Define connector-specific evidence requests that can be reused when creating evidence requests.',
+            'Define connector-specific evidence requests that can be reused when creating evidence requests.'
+          )}
         </div>
       </Card>
-
       <div className="space-y-3">
         {currentTemplates.length === 0 ? (
-          <div className="text-sm text-slate-400">No templates for this connector scope yet.</div>
+          <div className="text-sm text-slate-400">{t(
+            'No templates for this connector scope yet.',
+            'No templates for this connector scope yet.'
+          )}</div>
         ) : (
-          currentTemplates.map((template, index) => (
-            <Card key={`${template.id}-${index}`}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <Label>Template ID</Label>
-                  <Input
-                    value={template.id}
-                    onChange={(event) => updateTemplate(index, { id: event.target.value })}
-                  />
+          currentTemplates.map((template, index) => {
+            const {
+              t
+            } = useI18n();
+
+            return (
+              <Card key={`${template.id}-${index}`}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>{t('Template ID', 'Template ID')}</Label>
+                    <Input
+                      value={template.id}
+                      onChange={(event) => updateTemplate(index, { id: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>{t('Title', 'Title')}</Label>
+                    <Input
+                      value={template.title}
+                      onChange={(event) => updateTemplate(index, { title: event.target.value })}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>{t('Description', 'Description')}</Label>
+                    <Textarea
+                      value={template.description || ''}
+                      onChange={(event) => updateTemplate(index, { description: event.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <Label>{t('Required artifacts', 'Required artifacts')}</Label>
+                    <Input
+                      value={joinCsv(template.required_artifacts)}
+                      onChange={(event) =>
+                        updateTemplate(index, { required_artifacts: splitCsv(event.target.value) })
+                      }
+                      placeholder={t('artifact-1, artifact-2', 'artifact-1, artifact-2')}
+                    />
+                  </div>
+                  <div>
+                    <Label>{t('Evidence URLs', 'Evidence URLs')}</Label>
+                    <Input
+                      value={joinCsv(template.evidence_urls)}
+                      onChange={(event) =>
+                        updateTemplate(index, { evidence_urls: splitCsv(event.target.value) })
+                      }
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div>
+                    <Label>{t('Due in days', 'Due in days')}</Label>
+                    <Input
+                      value={formatOptionalNumber(template.due_in_days)}
+                      onChange={(event) =>
+                        updateTemplate(index, { due_in_days: parseOptionalNumber(event.target.value) })
+                      }
+                      placeholder="14"
+                    />
+                  </div>
+                  <div>
+                    <Label>{t('SLA in days', 'SLA in days')}</Label>
+                    <Input
+                      value={formatOptionalNumber(template.sla_in_days)}
+                      onChange={(event) =>
+                        updateTemplate(index, { sla_in_days: parseOptionalNumber(event.target.value) })
+                      }
+                      placeholder="30"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Title</Label>
-                  <Input
-                    value={template.title}
-                    onChange={(event) => updateTemplate(index, { title: event.target.value })}
-                  />
+                <div className="mt-3 flex justify-end">
+                  <Button onClick={() => removeTemplate(index)}>{t('Remove', 'Remove')}</Button>
                 </div>
-                <div className="md:col-span-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={template.description || ''}
-                    onChange={(event) => updateTemplate(index, { description: event.target.value })}
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <Label>Required artifacts</Label>
-                  <Input
-                    value={joinCsv(template.required_artifacts)}
-                    onChange={(event) =>
-                      updateTemplate(index, { required_artifacts: splitCsv(event.target.value) })
-                    }
-                    placeholder="artifact-1, artifact-2"
-                  />
-                </div>
-                <div>
-                  <Label>Evidence URLs</Label>
-                  <Input
-                    value={joinCsv(template.evidence_urls)}
-                    onChange={(event) =>
-                      updateTemplate(index, { evidence_urls: splitCsv(event.target.value) })
-                    }
-                    placeholder="https://..."
-                  />
-                </div>
-                <div>
-                  <Label>Due in days</Label>
-                  <Input
-                    value={formatOptionalNumber(template.due_in_days)}
-                    onChange={(event) =>
-                      updateTemplate(index, { due_in_days: parseOptionalNumber(event.target.value) })
-                    }
-                    placeholder="14"
-                  />
-                </div>
-                <div>
-                  <Label>SLA in days</Label>
-                  <Input
-                    value={formatOptionalNumber(template.sla_in_days)}
-                    onChange={(event) =>
-                      updateTemplate(index, { sla_in_days: parseOptionalNumber(event.target.value) })
-                    }
-                    placeholder="30"
-                  />
-                </div>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Button onClick={() => removeTemplate(index)}>Remove</Button>
-              </div>
-            </Card>
-          ))
+              </Card>
+            );
+          })
         )}
       </div>
     </div>
-  )
+  );
 }

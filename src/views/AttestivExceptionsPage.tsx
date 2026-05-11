@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Exceptions register page (Phase-2 GRC, chunk 3).
 //
 // What's on screen:
@@ -29,6 +28,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Exception = {
   id: string
@@ -69,6 +70,10 @@ const SEVERITY_TONE: Record<string, 'amber' | 'red' | 'gray' | 'navy'> = {
 const SEVERITIES = ['critical', 'high', 'medium', 'low'] as const
 
 export function AttestivExceptionsPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [items, setItems] = useState<Exception[]>([])
   const [expiring, setExpiring] = useState<Exception[]>([])
@@ -145,11 +150,11 @@ export function AttestivExceptionsPage() {
   return (
     <>
       <Topbar
-        title="Exceptions register"
+        title={t('Exceptions register', 'Exceptions register')}
         left={<Badge tone="navy">{items.length} entries</Badge>}
         right={
           <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> Add exception
+            <i className="ti ti-plus" aria-hidden="true" /> {t('Add exception', 'Add exception')}
           </PrimaryButton>
         }
       />
@@ -157,8 +162,10 @@ export function AttestivExceptionsPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {expiring.length > 0 ? (
           <Banner tone="warning" title={`${expiring.length} exception${expiring.length === 1 ? '' : 's'} expiring in 14 days`}>
-            When an exception expires the underlying control failure becomes visible again. Plan
-            the renewal or remediation now.
+            {t(
+              'When an exception expires the underlying control failure becomes visible again. Plan\n            the renewal or remediation now.',
+              'When an exception expires the underlying control failure becomes visible again. Plan\n            the renewal or remediation now.'
+            )}
           </Banner>
         ) : null}
 
@@ -169,24 +176,27 @@ export function AttestivExceptionsPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label="Active" value={summary.active} tone="amber" icon="ti-shield-half-filled" />
-          <SummaryCard label="Expiring ≤ 14d" value={expiring.length} tone="red" icon="ti-clock-exclamation" />
-          <SummaryCard label="Expired" value={summary.expired} tone="red" icon="ti-circle-x" />
-          <SummaryCard label="Resolved" value={summary.resolved} tone="green" icon="ti-circle-check" />
+          <SummaryCard label={t('Active', 'Active')} value={summary.active} tone="amber" icon="ti-shield-half-filled" />
+          <SummaryCard label={t('Expiring ≤ 14d', 'Expiring ≤ 14d')} value={expiring.length} tone="red" icon="ti-clock-exclamation" />
+          <SummaryCard label={t('Expired', 'Expired')} value={summary.expired} tone="red" icon="ti-circle-x" />
+          <SummaryCard label={t('Resolved', 'Resolved')} value={summary.resolved} tone="green" icon="ti-circle-check" />
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>Exceptions</CardTitle>
+          <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>{t('Exceptions', 'Exceptions')}</CardTitle>
           {loading ? (
             <Skeleton lines={5} height={42} />
           ) : items.length === 0 ? (
             <EmptyState
               icon="ti-shield-half-filled"
-              title="No exceptions"
-              description="Create an exception when a control is failing and the risk has been formally accepted. Every exception requires an expiry date — no indefinite acceptances."
+              title={t('No exceptions', 'No exceptions')}
+              description={t(
+                'Create an exception when a control is failing and the risk has been formally accepted. Every exception requires an expiry date — no indefinite acceptances.',
+                'Create an exception when a control is failing and the risk has been formally accepted. Every exception requires an expiry date — no indefinite acceptances.'
+              )}
               action={
                 <PrimaryButton onClick={() => setShowCreate(true)}>
-                  <i className="ti ti-plus" aria-hidden="true" /> Add exception
+                  <i className="ti ti-plus" aria-hidden="true" /> {t('Add exception', 'Add exception')}
                 </PrimaryButton>
               }
             />
@@ -203,12 +213,11 @@ export function AttestivExceptionsPage() {
           )}
         </Card>
       </div>
-
       {showCreate ? (
         <CreateExceptionModal busy={createBusy} onCancel={() => setShowCreate(false)} onSubmit={createException} />
       ) : null}
     </>
-  )
+  );
 }
 
 function SummaryCard({
@@ -261,16 +270,20 @@ function FilterBar({
   value: { status?: string; severity?: string; framework_id?: string }
   onChange: (next: { status?: string; severity?: string; framework_id?: string }) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
       <SelectChip
-        label="Status"
+        label={t('Status', 'Status')}
         value={value.status}
         options={['active', 'expired', 'resolved', 'revoked']}
         onChange={(v) => onChange({ ...value, status: v })}
       />
       <SelectChip
-        label="Severity"
+        label={t('Severity', 'Severity')}
         value={value.severity}
         options={SEVERITIES.slice()}
         onChange={(v) => onChange({ ...value, severity: v })}
@@ -279,7 +292,7 @@ function FilterBar({
         type="text"
         value={value.framework_id ?? ''}
         onChange={(e) => onChange({ ...value, framework_id: e.target.value || undefined })}
-        placeholder="framework id"
+        placeholder={t('framework id', 'framework id')}
         style={{
           fontSize: 11,
           padding: '4px 8px',
@@ -292,7 +305,7 @@ function FilterBar({
         }}
       />
     </div>
-  )
+  );
 }
 
 function SelectChip({
@@ -306,6 +319,10 @@ function SelectChip({
   options: string[]
   onChange: (next: string | undefined) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <select
       value={value ?? ''}
@@ -320,14 +337,14 @@ function SelectChip({
         fontFamily: 'inherit',
       }}
     >
-      <option value="">{label}: any</option>
+      <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {label}: {opt}
         </option>
       ))}
     </select>
-  )
+  );
 }
 
 function ExceptionRow({ exception, onOpen }: { exception: Exception; onOpen: () => void }) {
@@ -400,6 +417,10 @@ function CreateExceptionModal({
   onCancel: () => void
   onSubmit: (payload: Record<string, unknown>) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [framework, setFramework] = useState('iso27001')
@@ -434,61 +455,68 @@ function CreateExceptionModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>Add exception</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 15, fontWeight: 500 }}>{t('Add exception', 'Add exception')}</h3>
         <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 0 }}>
-          An exception suppresses a failing control's status (the score stays — auditors still see
-          the underlying gap). Required: framework + control + severity + a justification + a hard
-          expiry date.
+          {t(
+            'An exception suppresses a failing control\'s status (the score stays — auditors still see\n          the underlying gap). Required: framework + control + severity + a justification + a hard\n          expiry date.',
+            'An exception suppresses a failing control\'s status (the score stays — auditors still see\n          the underlying gap). Required: framework + control + severity + a justification + a hard\n          expiry date.'
+          )}
         </p>
-        <FormRow label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Q4 user-access review backlog" style={inputStyle} />
+        <FormRow label={t('Title', 'Title')}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('e.g. Q4 user-access review backlog', 'e.g. Q4 user-access review backlog')} style={inputStyle} />
         </FormRow>
-        <FormRow label="Description">
+        <FormRow label={t('Description', 'Description')}>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Framework ID">
+          <FormRow label={t('Framework ID', 'Framework ID')}>
             <input value={framework} onChange={(e) => setFramework(e.target.value)} placeholder="iso27001" style={inputStyle} />
           </FormRow>
-          <FormRow label="Control ID">
-            <input value={control} onChange={(e) => setControl(e.target.value)} placeholder="A.9.2.5" style={inputStyle} />
+          <FormRow label={t('Control ID', 'Control ID')}>
+            <input value={control} onChange={(e) => setControl(e.target.value)} placeholder={t('A.9.2.5', 'A.9.2.5')} style={inputStyle} />
           </FormRow>
         </div>
-        <FormRow label="Control name (optional)">
-          <input value={controlName} onChange={(e) => setControlName(e.target.value)} placeholder="Review of user access rights" style={inputStyle} />
+        <FormRow label={t('Control name (optional)', 'Control name (optional)')}>
+          <input value={controlName} onChange={(e) => setControlName(e.target.value)} placeholder={t('Review of user access rights', 'Review of user access rights')} style={inputStyle} />
         </FormRow>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <FormRow label="Severity">
+          <FormRow label={t('Severity', 'Severity')}>
             <select value={severity} onChange={(e) => setSeverity(e.target.value as typeof SEVERITIES[number])} style={inputStyle}>
               {SEVERITIES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </FormRow>
-          <FormRow label="Expires on">
+          <FormRow label={t('Expires on', 'Expires on')}>
             <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} style={inputStyle} />
           </FormRow>
         </div>
-        <FormRow label="Acceptance justification">
+        <FormRow label={t('Acceptance justification', 'Acceptance justification')}>
           <textarea
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
             rows={3}
-            placeholder="Why is the risk being accepted and what compensating controls are in place?"
+            placeholder={t(
+              'Why is the risk being accepted and what compensating controls are in place?',
+              'Why is the risk being accepted and what compensating controls are in place?'
+            )}
             style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
           />
         </FormRow>
-        <FormRow label="Mitigating controls (one per line)">
+        <FormRow label={t('Mitigating controls (one per line)', 'Mitigating controls (one per line)')}>
           <textarea
             value={mitigating}
             onChange={(e) => setMitigating(e.target.value)}
             rows={2}
-            placeholder="e.g. MFA enforced via vCenter SSO&#10;Daily log review by security ops"
+            placeholder={t(
+              'e.g. MFA enforced via vCenter SSO\nDaily log review by security ops',
+              'e.g. MFA enforced via vCenter SSO\nDaily log review by security ops'
+            )}
             style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
           />
         </FormRow>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 12 }}>
-          <GhostButton onClick={onCancel} disabled={busy}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel} disabled={busy}>{t('Cancel', 'Cancel')}</GhostButton>
           <PrimaryButton
             onClick={() =>
               onSubmit({
@@ -521,7 +549,7 @@ function CreateExceptionModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {

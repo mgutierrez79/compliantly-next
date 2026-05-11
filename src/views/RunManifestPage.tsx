@@ -1,11 +1,12 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ApiError, apiJson } from '../lib/api'
 import { Card, ErrorBox, Label, PageTitle } from '../components/Ui'
 import { formatTimestamp } from '../lib/time'
+
+import { useI18n } from '../lib/i18n';
 
 type RunManifestResponse = {
   run_id: string
@@ -37,6 +38,10 @@ type ManifestShape = Record<string, unknown> & {
 }
 
 export function RunManifestPage() {
+  const {
+    t
+  } = useI18n();
+
   const params = useParams<{ runId: string }>()
   const runId = Array.isArray(params.runId) ? params.runId[0] : params.runId
   const [data, setData] = useState<RunManifestResponse | null>(null)
@@ -79,67 +84,67 @@ export function RunManifestPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageTitle>Run Manifest</PageTitle>
+        <PageTitle>{t('Run Manifest', 'Run Manifest')}</PageTitle>
         <Link href="/runs" className="text-xs text-slate-300 underline">
-          Back to runs
+          {t('Back to runs', 'Back to runs')}
         </Link>
       </div>
-
-      {!runId ? <ErrorBox title="Missing run id" detail="No run id provided in the URL." /> : null}
-      {error ? <ErrorBox title="Manifest error" detail={error.message} /> : null}
-
+      {!runId ? <ErrorBox title={t('Missing run id', 'Missing run id')} detail="No run id provided in the URL." /> : null}
+      {error ? <ErrorBox title={t('Manifest error', 'Manifest error')} detail={error.message} /> : null}
       <Card>
         {loading ? (
-          <div className="text-sm text-slate-300">Loading manifest…</div>
+          <div className="text-sm text-slate-300">{t('Loading manifest…', 'Loading manifest…')}</div>
         ) : data ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Run</Label>
+              <Label>{t('Run', 'Run')}</Label>
               <div className="mt-2 text-sm text-slate-100">{data.run_id}</div>
               <div className="text-xs text-slate-400">{formatTimestamp(String(manifest.timestamp || ''))}</div>
             </div>
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Contract version</Label>
+              <Label>{t('Contract version', 'Contract version')}</Label>
               <div className="mt-2 text-sm text-slate-100">{String(manifest.run_contract_version || 'n/a')}</div>
-              <div className="text-xs text-slate-400">Language: {String(manifest.language || 'n/a')}</div>
+              <div className="text-xs text-slate-400">{t('Language:', 'Language:')} {String(manifest.language || 'n/a')}</div>
             </div>
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Signature</Label>
-              <div className="mt-2 text-xs text-slate-300">Status: {statusLabel}</div>
+              <Label>{t('Signature', 'Signature')}</Label>
+              <div className="mt-2 text-xs text-slate-300">{t('Status:', 'Status:')} {statusLabel}</div>
               <div className="mt-2 break-all text-xs text-slate-200">{String(integrity.signature || 'n/a')}</div>
               {signatureStatus?.enabled ? (
                 <div className="text-xs text-slate-400">
-                  Expected: {signatureStatus.expected ? `${signatureStatus.expected.slice(0, 12)}…` : 'n/a'}
+                  {t('Expected:', 'Expected:')} {signatureStatus.expected ? `${signatureStatus.expected.slice(0, 12)}…` : 'n/a'}
                 </div>
               ) : (
-                <div className="text-xs text-slate-400">Set COMPLIANCE_MANIFEST_SECRET to enable</div>
+                <div className="text-xs text-slate-400">{t(
+                  'Set COMPLIANCE_MANIFEST_SECRET to enable',
+                  'Set COMPLIANCE_MANIFEST_SECRET to enable'
+                )}</div>
               )}
             </div>
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Hashes</Label>
+              <Label>{t('Hashes', 'Hashes')}</Label>
               <div className="mt-2 text-xs text-slate-300">
-                Inputs: {integrity.inputs_hash ? 'present' : 'n/a'}
+                {t('Inputs:', 'Inputs:')} {integrity.inputs_hash ? 'present' : 'n/a'}
               </div>
               <div className="text-xs text-slate-300">
-                Outputs: {integrity.outputs_hash ? 'present' : 'n/a'}
+                {t('Outputs:', 'Outputs:')} {integrity.outputs_hash ? 'present' : 'n/a'}
               </div>
               <div className="text-xs text-slate-300">
-                Evidence: {integrity.evidence_log_hash ? 'present' : 'n/a'}
+                {t('Evidence:', 'Evidence:')} {integrity.evidence_log_hash ? 'present' : 'n/a'}
               </div>
               <div className="text-xs text-slate-300">
-                Analytics: {integrity.analytics_hash ? 'present' : 'n/a'}
+                {t('Analytics:', 'Analytics:')} {integrity.analytics_hash ? 'present' : 'n/a'}
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-sm text-slate-300">No manifest available.</div>
+          <div className="text-sm text-slate-300">{t('No manifest available.', 'No manifest available.')}</div>
         )}
       </Card>
-
       {data ? (
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Label>Raw manifest</Label>
+            <Label>{t('Raw manifest', 'Raw manifest')}</Label>
             <div className="text-xs text-slate-400">{data.path}</div>
           </div>
           <pre className="mt-3 max-h-[520px] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-[#233a61] bg-[#0d1a2b] p-4 text-xs text-slate-200">
@@ -148,5 +153,5 @@ export function RunManifestPage() {
         </Card>
       ) : null}
     </div>
-  )
+  );
 }

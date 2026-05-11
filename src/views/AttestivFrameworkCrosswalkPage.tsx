@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Frameworks / Crosswalk.
 //
 // "One evidence record satisfies multiple controls in multiple
@@ -22,6 +21,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type CrosswalkEntry = {
   evidence_template: string
@@ -71,6 +72,10 @@ const DEMO: CrosswalkEntry[] = [
 ]
 
 export function AttestivFrameworkCrosswalkPage() {
+  const {
+    t
+  } = useI18n();
+
   const [entries, setEntries] = useState<CrosswalkEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [usingDemo, setUsingDemo] = useState(false)
@@ -135,18 +140,24 @@ export function AttestivFrameworkCrosswalkPage() {
   return (
     <>
       <Topbar
-        title="Framework crosswalk"
-        left={usingDemo ? <Badge tone="amber">Demo crosswalks — no mappings configured</Badge> : null}
+        title={t('Framework crosswalk', 'Framework crosswalk')}
+        left={usingDemo ? <Badge tone="amber">{t(
+          'Demo crosswalks — no mappings configured',
+          'Demo crosswalks — no mappings configured'
+        )}</Badge> : null}
         right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{entries.length} templates</span>}
       />
       <div className="attestiv-content">
         <Card>
-          <CardTitle>Evidence templates → controls</CardTitle>
+          <CardTitle>{t('Evidence templates → controls', 'Evidence templates → controls')}</CardTitle>
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-            Each row is one evidence template. The columns show every framework control that the same record satisfies — one signed evidence covers many controls.
+            {t(
+              'Each row is one evidence template. The columns show every framework control that the same record satisfies — one signed evidence covers many controls.',
+              'Each row is one evidence template. The columns show every framework control that the same record satisfies — one signed evidence covers many controls.'
+            )}
           </div>
           {loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -160,7 +171,7 @@ export function AttestivFrameworkCrosswalkPage() {
                       textAlign: 'left',
                     }}
                   >
-                    <th style={{ padding: '6px 10px 6px 0', minWidth: 220 }}>Evidence template</th>
+                    <th style={{ padding: '6px 10px 6px 0', minWidth: 220 }}>{t('Evidence template', 'Evidence template')}</th>
                     {frameworkColumns.map((framework) => (
                       <th key={framework} style={{ padding: '6px 10px', minWidth: 140 }}>
                         {framework}
@@ -213,5 +224,5 @@ export function AttestivFrameworkCrosswalkPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }

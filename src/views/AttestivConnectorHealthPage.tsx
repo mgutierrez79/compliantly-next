@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Connectors / Health.
 //
 // Per-connector latency, error-rate, and throughput. The Connector
@@ -20,6 +19,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type ConnectorHealth = {
   name: string
@@ -90,6 +91,10 @@ const STATUS_TONE: Record<ConnectorHealth['status'], 'green' | 'amber' | 'red' |
 }
 
 export function AttestivConnectorHealthPage() {
+  const {
+    t
+  } = useI18n();
+
   const [items, setItems] = useState<ConnectorHealth[]>([])
   const [loading, setLoading] = useState(true)
   const [usingDemo, setUsingDemo] = useState(false)
@@ -149,22 +154,22 @@ export function AttestivConnectorHealthPage() {
   return (
     <>
       <Topbar
-        title="Connector health"
-        left={usingDemo ? <Badge tone="amber">Demo data — no live connectors</Badge> : null}
+        title={t('Connector health', 'Connector health')}
+        left={usingDemo ? <Badge tone="amber">{t('Demo data — no live connectors', 'Demo data — no live connectors')}</Badge> : null}
         right={
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-list" aria-hidden="true" />
-            Connector registry
+            {t('Connector registry', 'Connector registry')}
           </GhostButton>
         }
       />
       <div className="attestiv-content">
         <Card>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{items.length} connectors</span>}>
-            Live health
+            {t('Live health', 'Live health')}
           </CardTitle>
           {loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
@@ -177,13 +182,13 @@ export function AttestivConnectorHealthPage() {
                     textAlign: 'left',
                   }}
                 >
-                  <th style={{ padding: '6px 10px 6px 0' }}>Connector</th>
-                  <th style={{ padding: '6px 10px' }}>Status</th>
-                  <th style={{ padding: '6px 10px' }}>Last success</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>p95 latency</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>Error rate</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Connector', 'Connector')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Status', 'Status')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Last success', 'Last success')}</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('p95 latency', 'p95 latency')}</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('Error rate', 'Error rate')}</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>Events/min</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>Last error</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Last error', 'Last error')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,7 +230,7 @@ export function AttestivConnectorHealthPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function tonedNumber(value: number | undefined, warnAt: number, errorAt: number): string {

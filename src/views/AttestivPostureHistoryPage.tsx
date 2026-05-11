@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Dashboard / Posture history.
 //
 // 30/60/90-day compliance score trend per framework. The dashboard
@@ -22,6 +21,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type ScorePoint = {
   date: string
@@ -70,6 +71,10 @@ const DEMO_SERIES: FrameworkSeries[] = [
 ]
 
 export function AttestivPostureHistoryPage() {
+  const {
+    t
+  } = useI18n();
+
   const [series, setSeries] = useState<FrameworkSeries[]>([])
   const [usingDemo, setUsingDemo] = useState(false)
   const [window, setWindow] = useState<30 | 60 | 90>(30)
@@ -111,13 +116,16 @@ export function AttestivPostureHistoryPage() {
   return (
     <>
       <Topbar
-        title="Compliance posture"
-        left={usingDemo ? <Badge tone="amber">Demo trend — no historical scores yet</Badge> : null}
+        title={t('Compliance posture', 'Compliance posture')}
+        left={usingDemo ? <Badge tone="amber">{t(
+          'Demo trend — no historical scores yet',
+          'Demo trend — no historical scores yet'
+        )}</Badge> : null}
         right={<WindowToggle value={window} onChange={setWindow} />}
       />
       <div className="attestiv-content">
         {loading ? (
-          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading…', 'Loading…')}</div>
         ) : (
           <div
             style={{
@@ -133,10 +141,14 @@ export function AttestivPostureHistoryPage() {
         )}
       </div>
     </>
-  )
+  );
 }
 
 function FrameworkSparklineCard({ series }: { series: FrameworkSeries }) {
+  const {
+    t
+  } = useI18n();
+
   const tone: 'green' | 'amber' | 'red' = series.current >= 95 ? 'green' : series.current >= 85 ? 'amber' : 'red'
   const trend = trendDelta(series.history)
   const trendColor = trend > 0 ? 'var(--color-status-green-deep)' : trend < 0 ? 'var(--color-status-red-deep)' : 'var(--color-text-tertiary)'
@@ -147,18 +159,22 @@ function FrameworkSparklineCard({ series }: { series: FrameworkSeries }) {
       </CardTitle>
       <Sparkline points={series.history} tone={tone} />
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        <span>{series.history.length} data points</span>
+        <span>{series.history.length} {t('data points', 'data points')}</span>
         <span style={{ color: trendColor, fontWeight: 500 }}>
           {trend > 0 ? '↑' : trend < 0 ? '↓' : '–'} {Math.abs(trend).toFixed(1)} pts
         </span>
       </div>
     </Card>
-  )
+  );
 }
 
 function Sparkline({ points, tone }: { points: ScorePoint[]; tone: 'green' | 'amber' | 'red' }) {
+  const {
+    t
+  } = useI18n();
+
   if (points.length === 0) {
-    return <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No data.</div>
+    return <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No data.', 'No data.')}</div>;
   }
   const width = 320
   const height = 60

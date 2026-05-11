@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Audit trail page.
 //
 // The page an auditor opens when they want to walk the chain. Two
@@ -27,6 +26,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type AuditEntry = {
   timestamp: string
@@ -71,6 +72,10 @@ const ACTION_TONES: Record<string, 'green' | 'amber' | 'red' | 'blue' | 'gray'> 
 }
 
 export function AttestivAuditTrailPage() {
+  const {
+    t
+  } = useI18n();
+
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [manifest, setManifest] = useState<ManifestSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -129,15 +134,15 @@ export function AttestivAuditTrailPage() {
   return (
     <>
       <Topbar
-        title="Audit trail"
+        title={t('Audit trail', 'Audit trail')}
         left={
-          usingDemo ? <Badge tone="amber">Demo data — no live audit entries</Badge> : null
+          usingDemo ? <Badge tone="amber">{t('Demo data — no live audit entries', 'Demo data — no live audit entries')}</Badge> : null
         }
         right={
           <input
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            placeholder="Filter by actor, action, tenant"
+            placeholder={t('Filter by actor, action, tenant', 'Filter by actor, action, tenant')}
             style={{
               padding: '6px 10px',
               fontSize: 12,
@@ -175,15 +180,15 @@ export function AttestivAuditTrailPage() {
         >
           <Card>
             <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} entries</span>}>
-              Recent activity
+              {t('Recent activity', 'Recent activity')}
             </CardTitle>
             {loading ? (
               <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '16px 0' }}>
-                Loading…
+                {t('Loading…', 'Loading…')}
               </div>
             ) : filtered.length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '16px 0' }}>
-                No entries match.
+                {t('No entries match.', 'No entries match.')}
               </div>
             ) : (
               <div>
@@ -196,18 +201,18 @@ export function AttestivAuditTrailPage() {
 
           <div>
             <Card>
-              <CardTitle>Latest signed manifest</CardTitle>
+              <CardTitle>{t('Latest signed manifest', 'Latest signed manifest')}</CardTitle>
               {manifest ? (
                 <ManifestPanel manifest={manifest} />
               ) : (
-                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>None yet.</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('None yet.', 'None yet.')}</div>
               )}
             </Card>
           </div>
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function AuditRow({ entry }: { entry: AuditEntry }) {
@@ -261,27 +266,31 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 }
 
 function ManifestPanel({ manifest }: { manifest: ManifestSummary }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-      <KV label="Manifest" value={manifest.manifest_id} mono />
-      <KV label="Tenant" value={manifest.tenant} />
-      <KV label="Evidence count" value={String(manifest.evidence_count)} />
-      <KV label="Frameworks" value={manifest.frameworks.join(', ')} />
-      <KV label="Signed at" value={formatTimestamp(manifest.timestamp)} mono />
-      <SignatureBox label="Signature" value={manifest.signature} />
-      <SignatureBox label="Public key" value={manifest.public_key_url} mono={false} />
+      <KV label={t('Manifest', 'Manifest')} value={manifest.manifest_id} mono />
+      <KV label={t('Tenant', 'Tenant')} value={manifest.tenant} />
+      <KV label={t('Evidence count', 'Evidence count')} value={String(manifest.evidence_count)} />
+      <KV label={t('Frameworks', 'Frameworks')} value={manifest.frameworks.join(', ')} />
+      <KV label={t('Signed at', 'Signed at')} value={formatTimestamp(manifest.timestamp)} mono />
+      <SignatureBox label={t('Signature', 'Signature')} value={manifest.signature} />
+      <SignatureBox label={t('Public key', 'Public key')} value={manifest.public_key_url} mono={false} />
       <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
         <PrimaryButton onClick={() => undefined}>
           <i className="ti ti-file-download" aria-hidden="true" />
-          Download PDF
+          {t('Download PDF', 'Download PDF')}
         </PrimaryButton>
         <GhostButton onClick={() => undefined}>
           <i className="ti ti-link" aria-hidden="true" />
-          Auditor link
+          {t('Auditor link', 'Auditor link')}
         </GhostButton>
       </div>
     </div>
-  )
+  );
 }
 
 function KV({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {

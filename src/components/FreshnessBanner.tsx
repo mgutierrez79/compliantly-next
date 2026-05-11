@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Phase 4.7: data-freshness banner.
 //
 // Compliance teams need to know whether the dashboard is showing
@@ -13,6 +12,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { apiJson } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type ConnectorStatus = {
   name: string
@@ -54,6 +55,10 @@ function humanDuration(ms: number): string {
 }
 
 export function FreshnessBanner() {
+  const {
+    t
+  } = useI18n();
+
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => Date.now())
@@ -122,11 +127,11 @@ export function FreshnessBanner() {
     <div className={`rounded-lg border px-4 py-2 text-sm ${palette}`}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <span>
-          Last evidence: <span className="font-semibold">{lastEvidence}</span>
+          {t('Last evidence:', 'Last evidence:')} <span className="font-semibold">{lastEvidence}</span>
         </span>
         {stalest ? (
           <span>
-            Stalest connector:{' '}
+            {t('Stalest connector:', 'Stalest connector:')}{' '}
             <span className="font-semibold">{stalest.connector.label || stalest.connector.name}</span>
             {' · '}
             {stalest.ageMs === Number.MAX_SAFE_INTEGER
@@ -134,14 +139,14 @@ export function FreshnessBanner() {
               : humanDuration(stalest.ageMs)}
           </span>
         ) : (
-          <span>All connectors fresh.</span>
+          <span>{t('All connectors fresh.', 'All connectors fresh.')}</span>
         )}
         {staleCount > 0 ? (
           <span className="ml-auto text-xs">
-            {staleCount} stale connector{staleCount === 1 ? '' : 's'}
+            {staleCount} {t('stale connector', 'stale connector')}{staleCount === 1 ? '' : 's'}
           </span>
         ) : null}
       </div>
     </div>
-  )
+  );
 }

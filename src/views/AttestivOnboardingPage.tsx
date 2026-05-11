@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Attestiv onboarding wizard.
 //
 // First-run experience for a fresh tenant: the user lands here after
@@ -28,6 +27,8 @@ import {
 } from '../components/AttestivUi'
 import { defaultSettings, loadSettings, saveSettings } from '../lib/settings'
 
+import { useI18n } from '../lib/i18n';
+
 const STEPS = ['Tenant', 'Admin', 'First connector', 'Done']
 
 const REGIONS = [
@@ -51,6 +52,10 @@ const CONNECTOR_OPTIONS = [
 ]
 
 export function AttestivOnboardingPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [step, setStep] = useState(0)
 
@@ -133,13 +138,15 @@ export function AttestivOnboardingPage() {
           <i className="ti ti-shield-check" aria-hidden="true" style={{ color: 'white', fontSize: 18 }} />
         </div>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>Welcome to Attestiv</div>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>{t('Welcome to Attestiv', 'Welcome to Attestiv')}</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-            A four-step tour through tenant setup, admin access, and your first connector.
+            {t(
+              'A four-step tour through tenant setup, admin access, and your first connector.',
+              'A four-step tour through tenant setup, admin access, and your first connector.'
+            )}
           </div>
         </div>
       </header>
-
       <div style={{ width: '100%', maxWidth: 640 }}>
         <Card>
           <Stepper steps={STEPS} current={step} />
@@ -210,7 +217,7 @@ export function AttestivOnboardingPage() {
             >
               <GhostButton onClick={back} disabled={step === 0}>
                 <i className="ti ti-arrow-left" aria-hidden="true" />
-                Back
+                {t('Back', 'Back')}
               </GhostButton>
               <PrimaryButton
                 disabled={persisting || !canAdvance(step, { tenantId, adminEmail })}
@@ -231,11 +238,14 @@ export function AttestivOnboardingPage() {
             marginTop: 14,
           }}
         >
-          You can change any of these settings later under <strong>Settings → Tenant</strong>.
-        </div>
+          {t(
+            'You can change any of these settings later under',
+            'You can change any of these settings later under'
+          )} <strong>{t('Settings → Tenant', 'Settings → Tenant')}</strong>.
+                  </div>
       </div>
     </div>
-  )
+  );
 }
 
 function canAdvance(step: number, values: { tenantId: string; adminEmail: string }): boolean {
@@ -258,13 +268,23 @@ function TenantStep(props: {
   setEnvironment: (v: 'pilot' | 'production') => void
   setRegion: (v: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
       <SectionHeader
-        title="Tenant identity"
-        sub="The slug is what every API request and audit record is scoped to. Pick a short, lower-case identifier that matches how your team refers to this account."
+        title={t('Tenant identity', 'Tenant identity')}
+        sub={t(
+          'The slug is what every API request and audit record is scoped to. Pick a short, lower-case identifier that matches how your team refers to this account.',
+          'The slug is what every API request and audit record is scoped to. Pick a short, lower-case identifier that matches how your team refers to this account.'
+        )}
       />
-      <FormField label="Tenant slug" hint="Lower-case, no spaces. Used in audit trails and URLs.">
+      <FormField label={t('Tenant slug', 'Tenant slug')} hint={t(
+        'Lower-case, no spaces. Used in audit trails and URLs.',
+        'Lower-case, no spaces. Used in audit trails and URLs.'
+      )}>
         <TextInput
           value={props.tenantId}
           onChange={(event) => props.setTenantId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
@@ -272,23 +292,26 @@ function TenantStep(props: {
           autoFocus
         />
       </FormField>
-      <FormField label="Display name" hint="Shown to operators in the console header.">
+      <FormField label={t('Display name', 'Display name')} hint={t(
+        'Shown to operators in the console header.',
+        'Shown to operators in the console header.'
+      )}>
         <TextInput
           value={props.tenantName}
           onChange={(event) => props.setTenantName(event.target.value)}
-          placeholder="Acme Corp"
+          placeholder={t('Acme Corp', 'Acme Corp')}
         />
       </FormField>
-      <FormField label="Environment">
+      <FormField label={t('Environment', 'Environment')}>
         <Select
           value={props.environment}
           onChange={(event) => props.setEnvironment(event.target.value === 'production' ? 'production' : 'pilot')}
         >
-          <option value="pilot">Pilot</option>
-          <option value="production">Production</option>
+          <option value="pilot">{t('Pilot', 'Pilot')}</option>
+          <option value="production">{t('Production', 'Production')}</option>
         </Select>
       </FormField>
-      <FormField label="Data residency">
+      <FormField label={t('Data residency', 'Data residency')}>
         <Select value={props.region} onChange={(event) => props.setRegion(event.target.value)}>
           {REGIONS.map((region) => (
             <option key={region.value} value={region.value}>
@@ -298,7 +321,7 @@ function TenantStep(props: {
         </Select>
       </FormField>
     </>
-  )
+  );
 }
 
 function AdminStep(props: {
@@ -307,26 +330,36 @@ function AdminStep(props: {
   setAdminEmail: (v: string) => void
   setAdminName: (v: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
       <SectionHeader
-        title="Primary administrator"
-        sub="The first admin receives the API key and root role. They can add more users from Settings → Users once onboarding finishes."
+        title={t('Primary administrator', 'Primary administrator')}
+        sub={t(
+          'The first admin receives the API key and root role. They can add more users from Settings → Users once onboarding finishes.',
+          'The first admin receives the API key and root role. They can add more users from Settings → Users once onboarding finishes.'
+        )}
       />
-      <FormField label="Full name">
+      <FormField label={t('Full name', 'Full name')}>
         <TextInput
           value={props.adminName}
           onChange={(event) => props.setAdminName(event.target.value)}
-          placeholder="Marina Singh"
+          placeholder={t('Marina Singh', 'Marina Singh')}
           autoFocus
         />
       </FormField>
-      <FormField label="Work email" hint="Used for compliance alerts (DLQ webhooks, key rotation reminders).">
+      <FormField label={t('Work email', 'Work email')} hint={t(
+        'Used for compliance alerts (DLQ webhooks, key rotation reminders).',
+        'Used for compliance alerts (DLQ webhooks, key rotation reminders).'
+      )}>
         <TextInput
           type="email"
           value={props.adminEmail}
           onChange={(event) => props.setAdminEmail(event.target.value)}
-          placeholder="marina@acme.example"
+          placeholder={t('marina@acme.example', 'marina@acme.example')}
         />
       </FormField>
       <div
@@ -344,11 +377,14 @@ function AdminStep(props: {
       >
         <i className="ti ti-info-circle" aria-hidden="true" style={{ fontSize: 14, marginTop: 1 }} />
         <span>
-          MFA is required for the admin role. After completing onboarding you'll be prompted to enroll a TOTP authenticator on your next sign-in.
+          {t(
+            'MFA is required for the admin role. After completing onboarding you\'ll be prompted to enroll a TOTP authenticator on your next sign-in.',
+            'MFA is required for the admin role. After completing onboarding you\'ll be prompted to enroll a TOTP authenticator on your next sign-in.'
+          )}
         </span>
       </div>
     </>
-  )
+  );
 }
 
 function ConnectorStep(props: {
@@ -357,13 +393,20 @@ function ConnectorStep(props: {
   setKind: (v: string) => void
   setTarget: (v: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
       <SectionHeader
-        title="Wire your first source"
-        sub="Optional. Pick one of the eight pilot connectors so the dashboard has live evidence on day one — or skip and add it from the Connectors page later."
+        title={t('Wire your first source', 'Wire your first source')}
+        sub={t(
+          'Optional. Pick one of the eight pilot connectors so the dashboard has live evidence on day one — or skip and add it from the Connectors page later.',
+          'Optional. Pick one of the eight pilot connectors so the dashboard has live evidence on day one — or skip and add it from the Connectors page later.'
+        )}
       />
-      <FormField label="Connector">
+      <FormField label={t('Connector', 'Connector')}>
         <Select value={props.kind} onChange={(event) => props.setKind(event.target.value)}>
           {CONNECTOR_OPTIONS.map((option) => (
             <option key={option.value || 'skip'} value={option.value}>
@@ -373,16 +416,19 @@ function ConnectorStep(props: {
         </Select>
       </FormField>
       {props.kind ? (
-        <FormField label="Endpoint" hint="Hostname or URL the worker will poll. Credentials are entered on the next page.">
+        <FormField label={t('Endpoint', 'Endpoint')} hint={t(
+          'Hostname or URL the worker will poll. Credentials are entered on the next page.',
+          'Hostname or URL the worker will poll. Credentials are entered on the next page.'
+        )}>
           <TextInput
             value={props.target}
             onChange={(event) => props.setTarget(event.target.value)}
-            placeholder="panorama.acme.internal"
+            placeholder={t('panorama.acme.internal', 'panorama.acme.internal')}
           />
         </FormField>
       ) : null}
     </>
-  )
+  );
 }
 
 function DoneStep(props: {
@@ -391,6 +437,10 @@ function DoneStep(props: {
   onOpenDashboard: () => void
   onAddConnector: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div style={{ textAlign: 'center', padding: '24px 8px' }}>
       <div
@@ -412,7 +462,7 @@ function DoneStep(props: {
         />
       </div>
       <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 6 }}>
-        Tenant <code>{props.tenantId || 'default'}</code> is live
+        {t('Tenant', 'Tenant')} <code>{props.tenantId || 'default'}</code> {t('is live', 'is live')}
       </div>
       <div
         style={{
@@ -431,16 +481,16 @@ function DoneStep(props: {
         {props.connectorKind ? null : (
           <GhostButton onClick={props.onAddConnector}>
             <i className="ti ti-plug" aria-hidden="true" />
-            Add a connector
+            {t('Add a connector', 'Add a connector')}
           </GhostButton>
         )}
         <PrimaryButton onClick={props.onOpenDashboard}>
-          Open dashboard
+          {t('Open dashboard', 'Open dashboard')}
           <i className="ti ti-arrow-right" aria-hidden="true" />
         </PrimaryButton>
       </div>
     </div>
-  )
+  );
 }
 
 function SectionHeader({ title, sub }: { title: string; sub: string }) {

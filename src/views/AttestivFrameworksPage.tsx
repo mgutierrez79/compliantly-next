@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Frameworks page.
 //
 // One card per enabled framework. Each card shows the framework's
@@ -28,6 +27,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type ControlArea = {
   name: string
@@ -94,6 +95,10 @@ const DEMO_POSTURE: FrameworkPosture[] = [
 ]
 
 export function AttestivFrameworksPage() {
+  const {
+    t
+  } = useI18n();
+
   const [frameworks, setFrameworks] = useState<FrameworkPosture[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -206,22 +211,28 @@ export function AttestivFrameworksPage() {
   return (
     <>
       <Topbar
-        title="Frameworks"
+        title={t('Frameworks', 'Frameworks')}
         left={
-          usingDemo ? <Badge tone="amber">Demo posture — backend has no run summaries yet</Badge> : null
+          usingDemo ? <Badge tone="amber">{t(
+            'Demo posture — backend has no run summaries yet',
+            'Demo posture — backend has no run summaries yet'
+          )}</Badge> : null
         }
         right={
           <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-            {overallTotals.passing}/{overallTotals.total} frameworks ≥95%
+            {overallTotals.passing}/{overallTotals.total} {t('frameworks ≥95%', 'frameworks ≥95%')}
           </span>
         }
       />
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
         {generated ? (
-          <Banner tone="success" title="Report downloaded">
+          <Banner tone="success" title={t('Report downloaded', 'Report downloaded')}>
             <span>
-              <strong>{labelFor(generated.id)}</strong> · run <code>{generated.path}</code> — also available from Audit / Reports.
+              <strong>{labelFor(generated.id)}</strong> {t('· run', '· run')} <code>{generated.path}</code> {t(
+                '— also available from Audit / Reports.',
+                '— also available from Audit / Reports.'
+              )}
             </span>
           </Banner>
         ) : null}
@@ -266,7 +277,7 @@ export function AttestivFrameworksPage() {
         )}
       </div>
     </>
-  )
+  );
 }
 
 function FrameworkCard({
@@ -278,6 +289,10 @@ function FrameworkCard({
   generating: boolean
   onGenerate: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const tone: 'green' | 'amber' | 'red' =
     framework.overall >= 95 ? 'green' : framework.overall >= 85 ? 'amber' : 'red'
   return (
@@ -297,29 +312,29 @@ function FrameworkCard({
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <GhostButton onClick={() => { if (typeof window !== 'undefined') window.location.href = `/scoring/trend/${framework.id}` }}>
             <i className="ti ti-chart-line" aria-hidden="true" />
-            Trend
+            {t('Trend', 'Trend')}
           </GhostButton>
           <GhostButton onClick={() => { if (typeof window !== 'undefined') window.location.href = `/scoring/calculator` }}>
             <i className="ti ti-math-function" aria-hidden="true" />
-            How scored
+            {t('How scored', 'How scored')}
           </GhostButton>
           <PrimaryButton onClick={onGenerate} disabled={generating}>
             {generating ? (
               <>
                 <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
-                Generating…
+                {t('Generating…', 'Generating…')}
               </>
             ) : (
               <>
                 <i className="ti ti-file-export" aria-hidden="true" />
-                Generate report
+                {t('Generate report', 'Generate report')}
               </>
             )}
           </PrimaryButton>
         </div>
       </div>
     </Card>
-  )
+  );
 }
 
 function deriveFromEnabledList(enabled: string[]): FrameworkPosture[] {

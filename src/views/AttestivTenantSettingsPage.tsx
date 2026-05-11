@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Tenant settings page.
 //
 // Single-pane form for the tenant profile: identity, residency,
@@ -29,6 +28,8 @@ import {
 import { apiFetch } from '../lib/api'
 import { loadSettings, saveSettings } from '../lib/settings'
 
+import { useI18n } from '../lib/i18n';
+
 type TenantProfile = {
   tenant_id: string
   display_name: string
@@ -53,6 +54,10 @@ const RESIDENCIES = [
 const INDUSTRIES = ['Financial services', 'Healthcare', 'SaaS', 'Manufacturing', 'Public sector', 'Other']
 
 export function AttestivTenantSettingsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [profile, setProfile] = useState<TenantProfile>(emptyProfile())
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -161,12 +166,12 @@ export function AttestivTenantSettingsPage() {
   return (
     <>
       <Topbar
-        title="Tenant settings"
-        left={loaded ? null : <Badge tone="gray">Loading…</Badge>}
+        title={t('Tenant settings', 'Tenant settings')}
+        left={loaded ? null : <Badge tone="gray">{t('Loading…', 'Loading…')}</Badge>}
         right={
           <div style={{ display: 'flex', gap: 6 }}>
             <GhostButton onClick={reset} disabled={!loaded || saving}>
-              Reset
+              {t('Reset', 'Reset')}
             </GhostButton>
             <PrimaryButton onClick={persist} disabled={!loaded || saving}>
               {saving ? 'Saving…' : 'Save profile'}
@@ -186,31 +191,34 @@ export function AttestivTenantSettingsPage() {
           }}
         >
           <Card>
-            <CardTitle>Identity</CardTitle>
-            <FormField label="Tenant slug" hint="Lower-case, used in audit records and API URLs.">
+            <CardTitle>{t('Identity', 'Identity')}</CardTitle>
+            <FormField label={t('Tenant slug', 'Tenant slug')} hint={t(
+              'Lower-case, used in audit records and API URLs.',
+              'Lower-case, used in audit records and API URLs.'
+            )}>
               <TextInput
                 value={profile.tenant_id}
                 onChange={(event) => update('tenant_id', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
                 placeholder="acme"
               />
             </FormField>
-            <FormField label="Display name">
+            <FormField label={t('Display name', 'Display name')}>
               <TextInput
                 value={profile.display_name}
                 onChange={(event) => update('display_name', event.target.value)}
-                placeholder="Acme Corp"
+                placeholder={t('Acme Corp', 'Acme Corp')}
               />
             </FormField>
-            <FormField label="Environment">
+            <FormField label={t('Environment', 'Environment')}>
               <Select
                 value={profile.environment}
                 onChange={(event) => update('environment', event.target.value === 'production' ? 'production' : 'pilot')}
               >
-                <option value="pilot">Pilot</option>
-                <option value="production">Production</option>
+                <option value="pilot">{t('Pilot', 'Pilot')}</option>
+                <option value="production">{t('Production', 'Production')}</option>
               </Select>
             </FormField>
-            <FormField label="Industry">
+            <FormField label={t('Industry', 'Industry')}>
               <Select value={profile.industry} onChange={(event) => update('industry', event.target.value)}>
                 {INDUSTRIES.map((option) => (
                   <option key={option} value={option}>
@@ -219,7 +227,10 @@ export function AttestivTenantSettingsPage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label="Data residency" hint="Region where evidence and signed manifests are stored.">
+            <FormField label={t('Data residency', 'Data residency')} hint={t(
+              'Region where evidence and signed manifests are stored.',
+              'Region where evidence and signed manifests are stored.'
+            )}>
               <Select value={profile.residency} onChange={(event) => update('residency', event.target.value)}>
                 {RESIDENCIES.map((residency) => (
                   <option key={residency.value} value={residency.value}>
@@ -231,12 +242,15 @@ export function AttestivTenantSettingsPage() {
           </Card>
 
           <Card>
-            <CardTitle right={<Badge tone="navy">Compliance commitment</Badge>}>
-              Recovery objectives
+            <CardTitle right={<Badge tone="navy">{t('Compliance commitment', 'Compliance commitment')}</Badge>}>
+              {t('Recovery objectives', 'Recovery objectives')}
             </CardTitle>
             <FormField
-              label="RTO target (minutes)"
-              hint="Maximum acceptable time to restore service. DR runs that exceed this fail."
+              label={t('RTO target (minutes)', 'RTO target (minutes)')}
+              hint={t(
+                'Maximum acceptable time to restore service. DR runs that exceed this fail.',
+                'Maximum acceptable time to restore service. DR runs that exceed this fail.'
+              )}
             >
               <TextInput
                 type="number"
@@ -246,8 +260,11 @@ export function AttestivTenantSettingsPage() {
               />
             </FormField>
             <FormField
-              label="RPO target (minutes)"
-              hint="Maximum acceptable data loss expressed in minutes of recent activity."
+              label={t('RPO target (minutes)', 'RPO target (minutes)')}
+              hint={t(
+                'Maximum acceptable data loss expressed in minutes of recent activity.',
+                'Maximum acceptable data loss expressed in minutes of recent activity.'
+              )}
             >
               <TextInput
                 type="number"
@@ -256,15 +273,18 @@ export function AttestivTenantSettingsPage() {
                 onChange={(event) => update('rpo_minutes', clampInt(event.target.value, 0, 1440))}
               />
             </FormField>
-            <FormField label="DR test frequency" hint="Audit frameworks (DORA Art. 12, ISO 27001 A.17) require regular DR exercises.">
+            <FormField label={t('DR test frequency', 'DR test frequency')} hint={t(
+              'Audit frameworks (DORA Art. 12, ISO 27001 A.17) require regular DR exercises.',
+              'Audit frameworks (DORA Art. 12, ISO 27001 A.17) require regular DR exercises.'
+            )}>
               <Select
                 value={profile.dr_frequency}
                 onChange={(event) => update('dr_frequency', event.target.value as TenantProfile['dr_frequency'])}
               >
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="biannual">Bi-annual</option>
-                <option value="annual">Annual</option>
+                <option value="monthly">{t('Monthly', 'Monthly')}</option>
+                <option value="quarterly">{t('Quarterly', 'Quarterly')}</option>
+                <option value="biannual">{t('Bi-annual', 'Bi-annual')}</option>
+                <option value="annual">{t('Annual', 'Annual')}</option>
               </Select>
             </FormField>
             <RecoveryPosture profile={profile} />
@@ -272,7 +292,7 @@ export function AttestivTenantSettingsPage() {
         </div>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle>Where these settings show up</CardTitle>
+          <CardTitle>{t('Where these settings show up', 'Where these settings show up')}</CardTitle>
           <ul
             style={{
               margin: 0,
@@ -283,25 +303,41 @@ export function AttestivTenantSettingsPage() {
             }}
           >
             <li>
-              <strong>Tenant slug</strong> is added as <code>X-Tenant-ID</code> on every API request and embedded in every audit-trail entry.
+              <strong>{t('Tenant slug', 'Tenant slug')}</strong> {t('is added as', 'is added as')} <code>X-Tenant-ID</code> {t(
+                'on every API request and embedded in every audit-trail entry.',
+                'on every API request and embedded in every audit-trail entry.'
+              )}
             </li>
             <li>
-              <strong>RTO/RPO targets</strong> feed the DR schedules page — runs that exceed the target are marked failed; trends roll up into the dashboard's posture card.
+              <strong>{t('RTO/RPO targets', 'RTO/RPO targets')}</strong> {t(
+                'feed the DR schedules page — runs that exceed the target are marked failed; trends roll up into the dashboard\'s posture card.',
+                'feed the DR schedules page — runs that exceed the target are marked failed; trends roll up into the dashboard\'s posture card.'
+              )}
             </li>
             <li>
-              <strong>DR frequency</strong> determines reminder cadence and is read by the framework engines (DORA Art. 12, ISO 27001 A.17) to grade the tenant's posture.
+              <strong>{t('DR frequency', 'DR frequency')}</strong> {t(
+                'determines reminder cadence and is read by the framework engines (DORA Art. 12, ISO 27001 A.17) to grade the tenant\'s posture.',
+                'determines reminder cadence and is read by the framework engines (DORA Art. 12, ISO 27001 A.17) to grade the tenant\'s posture.'
+              )}
             </li>
             <li>
-              <strong>Data residency</strong> is encoded in every signed manifest so an auditor can verify where evidence was stored at the time of signing.
+              <strong>{t('Data residency', 'Data residency')}</strong> {t(
+                'is encoded in every signed manifest so an auditor can verify where evidence was stored at the time of signing.',
+                'is encoded in every signed manifest so an auditor can verify where evidence was stored at the time of signing.'
+              )}
             </li>
           </ul>
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function RecoveryPosture({ profile }: { profile: TenantProfile }) {
+  const {
+    t
+  } = useI18n();
+
   const tier =
     profile.rto_minutes <= 15 && profile.rpo_minutes <= 5
       ? { name: 'Elite', tone: 'green' as const }
@@ -323,14 +359,13 @@ function RecoveryPosture({ profile }: { profile: TenantProfile }) {
       }}
     >
       <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        Implied DORA tier
+        {t('Implied DORA tier', 'Implied DORA tier')}
       </span>
       <Badge tone={tier.tone}>{tier.name}</Badge>
-      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginLeft: 'auto' }}>
-        RTO {profile.rto_minutes}m · RPO {profile.rpo_minutes}m
-      </span>
+      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginLeft: 'auto' }}>RTO {profile.rto_minutes}{t('m · RPO', 'm · RPO')} {profile.rpo_minutes}m
+              </span>
     </div>
-  )
+  );
 }
 
 function FlashBanner({ tone, text }: { tone: 'blue' | 'red'; text: string }) {

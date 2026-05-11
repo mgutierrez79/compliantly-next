@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Site detail page.
 //
 // Five sections in a single scroll:
@@ -28,6 +27,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type SiteDetail = {
   site_id: string
@@ -145,6 +146,10 @@ const CRITICALITY_TONE: Record<string, 'red' | 'amber' | 'navy' | 'gray'> = {
 }
 
 export function AttestivSiteDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -207,10 +212,10 @@ export function AttestivSiteDetailPage() {
     return (
       <>
         <Topbar
-          title="Site"
+          title={t('Site', 'Site')}
           left={
             <GhostButton onClick={() => router.push('/sites')}>
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
             </GhostButton>
           }
         />
@@ -218,19 +223,22 @@ export function AttestivSiteDetailPage() {
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!site) {
     return (
       <>
-        <Topbar title="Site" />
+        <Topbar title={t('Site', 'Site')} />
         <div className="attestiv-content">
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <EmptyState icon="ti-building" title="Site not found" description="The site may not be registered or you may not have access." />
+          <EmptyState icon="ti-building" title={t('Site not found', 'Site not found')} description={t(
+            'The site may not be registered or you may not have access.',
+            'The site may not be registered or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   return (
@@ -239,7 +247,7 @@ export function AttestivSiteDetailPage() {
         title={site.display_name}
         left={
           <GhostButton onClick={() => router.push('/sites')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
@@ -255,58 +263,61 @@ export function AttestivSiteDetailPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {concentration?.exceeds_threshold ? (
           <Banner tone="warning" title={`DORA Art.29 concentration breach — ${concentration.concentration_pct?.toFixed(0)}% of tier-1 apps`}>
-            Threshold {concentration.threshold_pct}% — actual {concentration.concentration_pct?.toFixed(0)}%.
-            {concentration.affected_apps && concentration.affected_apps.length > 0
+            {t('Threshold', 'Threshold')} {concentration.threshold_pct}{t('% — actual', '% — actual')} {concentration.concentration_pct?.toFixed(0)}%.
+                        {concentration.affected_apps && concentration.affected_apps.length > 0
               ? ` ${concentration.affected_apps.length} apps in scope.`
               : ''}
           </Banner>
         ) : null}
 
         <Card>
-          <CardTitle>Summary</CardTitle>
+          <CardTitle>{t('Summary', 'Summary')}</CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <Field label="Location">
+            <Field label={t('Location', 'Location')}>
               {site.city || site.location?.city || '—'}
               {(site.country || site.location?.country) ? `, ${site.country || site.location?.country}` : ''}
             </Field>
-            <Field label="Region">{site.region || site.location?.region || '—'}</Field>
+            <Field label={t('Region', 'Region')}>{site.region || site.location?.region || '—'}</Field>
             {site.dr_site ? (
-              <Field label="DR partner">
+              <Field label={t('DR partner', 'DR partner')}>
                 <code style={{ fontSize: 11 }}>{site.dr_site}</code>
               </Field>
             ) : null}
             {site.primary_site ? (
-              <Field label="Primary partner">
+              <Field label={t('Primary partner', 'Primary partner')}>
                 <code style={{ fontSize: 11 }}>{site.primary_site}</code>
               </Field>
             ) : null}
-            <Field label="CIs hosted">{String(site.ci_count ?? 0)}</Field>
-            <Field label="WAN links">{String(site.wan_link_count ?? 0)}</Field>
+            <Field label={t('CIs hosted', 'CIs hosted')}>{String(site.ci_count ?? 0)}</Field>
+            <Field label={t('WAN links', 'WAN links')}>{String(site.wan_link_count ?? 0)}</Field>
             {site.location?.distance_from_dr_km !== undefined ? (
-              <Field label="Distance to DR">{site.location.distance_from_dr_km} km</Field>
+              <Field label={t('Distance to DR', 'Distance to DR')}>{site.location.distance_from_dr_km} km</Field>
             ) : null}
             {site.dr_capacity?.compute_headroom_pct !== undefined ? (
-              <Field label="Compute headroom">{site.dr_capacity.compute_headroom_pct}%</Field>
+              <Field label={t('Compute headroom', 'Compute headroom')}>{site.dr_capacity.compute_headroom_pct}%</Field>
             ) : null}
             {site.dr_capacity?.storage_headroom_pct !== undefined ? (
-              <Field label="Storage headroom">{site.dr_capacity.storage_headroom_pct}%</Field>
+              <Field label={t('Storage headroom', 'Storage headroom')}>{site.dr_capacity.storage_headroom_pct}%</Field>
             ) : null}
           </div>
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<Badge tone="navy">{site.hosted_cis?.length ?? 0}</Badge>}>Hosted CIs</CardTitle>
+          <CardTitle right={<Badge tone="navy">{site.hosted_cis?.length ?? 0}</Badge>}>{t('Hosted CIs', 'Hosted CIs')}</CardTitle>
           {!site.hosted_cis || site.hosted_cis.length === 0 ? (
-            <EmptyState icon="ti-server" title="No CIs registered" description="The site's CI list is empty in the YAML registry." />
+            <EmptyState icon="ti-server" title={t('No CIs registered', 'No CIs registered')} description={t(
+              'The site\'s CI list is empty in the YAML registry.',
+              'The site\'s CI list is empty in the YAML registry.'
+            )} />
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={headerRowStyle}>
                   <th style={{ padding: '6px 10px 6px 0' }}>CI</th>
-                  <th style={{ padding: '6px 10px' }}>Type</th>
-                  <th style={{ padding: '6px 10px' }}>Criticality</th>
-                  <th style={{ padding: '6px 10px' }}>HA partner</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>Replication</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Criticality', 'Criticality')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('HA partner', 'HA partner')}</th>
+                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Replication', 'Replication')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,17 +369,24 @@ export function AttestivSiteDetailPage() {
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle right={recovery?.dr_site ? <Badge tone="navy">→ {recovery.dr_site}</Badge> : null}>
-            Recovery order
+            {t('Recovery order', 'Recovery order')}
           </CardTitle>
           {!recovery || !recovery.items || recovery.items.length === 0 ? (
             <EmptyState
               icon="ti-route"
-              title="No recovery sequence"
-              description="The site has no DR partner configured, or the orchestrator hasn't computed an order yet."
+              title={t('No recovery sequence', 'No recovery sequence')}
+              description={t(
+                'The site has no DR partner configured, or the orchestrator hasn\'t computed an order yet.',
+                'The site has no DR partner configured, or the orchestrator hasn\'t computed an order yet.'
+              )}
             />
           ) : (
             <ol style={{ paddingLeft: 18, fontSize: 12, marginTop: 4, marginBottom: 0 }}>
               {recovery.items.map((target, i) => {
+                const {
+                  t
+                } = useI18n();
+
                 const tone = CRITICALITY_TONE[(target.criticality_tier || '').toLowerCase()] ?? 'gray'
                 return (
                   <li key={`${target.target_id}-${i}`} style={{ marginBottom: 8 }}>
@@ -388,7 +406,7 @@ export function AttestivSiteDetailPage() {
                     </div>
                     {target.depends_on && target.depends_on.length > 0 ? (
                       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
-                        depends on:{' '}
+                        {t('depends on:', 'depends on:')}{' '}
                         {target.depends_on.map((d, idx) => (
                           <span key={idx}>
                             {idx > 0 ? ', ' : ''}
@@ -405,7 +423,7 @@ export function AttestivSiteDetailPage() {
                       </ul>
                     ) : null}
                   </li>
-                )
+                );
               })}
             </ol>
           )}
@@ -421,18 +439,21 @@ export function AttestivSiteDetailPage() {
               ) : null
             }
           >
-            DORA Art.29 concentration
+            {t('DORA Art.29 concentration', 'DORA Art.29 concentration')}
           </CardTitle>
           {!concentration ? (
-            <EmptyState icon="ti-circle-dashed" title="Concentration not computed" description="The /v1/sites/{id}/concentration-risk endpoint did not respond." />
+            <EmptyState icon="ti-circle-dashed" title={t('Concentration not computed', 'Concentration not computed')} description={t(
+              'The /v1/sites/{id}/concentration-risk endpoint did not respond.',
+              'The /v1/sites/{id}/concentration-risk endpoint did not respond.'
+            )} />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-              <Field label="Tier-1 apps total">{String(concentration.total_tier1_apps ?? 0)}</Field>
-              <Field label="Apps at this site">{String(concentration.apps_in_site ?? 0)}</Field>
-              <Field label="Concentration">{concentration.concentration_pct?.toFixed(0)}%</Field>
-              <Field label="Threshold">{concentration.threshold_pct}%</Field>
+              <Field label={t('Tier-1 apps total', 'Tier-1 apps total')}>{String(concentration.total_tier1_apps ?? 0)}</Field>
+              <Field label={t('Apps at this site', 'Apps at this site')}>{String(concentration.apps_in_site ?? 0)}</Field>
+              <Field label={t('Concentration', 'Concentration')}>{concentration.concentration_pct?.toFixed(0)}%</Field>
+              <Field label={t('Threshold', 'Threshold')}>{concentration.threshold_pct}%</Field>
               {concentration.affected_apps && concentration.affected_apps.length > 0 ? (
-                <Field label="Affected apps">
+                <Field label={t('Affected apps', 'Affected apps')}>
                   <div style={{ fontSize: 11 }}>
                     {concentration.affected_apps.slice(0, 6).map((appID, i) => (
                       <span key={i} style={{ marginRight: 6 }}>
@@ -457,17 +478,20 @@ export function AttestivSiteDetailPage() {
               impact?.estimated_scope ? <Badge tone="amber">{impact.estimated_scope}</Badge> : null
             }
           >
-            Cascade impact
+            {t('Cascade impact', 'Cascade impact')}
           </CardTitle>
           {!impact ? (
-            <EmptyState icon="ti-circle-dashed" title="Impact not computed" description="The /v1/sites/{id}/impact endpoint did not respond." />
+            <EmptyState icon="ti-circle-dashed" title={t('Impact not computed', 'Impact not computed')} description={t(
+              'The /v1/sites/{id}/impact endpoint did not respond.',
+              'The /v1/sites/{id}/impact endpoint did not respond.'
+            )} />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-              <Field label="Tier-1 apps affected">{String(impact.total_tier1_affected ?? 0)}</Field>
-              <Field label="Tier-2 apps affected">{String(impact.total_tier2_affected ?? 0)}</Field>
-              <Field label="CIs affected">{String(impact.affected_cis?.length ?? 0)}</Field>
+              <Field label={t('Tier-1 apps affected', 'Tier-1 apps affected')}>{String(impact.total_tier1_affected ?? 0)}</Field>
+              <Field label={t('Tier-2 apps affected', 'Tier-2 apps affected')}>{String(impact.total_tier2_affected ?? 0)}</Field>
+              <Field label={t('CIs affected', 'CIs affected')}>{String(impact.affected_cis?.length ?? 0)}</Field>
               {impact.affected_applications && impact.affected_applications.length > 0 ? (
-                <Field label="Apps">
+                <Field label={t('Apps', 'Apps')}>
                   <div style={{ fontSize: 11 }}>
                     {impact.affected_applications.slice(0, 8).map((a, i) => (
                       <span key={i} style={{ marginRight: 6 }}>
@@ -488,15 +512,15 @@ export function AttestivSiteDetailPage() {
 
         {site.connectivity?.wan_links && site.connectivity.wan_links.length > 0 ? (
           <Card style={{ marginTop: 12 }}>
-            <CardTitle right={<Badge tone="navy">{site.connectivity.wan_links.length}</Badge>}>WAN links</CardTitle>
+            <CardTitle right={<Badge tone="navy">{site.connectivity.wan_links.length}</Badge>}>{t('WAN links', 'WAN links')}</CardTitle>
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={headerRowStyle}>
-                  <th style={{ padding: '6px 10px 6px 0' }}>Link</th>
-                  <th style={{ padding: '6px 10px' }}>Provider</th>
-                  <th style={{ padding: '6px 10px' }}>Target</th>
-                  <th style={{ padding: '6px 10px' }}>Bandwidth</th>
-                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>SLA uptime</th>
+                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Link', 'Link')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Provider', 'Provider')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Target', 'Target')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Bandwidth', 'Bandwidth')}</th>
+                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>{t('SLA uptime', 'SLA uptime')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -526,7 +550,7 @@ export function AttestivSiteDetailPage() {
         ) : null}
       </div>
     </>
-  )
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

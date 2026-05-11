@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useEffect, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Card, ErrorBox, Label, PageTitle } from '../components/Ui'
 import { formatTimestamp } from '../lib/time'
+
+import { useI18n } from '../lib/i18n';
 
 type FrameworkDelta = {
   framework: string
@@ -42,6 +43,10 @@ type ManagementViewResponse = {
 }
 
 export function ExecutiveManagementPage() {
+  const {
+    t
+  } = useI18n();
+
   const [data, setData] = useState<ManagementViewResponse | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
   const [loading, setLoading] = useState(false)
@@ -71,58 +76,55 @@ export function ExecutiveManagementPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageTitle>Executive Management View</PageTitle>
+        <PageTitle>{t('Executive Management View', 'Executive Management View')}</PageTitle>
         <div className="text-xs text-slate-400">{data ? `Run ${data.run_id}` : ''}</div>
       </div>
-
-      {error ? <ErrorBox title="Executive view error" detail={error.message} /> : null}
-
+      {error ? <ErrorBox title={t('Executive view error', 'Executive view error')} detail={error.message} /> : null}
       <Card>
         {loading ? (
-          <div className="text-sm text-slate-300">Loading executive view…</div>
+          <div className="text-sm text-slate-300">{t('Loading executive view…', 'Loading executive view…')}</div>
         ) : data ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Risk score</Label>
+              <Label>{t('Risk score', 'Risk score')}</Label>
               <div className="mt-2 text-3xl font-semibold text-slate-100">{data.risk_score}</div>
               <div className="text-xs text-slate-300">
-                Overall risk: {data.overall_risk?.toUpperCase() || 'n/a'}
+                {t('Overall risk:', 'Overall risk:')} {data.overall_risk?.toUpperCase() || 'n/a'}
               </div>
               {data.score_delta !== null && data.score_delta !== undefined ? (
-                <div className="text-xs text-slate-400">Delta: {data.score_delta}</div>
+                <div className="text-xs text-slate-400">{t('Delta:', 'Delta:')} {data.score_delta}</div>
               ) : null}
             </div>
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Risk tier</Label>
+              <Label>{t('Risk tier', 'Risk tier')}</Label>
               <div className="mt-2 text-lg font-semibold text-slate-100">
                 {String(riskTier.label || riskTier.tier || 'n/a')}
               </div>
               <div className="text-xs text-slate-300">{String(riskTier.message || '')}</div>
             </div>
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Risks</Label>
+              <Label>{t('Risks', 'Risks')}</Label>
               <div className="mt-2 text-lg font-semibold text-slate-100">
-                {data.risks_open ?? 0} open / {data.risks_total ?? 0} total
-              </div>
-              <div className="text-xs text-slate-400">Updated {formatTimestamp(data.timestamp)}</div>
+                {data.risks_open ?? 0} {t('open /', 'open /')} {data.risks_total ?? 0}total
+                              </div>
+              <div className="text-xs text-slate-400">{t('Updated', 'Updated')} {formatTimestamp(data.timestamp)}</div>
             </div>
             <div className="rounded-xl border border-[#1f365a] bg-[#0b1626] p-4">
-              <Label>Exceptions</Label>
+              <Label>{t('Exceptions', 'Exceptions')}</Label>
               <div className="mt-2 text-lg font-semibold text-slate-100">
-                {data.exceptions_open ?? 0} open / {data.exceptions_total ?? 0} total
-              </div>
-              <div className="text-xs text-slate-400">Run {data.run_id}</div>
+                {data.exceptions_open ?? 0} {t('open /', 'open /')} {data.exceptions_total ?? 0}total
+                              </div>
+              <div className="text-xs text-slate-400">{t('Run', 'Run')} {data.run_id}</div>
             </div>
           </div>
         ) : (
-          <div className="text-sm text-slate-300">No executive summary available.</div>
+          <div className="text-sm text-slate-300">{t('No executive summary available.', 'No executive summary available.')}</div>
         )}
       </Card>
-
       {data ? (
         <div className="grid gap-6 xl:grid-cols-3">
           <Card>
-            <Label>Top risk drivers</Label>
+            <Label>{t('Top risk drivers', 'Top risk drivers')}</Label>
             <div className="mt-3 space-y-2 text-sm text-slate-200">
               {(data.top_risk_drivers || []).length ? (
                 data.top_risk_drivers?.map((driver, index) => (
@@ -131,13 +133,13 @@ export function ExecutiveManagementPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-slate-400">No drivers recorded.</div>
+                <div className="text-sm text-slate-400">{t('No drivers recorded.', 'No drivers recorded.')}</div>
               )}
             </div>
           </Card>
 
           <Card>
-            <Label>Top actions</Label>
+            <Label>{t('Top actions', 'Top actions')}</Label>
             <div className="mt-3 space-y-2 text-sm text-slate-200">
               {(data.top_actions || []).length ? (
                 data.top_actions?.map((action, index) => (
@@ -146,13 +148,13 @@ export function ExecutiveManagementPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-slate-400">No actions recorded.</div>
+                <div className="text-sm text-slate-400">{t('No actions recorded.', 'No actions recorded.')}</div>
               )}
             </div>
           </Card>
 
           <Card>
-            <Label>Owners to act</Label>
+            <Label>{t('Owners to act', 'Owners to act')}</Label>
             <div className="mt-3 space-y-2 text-sm text-slate-200">
               {(data.owners || []).length ? (
                 data.owners?.map((owner, index) => (
@@ -162,39 +164,44 @@ export function ExecutiveManagementPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-slate-400">No owners recorded.</div>
+                <div className="text-sm text-slate-400">{t('No owners recorded.', 'No owners recorded.')}</div>
               )}
             </div>
           </Card>
         </div>
       ) : null}
-
       {data ? (
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Label>Framework deltas</Label>
-            <div className="text-xs text-slate-400">Latest vs previous</div>
+            <Label>{t('Framework deltas', 'Framework deltas')}</Label>
+            <div className="text-xs text-slate-400">{t('Latest vs previous', 'Latest vs previous')}</div>
           </div>
           <div className="mt-3 space-y-2">
             {(data.framework_deltas || []).length ? (
-              data.framework_deltas?.map((delta, index) => (
-                <div
-                  key={`delta-${index}`}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#203659] bg-[#0b1626] px-3 py-2 text-sm"
-                >
-                  <span>{delta.framework}</span>
-                  <span className="text-slate-200">Score: {delta.score}</span>
-                  <span className="text-xs text-slate-400">
-                    Delta: {delta.delta ?? 0} {delta.status ? `(${delta.status})` : ''}
-                  </span>
-                </div>
-              ))
+              data.framework_deltas?.map((delta, index) => {
+                const {
+                  t
+                } = useI18n();
+
+                return (
+                  <div
+                    key={`delta-${index}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#203659] bg-[#0b1626] px-3 py-2 text-sm"
+                  >
+                    <span>{delta.framework}</span>
+                    <span className="text-slate-200">{t('Score:', 'Score:')} {delta.score}</span>
+                    <span className="text-xs text-slate-400">
+                      {t('Delta:', 'Delta:')} {delta.delta ?? 0} {delta.status ? `(${delta.status})` : ''}
+                    </span>
+                  </div>
+                );
+              })
             ) : (
-              <div className="text-sm text-slate-400">No framework deltas available.</div>
+              <div className="text-sm text-slate-400">{t('No framework deltas available.', 'No framework deltas available.')}</div>
             )}
           </div>
         </Card>
       ) : null}
     </div>
-  )
+  );
 }

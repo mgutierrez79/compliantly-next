@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Button, Card, ErrorBox, HelpTip, InfoBox, Input, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type RunItem = {
   run_id: string
@@ -27,6 +28,10 @@ type WorkerJobResponse = {
 type AuthMeResponse = { roles: string[] }
 
 export function RunsPage() {
+  const {
+    t
+  } = useI18n();
+
   const RUN_FETCH_STEP = 50
   const [data, setData] = useState<RunsResponse | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
@@ -255,31 +260,32 @@ export function RunsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <PageTitle>Reports</PageTitle>
+            <PageTitle>{t('Reports', 'Reports')}</PageTitle>
             <HelpTip text={'Browse generated runs, filter by run id or overall risk, and use the latest run for reports or PDFs.'} />
           </div>
           <p className="text-sm text-slate-400">
-            Browse generated runs, filter by run id or overall risk, and use the latest run for reports.
+            {t(
+              'Browse generated runs, filter by run id or overall risk, and use the latest run for reports.',
+              'Browse generated runs, filter by run id or overall risk, and use the latest run for reports.'
+            )}
           </p>
         </div>
         <div className="w-full max-w-xs">
           <div className="flex items-center gap-2">
-            <Label>Filter</Label>
+            <Label>{t('Filter', 'Filter')}</Label>
             <HelpTip text={'Search by run id or overall risk. Example: run-2024 or high.'} />
           </div>
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter by run id or risk" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Filter by run id or risk', 'Filter by run id or risk')} />
         </div>
       </div>
-
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
       {actionError ? <ErrorBox title={actionError.message} detail={actionError.bodyText} /> : null}
       {actionMessage ? <InfoBox title={actionMessage} /> : null}
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Generate report</Label>
+          <Label>{t('Generate report', 'Generate report')}</Label>
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={refreshRuns}>Refresh list</Button>
+            <Button onClick={refreshRuns}>{t('Refresh list', 'Refresh list')}</Button>
             {canGenerate ? (
               <Button onClick={generateReport} disabled={generating}>
                 {generating ? 'Generating...' : 'Generate new report'}
@@ -290,14 +296,14 @@ export function RunsPage() {
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div>
             <div className="flex items-center gap-2">
-              <Label>Language</Label>
+              <Label>{t('Language', 'Language')}</Label>
               <HelpTip text={'Language code for the report. Example: en, fr, es.'} />
             </div>
             <Input value={reportLanguage} onChange={(e) => setReportLanguage(e.target.value)} placeholder="en" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <Label>Regulation</Label>
+              <Label>{t('Regulation', 'Regulation')}</Label>
               <HelpTip text={'Generate a report for a specific regulation or use all enabled.'} />
             </div>
             <select
@@ -305,7 +311,7 @@ export function RunsPage() {
               value={reportFramework}
               onChange={(e) => setReportFramework(e.target.value)}
             >
-              <option value="all">All enabled</option>
+              <option value="all">{t('All enabled', 'All enabled')}</option>
               {frameworks.map((fw) => (
                 <option key={fw.key} value={fw.key}>
                   {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
@@ -317,7 +323,7 @@ export function RunsPage() {
         {canGenerate ? (
           <div className="mt-4 border-t border-slate-800 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Label>Download regulation PDF</Label>
+              <Label>{t('Download regulation PDF', 'Download regulation PDF')}</Label>
               <Button onClick={downloadFrameworkReport} disabled={downloading || !downloadFramework}>
                 {downloading ? 'Preparing...' : 'Download PDF'}
               </Button>
@@ -325,7 +331,7 @@ export function RunsPage() {
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Label>Regulation</Label>
+                  <Label>{t('Regulation', 'Regulation')}</Label>
                   <HelpTip text={'Download the latest run summary PDF for a specific regulation.'} />
                 </div>
                 <select
@@ -333,7 +339,7 @@ export function RunsPage() {
                   value={downloadFramework}
                   onChange={(e) => setDownloadFramework(e.target.value)}
                 >
-                  <option value="">Select regulation...</option>
+                  <option value="">{t('Select regulation...', 'Select regulation...')}</option>
                   {frameworks.map((fw) => (
                     <option key={fw.key} value={fw.key}>
                       {fw.name ? `${fw.name}${fw.version ? ` ${fw.version}` : ''}` : fw.key}
@@ -345,16 +351,15 @@ export function RunsPage() {
           </div>
         ) : null}
       </Card>
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Runs</Label>
+          <Label>{t('Runs', 'Runs')}</Label>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
             <span>
               {data ? `${data.items.length} of ${data.count} loaded` : 'n/a'}
             </span>
             {canLoadMore ? (
-              <Button onClick={() => setRunFetchLimit((prev) => prev + RUN_FETCH_STEP)}>Load more</Button>
+              <Button onClick={() => setRunFetchLimit((prev) => prev + RUN_FETCH_STEP)}>{t('Load more', 'Load more')}</Button>
             ) : null}
           </div>
         </div>
@@ -364,25 +369,25 @@ export function RunsPage() {
               <tr>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('run_id')}>
-                    Run{sortLabel('run_id')}
+                    {t('Run', 'Run')}{sortLabel('run_id')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('timestamp')}>
-                    Timestamp{sortLabel('timestamp')}
+                    {t('Timestamp', 'Timestamp')}{sortLabel('timestamp')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('risk_score')}>
-                    Risk score{sortLabel('risk_score')}
+                    {t('Risk score', 'Risk score')}{sortLabel('risk_score')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('overall_risk')}>
-                    Overall{sortLabel('overall_risk')}
+                    {t('Overall', 'Overall')}{sortLabel('overall_risk')}
                   </button>
                 </th>
-                <th className="py-2 pr-4">Actions</th>
+                <th className="py-2 pr-4">{t('Actions', 'Actions')}</th>
               </tr>
               <tr className="text-slate-400">
                 <th className="pb-2 pr-4">
@@ -390,8 +395,8 @@ export function RunsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.run_id}
                     onChange={(e) => setFilters({ ...filters, run_id: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter run id"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter run id', 'Filter run id')}
                   />
                 </th>
                 <th className="pb-2 pr-4">
@@ -399,8 +404,8 @@ export function RunsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.timestamp}
                     onChange={(e) => setFilters({ ...filters, timestamp: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter timestamp"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter timestamp', 'Filter timestamp')}
                   />
                 </th>
                 <th className="pb-2 pr-4">
@@ -408,8 +413,8 @@ export function RunsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.risk_score}
                     onChange={(e) => setFilters({ ...filters, risk_score: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter risk score"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter risk score', 'Filter risk score')}
                   />
                 </th>
                 <th className="pb-2 pr-4">
@@ -417,38 +422,44 @@ export function RunsPage() {
                     className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
                     value={filters.overall_risk}
                     onChange={(e) => setFilters({ ...filters, overall_risk: e.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter overall risk"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter overall risk', 'Filter overall risk')}
                   />
                 </th>
                 <th className="pb-2 pr-4" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
-              {filtered.map((item) => (
-                <tr key={item.run_id} className="text-slate-200">
-                  <td className="py-2 pr-4 font-mono text-xs">{item.run_id}</td>
-                  <td className="py-2 pr-4 font-mono text-xs">{item.timestamp ?? 'n/a'}</td>
-                  <td className="py-2 pr-4">{item.risk_score ?? 'n/a'}</td>
-                  <td className="py-2 pr-4">{item.overall_risk ?? 'n/a'}</td>
-                  <td className="py-2 pr-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button onClick={() => openReport(item.run_id, 'md')}>View</Button>
-                      <Button onClick={() => openReport(item.run_id, 'pdf')}>PDF</Button>
-                      <Button onClick={() => router.push(`/runs/${encodeURIComponent(item.run_id)}/manifest`)}>
-                        Manifest
-                      </Button>
-                      <Button onClick={() => exportPackage(item.run_id)} disabled={exportingRunId === item.run_id}>
-                        {exportingRunId === item.run_id ? 'Exporting...' : 'Export ZIP'}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(item => {
+                const {
+                  t
+                } = useI18n();
+
+                return (
+                  <tr key={item.run_id} className="text-slate-200">
+                    <td className="py-2 pr-4 font-mono text-xs">{item.run_id}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">{item.timestamp ?? 'n/a'}</td>
+                    <td className="py-2 pr-4">{item.risk_score ?? 'n/a'}</td>
+                    <td className="py-2 pr-4">{item.overall_risk ?? 'n/a'}</td>
+                    <td className="py-2 pr-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button onClick={() => openReport(item.run_id, 'md')}>{t('View', 'View')}</Button>
+                        <Button onClick={() => openReport(item.run_id, 'pdf')}>PDF</Button>
+                        <Button onClick={() => router.push(`/runs/${encodeURIComponent(item.run_id)}/manifest`)}>
+                          {t('Manifest', 'Manifest')}
+                        </Button>
+                        <Button onClick={() => exportPackage(item.run_id)} disabled={exportingRunId === item.run_id}>
+                          {exportingRunId === item.run_id ? 'Exporting...' : 'Export ZIP'}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {!filtered.length ? (
                 <tr>
                   <td className="py-4 text-sm text-slate-400" colSpan={5}>
-                    No runs found.
+                    {t('No runs found.', 'No runs found.')}
                   </td>
                 </tr>
               ) : null}
@@ -457,5 +468,5 @@ export function RunsPage() {
         </div>
       </Card>
     </div>
-  )
+  );
 }

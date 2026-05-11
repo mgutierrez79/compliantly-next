@@ -1,11 +1,12 @@
-'use client'
-
+'use client';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { formatTimestamp } from '../lib/time'
 import { Button, Card, ErrorBox, HelpTip, Label, PageTitle } from '../components/Ui'
 import { FreshnessBanner } from '../components/FreshnessBanner'
 import { getResilienceRuleHelp } from '../data/resilienceRuleHelp'
+
+import { useI18n } from '../lib/i18n';
 
 type RunItem = {
   run_id: string
@@ -951,6 +952,10 @@ function OperationalMetricsBlock({
   missingInputs?: string[] | null
   timestamp?: string | null
 }) {
+  const {
+    t
+  } = useI18n();
+
   const missingText = formatMissingInputs(missingInputs ?? undefined)
   const timestampText = timestamp ? `Data as of ${formatTimestamp(timestamp)}` : null
   if (!metrics) {
@@ -958,11 +963,11 @@ function OperationalMetricsBlock({
       <>
         <div className="text-xs text-slate-200">{emptyText}</div>
         {missingText ? (
-          <div className="mt-2 text-[11px] text-amber-200">Missing inputs: {missingText}</div>
+          <div className="mt-2 text-[11px] text-amber-200">{t('Missing inputs:', 'Missing inputs:')} {missingText}</div>
         ) : null}
         {timestampText ? <div className="text-[11px] text-slate-400">{timestampText}</div> : null}
       </>
-    )
+    );
   }
   const deployments =
     typeof metrics.deployments === 'number' ? String(metrics.deployments) : 'n/a'
@@ -979,42 +984,42 @@ function OperationalMetricsBlock({
   return (
     <>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Deployments</span>
+        <span className="text-slate-200">{t('Deployments', 'Deployments')}</span>
         <span className="font-semibold">{deployments}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Change failure rate</span>
+        <span className="text-slate-200">{t('Change failure rate', 'Change failure rate')}</span>
         <span className="font-semibold">{changeFailureRate}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Changes (successful)</span>
+        <span className="text-slate-200">{t('Changes (successful)', 'Changes (successful)')}</span>
         <span className="font-semibold">{changes}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Lead time p50/p75/p90 (h)</span>
+        <span className="text-slate-200">{t('Lead time p50/p75/p90 (h)', 'Lead time p50/p75/p90 (h)')}</span>
         <span className="font-semibold">{formatPercentiles(metrics.leadTime)}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Incidents</span>
+        <span className="text-slate-200">{t('Incidents', 'Incidents')}</span>
         <span className="font-semibold">{incidents}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Restore/MTTR p50/p75/p90 (h)</span>
+        <span className="text-slate-200">{t('Restore/MTTR p50/p75/p90 (h)', 'Restore/MTTR p50/p75/p90 (h)')}</span>
         <span className="font-semibold">{formatPercentiles(metrics.restoreTime)}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-200">Restores</span>
+        <span className="text-slate-200">{t('Restores', 'Restores')}</span>
         <span className="font-semibold">{restores}</span>
       </div>
       {metrics.policyVersion ? (
-        <div className="mt-1 text-[11px] text-slate-400">Policy {metrics.policyVersion}</div>
+        <div className="mt-1 text-[11px] text-slate-400">{t('Policy', 'Policy')} {metrics.policyVersion}</div>
       ) : null}
       {missingText ? (
-        <div className="mt-1 text-[11px] text-amber-200">Missing inputs: {missingText}</div>
+        <div className="mt-1 text-[11px] text-amber-200">{t('Missing inputs:', 'Missing inputs:')} {missingText}</div>
       ) : null}
       {timestampText ? <div className="text-[11px] text-slate-400">{timestampText}</div> : null}
     </>
-  )
+  );
 }
 
 const RESILIENCE_LAYER_MAP: { layer: string; categories: string[] }[] = [
@@ -2039,6 +2044,10 @@ function ResilienceRuleTable({
   rowKeyPrefix: string
   haSequences?: HaRecoverySequenceDetail[]
 }) {
+  const {
+    t
+  } = useI18n();
+
   const [expandedRuleKey, setExpandedRuleKey] = useState<string | null>(null)
   const [expandedSequenceKeys, setExpandedSequenceKeys] = useState<Set<string>>(new Set())
   if (!rules.length) {
@@ -2070,14 +2079,18 @@ function ResilienceRuleTable({
       <table className="min-w-full border-collapse text-[10px]">
         <thead>
           <tr className={`text-left ${tableTone.headerText}`}>
-            <th className={tableTone.headerCell}>Rule</th>
-            <th className={tableTone.headerCell}>Source</th>
-            <th className={tableTone.headerCell}>Current evidence</th>
-            <th className={tableTone.headerCell}>Last timestamp</th>
+            <th className={tableTone.headerCell}>{t('Rule', 'Rule')}</th>
+            <th className={tableTone.headerCell}>{t('Source', 'Source')}</th>
+            <th className={tableTone.headerCell}>{t('Current evidence', 'Current evidence')}</th>
+            <th className={tableTone.headerCell}>{t('Last timestamp', 'Last timestamp')}</th>
           </tr>
         </thead>
         <tbody>
           {rules.map((rule, index) => {
+            const {
+              t
+            } = useI18n();
+
             const rowKey = `${rowKeyPrefix}-${rule.id}-${index}`
             const isExpanded = expandedRuleKey === rowKey
             const isHaFailoverRule = isHaFailoverProofRule(rule.id)
@@ -2144,7 +2157,7 @@ function ResilienceRuleTable({
                       {rule.title && rule.title !== rule.id ? (
                         <div className="mt-0.5 font-mono text-[9px] opacity-80">{rule.id}</div>
                       ) : null}
-                      <div className="mt-0.5 text-[9px] opacity-75">Click for guidance</div>
+                      <div className="mt-0.5 text-[9px] opacity-75">{t('Click for guidance', 'Click for guidance')}</div>
                     </button>
                   </td>
                   <td className={tableTone.rowCell}>{rule.source}</td>
@@ -2156,7 +2169,7 @@ function ResilienceRuleTable({
                         className="mt-1 text-[10px] font-semibold text-sky-200 underline decoration-dotted underline-offset-2 hover:text-sky-100"
                         onClick={openSequenceDetails}
                       >
-                        View detected sequence
+                        {t('View detected sequence', 'View detected sequence')}
                       </button>
                     ) : null}
                   </td>
@@ -2179,13 +2192,13 @@ function ResilienceRuleTable({
                         <div className="mt-2 grid gap-2 md:grid-cols-2">
                           <section className={`rounded border p-2 ${tableTone.section}`}>
                             <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
-                              What This Rule Checks
+                              {t('What This Rule Checks', 'What This Rule Checks')}
                             </div>
                             <p className="mt-1 leading-relaxed">{guidance.check}</p>
                           </section>
                           <section className={`rounded border p-2 ${tableTone.section}`}>
                             <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
-                              Why This Matters
+                              {t('Why This Matters', 'Why This Matters')}
                             </div>
                             <p className="mt-1 leading-relaxed">{guidance.why}</p>
                           </section>
@@ -2194,7 +2207,7 @@ function ResilienceRuleTable({
                         <div className="mt-2 grid gap-2 md:grid-cols-2">
                           <section className={`rounded border p-2 ${tableTone.section}`}>
                             <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
-                              How To Fix
+                              {t('How To Fix', 'How To Fix')}
                             </div>
                             <ul className="mt-1 list-disc space-y-1 pl-4">
                               {guidance.resolveSteps.map((step, stepIndex) => (
@@ -2204,7 +2217,7 @@ function ResilienceRuleTable({
                           </section>
                           <section className={`rounded border p-2 ${tableTone.section}`}>
                             <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
-                              Example Evidence
+                              {t('Example Evidence', 'Example Evidence')}
                             </div>
                             <ul className="mt-1 list-disc space-y-1 pl-4">
                               {guidance.evidenceExamples.map((example, exampleIndex) => (
@@ -2216,18 +2229,18 @@ function ResilienceRuleTable({
 
                         <div className={`mt-2 rounded border p-2 ${tableTone.section}`}>
                           <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
-                            Current Evidence In This Run
+                            {t('Current Evidence In This Run', 'Current Evidence In This Run')}
                           </div>
                           <div className="mt-1 text-[10px]">
-                            <span className="font-semibold">Source: </span>
+                            <span className="font-semibold">{t('Source:', 'Source:')} </span>
                             {rule.source}
                           </div>
                           <div className="mt-1 text-[10px] leading-relaxed">
-                            <span className="font-semibold">Observed: </span>
+                            <span className="font-semibold">{t('Observed:', 'Observed:')} </span>
                             {rule.explanation}
                           </div>
                           <div className="mt-1 text-[10px] leading-relaxed">
-                            <span className="font-semibold">Last timestamp: </span>
+                            <span className="font-semibold">{t('Last timestamp:', 'Last timestamp:')} </span>
                             {displayLastTimestamp}
                           </div>
                           {isHaFailoverRule ? (
@@ -2246,23 +2259,23 @@ function ResilienceRuleTable({
                               <div className="mt-2 space-y-2">
                                 <div className={`rounded border p-2 ${tableTone.section}`}>
                                   <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
-                                    Source coverage
+                                    {t('Source coverage', 'Source coverage')}
                                   </div>
                                   <div className="mt-2 overflow-x-auto">
                                     <table className="min-w-full border-collapse text-[10px]">
                                       <thead>
                                         <tr className="text-left text-slate-300">
                                           <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                            Source
+                                            {t('Source', 'Source')}
                                           </th>
                                           <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                            Cluster
+                                            {t('Cluster', 'Cluster')}
                                           </th>
                                           <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                            Status
+                                            {t('Status', 'Status')}
                                           </th>
                                           <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                            Last event
+                                            {t('Last event', 'Last event')}
                                           </th>
                                         </tr>
                                       </thead>
@@ -2327,25 +2340,25 @@ function ResilienceRuleTable({
                                         <thead>
                                           <tr className="text-left text-slate-300">
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Source
+                                              {t('Source', 'Source')}
                                             </th>
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Cluster
+                                              {t('Cluster', 'Cluster')}
                                             </th>
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Timestamp
+                                              {t('Timestamp', 'Timestamp')}
                                             </th>
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Type
+                                              {t('Type', 'Type')}
                                             </th>
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Severity
+                                              {t('Severity', 'Severity')}
                                             </th>
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Event
+                                              {t('Event', 'Event')}
                                             </th>
                                             <th className="border border-slate-700/60 bg-slate-900/60 px-1.5 py-1">
-                                              Description
+                                              {t('Description', 'Description')}
                                             </th>
                                           </tr>
                                         </thead>
@@ -2383,15 +2396,20 @@ function ResilienceRuleTable({
                                     </div>
                                   ) : (
                                     <div className="mt-2 text-[10px] text-slate-300">
-                                      No detailed events available for this sequence.
+                                      {t(
+                                        'No detailed events available for this sequence.',
+                                        'No detailed events available for this sequence.'
+                                      )}
                                     </div>
                                   )}
                                 </div>
                               </div>
                             ) : (
                               <div className={`mt-2 rounded border p-2 text-[10px] ${tableTone.section}`}>
-                                No HA recovery sequence was found in the current snapshot. Refresh connector data and
-                                verify Palo Alto HA system logs are included.
+                                {t(
+                                  'No HA recovery sequence was found in the current snapshot. Refresh connector data and\n                                verify Palo Alto HA system logs are included.',
+                                  'No HA recovery sequence was found in the current snapshot. Refresh connector data and\n                                verify Palo Alto HA system logs are included.'
+                                )}
                               </div>
                             )
                           ) : null}
@@ -2401,12 +2419,12 @@ function ResilienceRuleTable({
                   </tr>
                 ) : null}
               </Fragment>
-            )
+            );
           })}
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 function resilienceSummaryBlock(
@@ -2417,6 +2435,10 @@ function resilienceSummaryBlock(
   focus: 'all' | 'backup_replication' = 'all',
   haSequences?: HaRecoverySequenceDetail[],
 ) {
+  const {
+    t
+  } = useI18n();
+
   if (!playbook) return null
   const metrics = playbook.metrics ?? {}
   const layerSummaryAll = buildResilienceLayers(playbook.rules, playbook.per_connector, playbook.metrics, haSequences)
@@ -2438,89 +2460,101 @@ function resilienceSummaryBlock(
     <div className="mt-3 rounded border border-slate-700 bg-[#0d1a2b]/70 p-2 text-xs text-slate-200">
       <div className="mb-1 font-semibold text-slate-50">{title}</div>
       <div className="flex items-center justify-between text-[11px] text-slate-300">
-        <span>Score {displayScore}/100</span>
-        <span>Weight {formatRatio(weightValue)}</span>
+        <span>{t('Score', 'Score')} {displayScore}/100</span>
+        <span>{t('Weight', 'Weight')} {formatRatio(weightValue)}</span>
       </div>
       <div className="mt-1 grid grid-cols-2 gap-1">
         <div>
-          Compliant elements: {compliantCount}/{rulesCount}
+          {t('Compliant elements:', 'Compliant elements:')} {compliantCount}/{rulesCount}
         </div>
         <div>
-          Failing rules: {failureCount}/{rulesCount}
+          {t('Failing rules:', 'Failing rules:')} {failureCount}/{rulesCount}
         </div>
         {focus === 'backup_replication' ? (
           <>
-            <div>Backup signals: {metrics.signals_backup ?? 0}</div>
-            <div>Replication signals: {metrics.signals_replication ?? 0}</div>
-            <div>Replication OK: {formatRatio(metrics.assets_replication_ok_ratio)}</div>
-            <div>RPO p90: {formatMinutesAsHours(metrics.assets_rpo_minutes_p90)}</div>
+            <div>{t('Backup signals:', 'Backup signals:')} {metrics.signals_backup ?? 0}</div>
+            <div>{t('Replication signals:', 'Replication signals:')} {metrics.signals_replication ?? 0}</div>
+            <div>{t('Replication OK:', 'Replication OK:')} {formatRatio(metrics.assets_replication_ok_ratio)}</div>
+            <div>{t('RPO p90:', 'RPO p90:')} {formatMinutesAsHours(metrics.assets_rpo_minutes_p90)}</div>
           </>
         ) : (
           <>
-            <div>Signals: {metrics.signals_total ?? 0}</div>
-            <div>Recovery jobs: {metrics.recovery_jobs_total ?? 0}</div>
-            <div>HA coverage: {formatRatio(metrics.assets_ha_enabled_ratio)}</div>
-            <div>Replication OK: {formatRatio(metrics.assets_replication_ok_ratio)}</div>
-            <div>RPO p90: {formatMinutesAsHours(metrics.assets_rpo_minutes_p90)}</div>
+            <div>{t('Signals:', 'Signals:')} {metrics.signals_total ?? 0}</div>
+            <div>{t('Recovery jobs:', 'Recovery jobs:')} {metrics.recovery_jobs_total ?? 0}</div>
+            <div>{t('HA coverage:', 'HA coverage:')} {formatRatio(metrics.assets_ha_enabled_ratio)}</div>
+            <div>{t('Replication OK:', 'Replication OK:')} {formatRatio(metrics.assets_replication_ok_ratio)}</div>
+            <div>{t('RPO p90:', 'RPO p90:')} {formatMinutesAsHours(metrics.assets_rpo_minutes_p90)}</div>
           </>
         )}
       </div>
       {layerSummary.length ? (
         <div className="mt-2 space-y-1 text-[11px] text-slate-300">
           {layerSummary.map((layer) => {
+            const {
+              t
+            } = useI18n();
+
             const displayPassed = Number.isFinite(layer.passed) ? layer.passed : layer.compliantRules.length
             const displayTotal =
               Number.isFinite(layer.total) && layer.total > 0
                 ? layer.total
                 : layer.compliantRules.length + layer.nonCompliantRules.length
             return (
-            <details key={layer.layer} className="rounded bg-[#13233a]/80 p-1.5">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
-                <span className="min-w-0 truncate">{layer.layer}</span>
-                <span className="shrink-0 rounded bg-slate-950/70 px-1.5 py-0.5 font-mono text-[10px] text-slate-100">
-                  {displayPassed}/{displayTotal}
-                </span>
-              </summary>
-              <div className="mt-1 border-t border-slate-700/60 pt-1">
-                <div className="mt-1 text-[10px] text-slate-300">Compliant rules</div>
-                <ResilienceRuleTable
-                  rules={layer.compliantRules}
-                  tone="pass"
-                  rowKeyPrefix={`summary-pass-${layer.layer}`}
-                  haSequences={haSequences}
-                />
-                <div className="mt-1 text-[10px] text-slate-300">Non-compliant rules</div>
-                <ResilienceRuleTable
-                  rules={layer.nonCompliantRules}
-                  tone="fail"
-                  rowKeyPrefix={`summary-fail-${layer.layer}`}
-                  haSequences={haSequences}
-                />
-              </div>
-            </details>
-            )
+              <details key={layer.layer} className="rounded bg-[#13233a]/80 p-1.5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0 truncate">{layer.layer}</span>
+                  <span className="shrink-0 rounded bg-slate-950/70 px-1.5 py-0.5 font-mono text-[10px] text-slate-100">
+                    {displayPassed}/{displayTotal}
+                  </span>
+                </summary>
+                <div className="mt-1 border-t border-slate-700/60 pt-1">
+                  <div className="mt-1 text-[10px] text-slate-300">{t('Compliant rules', 'Compliant rules')}</div>
+                  <ResilienceRuleTable
+                    rules={layer.compliantRules}
+                    tone="pass"
+                    rowKeyPrefix={`summary-pass-${layer.layer}`}
+                    haSequences={haSequences}
+                  />
+                  <div className="mt-1 text-[10px] text-slate-300">{t('Non-compliant rules', 'Non-compliant rules')}</div>
+                  <ResilienceRuleTable
+                    rules={layer.nonCompliantRules}
+                    tone="fail"
+                    rowKeyPrefix={`summary-fail-${layer.layer}`}
+                    haSequences={haSequences}
+                  />
+                </div>
+              </details>
+            );
           })}
         </div>
       ) : null}
       {playbook.policy_version ? (
-        <div className="mt-1 text-[11px] text-slate-400">Playbook {playbook.policy_version}</div>
+        <div className="mt-1 text-[11px] text-slate-400">{t('Playbook', 'Playbook')} {playbook.policy_version}</div>
       ) : null}
     </div>
-  )
+  );
 }
 
 function resilienceLayersCompactBlock(
   playbook?: ResiliencePlaybookSummary,
   haSequences?: HaRecoverySequenceDetail[],
 ) {
+  const {
+    t
+  } = useI18n();
+
   if (!playbook?.rules?.length) return null
   const layers = buildResilienceLayers(playbook.rules, playbook.per_connector, playbook.metrics, haSequences)
   if (!layers.length) return null
   return (
     <div className="mt-3 rounded border border-slate-700 bg-[#0d1a2b]/70 p-2 text-xs text-slate-200">
-      <div className="mb-1 font-semibold text-slate-50">Compliance layers</div>
+      <div className="mb-1 font-semibold text-slate-50">{t('Compliance layers', 'Compliance layers')}</div>
       <div className="space-y-1 text-[11px] text-slate-300">
         {layers.map((layer) => {
+          const {
+            t
+          } = useI18n();
+
           const displayPassed = Number.isFinite(layer.passed) ? layer.passed : layer.compliantRules.length
           const displayTotal =
             Number.isFinite(layer.total) && layer.total > 0
@@ -2541,14 +2575,14 @@ function resilienceLayersCompactBlock(
                 </span>
               </summary>
               <div className="mt-1 border-t border-slate-700/60 pt-1">
-                <div className="mt-1 text-[10px] text-slate-300">Compliant rules</div>
+                <div className="mt-1 text-[10px] text-slate-300">{t('Compliant rules', 'Compliant rules')}</div>
                 <ResilienceRuleTable
                   rules={layer.compliantRules}
                   tone="pass"
                   rowKeyPrefix={`compact-pass-${layer.layer}`}
                   haSequences={haSequences}
                 />
-                <div className="mt-1 text-[10px] text-slate-300">Non-compliant rules</div>
+                <div className="mt-1 text-[10px] text-slate-300">{t('Non-compliant rules', 'Non-compliant rules')}</div>
                 <ResilienceRuleTable
                   rules={layer.nonCompliantRules}
                   tone="fail"
@@ -2557,11 +2591,11 @@ function resilienceLayersCompactBlock(
                 />
               </div>
             </details>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
 type DoraControlsResponse = {
@@ -2577,6 +2611,10 @@ type DoraControlsResponse = {
 }
 
 export function DashboardPage() {
+  const {
+    t
+  } = useI18n();
+
   const [showGuide, setShowGuide] = useState(true)
   const [historyLimit, setHistoryLimit] = useState<number>(() => {
     if (typeof window === 'undefined') return DEFAULT_HISTORY_LIMIT
@@ -3853,6 +3891,10 @@ export function DashboardPage() {
   }
 
   const vmResilienceSummaryBlock = () => {
+    const {
+      t
+    } = useI18n();
+
     const loading = isLoading('connector-snapshot') || isLoading('connector-health')
     const hasVmEvidence =
       vmResilienceSummary.total > 0 ||
@@ -3861,9 +3903,9 @@ export function DashboardPage() {
       vmResilienceSummary.mappedVolumes > 0
     const summary = (
       <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-slate-200">
-        <div>VMs: {vmResilienceSummary.total}</div>
-        <div>Covered (backup + replication): {vmResilienceSummary.withBoth}</div>
-        <div>Backed up: {vmResilienceSummary.withBackup}</div>
+        <div>{t('VMs:', 'VMs:')} {vmResilienceSummary.total}</div>
+        <div>{t('Covered (backup + replication):', 'Covered (backup + replication):')} {vmResilienceSummary.withBoth}</div>
+        <div>{t('Backed up:', 'Backed up:')} {vmResilienceSummary.withBackup}</div>
         <div>
           <button
             type="button"
@@ -3872,29 +3914,35 @@ export function DashboardPage() {
             }
             disabled={vmResilienceSummary.withReplication === 0}
             className="underline decoration-dotted underline-offset-2 enabled:hover:text-slate-50 disabled:opacity-60"
-            title="Show replicated VMs"
+            title={t('Show replicated VMs', 'Show replicated VMs')}
           >
-            Replicated: {vmResilienceSummary.withReplication}
+            {t('Replicated:', 'Replicated:')} {vmResilienceSummary.withReplication}
           </button>
         </div>
-        <div>Verified (24h): {vmResilienceSummary.verified}</div>
-        <div>Volumes mapped: {vmResilienceSummary.uniqueVolumes}</div>
-        <div>Volume links: {vmResilienceSummary.mappedVolumes}</div>
+        <div>{t('Verified (24h):', 'Verified (24h):')} {vmResilienceSummary.verified}</div>
+        <div>{t('Volumes mapped:', 'Volumes mapped:')} {vmResilienceSummary.uniqueVolumes}</div>
+        <div>{t('Volume links:', 'Volume links:')} {vmResilienceSummary.mappedVolumes}</div>
       </div>
     )
     return (
       <div className="mt-3 rounded border border-slate-700 bg-[#0d1a2b]/70 p-2 text-xs text-slate-200">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
-          VM backup and replication
+          {t('VM backup and replication', 'VM backup and replication')}
         </div>
         <div className="mt-1 text-[11px] text-slate-400">
-          Correlates vCenter backup and storage replication from snapshot data plus connector-status fallback.
+          {t(
+            'Correlates vCenter backup and storage replication from snapshot data plus connector-status fallback.',
+            'Correlates vCenter backup and storage replication from snapshot data plus connector-status fallback.'
+          )}
         </div>
         <div className="mt-1 text-[11px] text-slate-400">
-          Verified = backup success within 24h AND replication OK within 24h.
+          {t(
+            'Verified = backup success within 24h AND replication OK within 24h.',
+            'Verified = backup success within 24h AND replication OK within 24h.'
+          )}
         </div>
         {!hasVmEvidence && loading ? (
-          <div className="mt-2 text-[11px] text-slate-300">Loading VM resilience evidence...</div>
+          <div className="mt-2 text-[11px] text-slate-300">{t('Loading VM resilience evidence...', 'Loading VM resilience evidence...')}</div>
         ) : null}
         {snapshotError ? <div className="mt-2 text-[11px] text-rose-300">{snapshotError}</div> : null}
         {hasVmEvidence ? (
@@ -3902,7 +3950,7 @@ export function DashboardPage() {
             {summary}
             {vmResilienceSummary.volumeSample.length ? (
               <div className="mt-2 text-[11px] text-slate-300">
-                Volumes (sample): {vmResilienceSummary.volumeSample.join(', ')}
+                {t('Volumes (sample):', 'Volumes (sample):')} {vmResilienceSummary.volumeSample.join(', ')}
                 {vmResilienceSummary.uniqueVolumes > vmResilienceSummary.volumeSample.length
                   ? ` +${vmResilienceSummary.uniqueVolumes - vmResilienceSummary.volumeSample.length} more`
                   : ''}
@@ -3911,17 +3959,17 @@ export function DashboardPage() {
             {vmResilienceDetail === 'replicated' ? (
               <div className="mt-2 rounded border border-slate-700 bg-[#0b1524]/80 p-2">
                 <div className="text-[11px] font-semibold text-slate-200">
-                  Replicated VMs ({vmResilienceSummary.replicatedVms.length})
-                </div>
+                  {t('Replicated VMs (', 'Replicated VMs (')}{vmResilienceSummary.replicatedVms.length})
+                                  </div>
                 {vmResilienceSummary.replicatedVms.length ? (
                   <div className="mt-1 max-h-48 overflow-auto">
                     <table className="w-full border-collapse text-[10px] text-slate-200">
                       <thead>
                         <tr className="text-left text-slate-400">
                           <th className="border-b border-slate-700 px-1 py-1">VM</th>
-                          <th className="border-b border-slate-700 px-1 py-1">State</th>
-                          <th className="border-b border-slate-700 px-1 py-1">Volumes</th>
-                          <th className="border-b border-slate-700 px-1 py-1">Source</th>
+                          <th className="border-b border-slate-700 px-1 py-1">{t('State', 'State')}</th>
+                          <th className="border-b border-slate-700 px-1 py-1">{t('Volumes', 'Volumes')}</th>
+                          <th className="border-b border-slate-700 px-1 py-1">{t('Source', 'Source')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3937,24 +3985,27 @@ export function DashboardPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="mt-1 text-[10px] text-slate-400">No replicated VMs found.</div>
+                  <div className="mt-1 text-[10px] text-slate-400">{t('No replicated VMs found.', 'No replicated VMs found.')}</div>
                 )}
               </div>
             ) : null}
           </>
         ) : loading ? null : (
           <div className="mt-2 text-[11px] text-slate-300">
-            No VM backup or replication evidence yet. Run ingestion and refresh the dashboard.
+            {t(
+              'No VM backup or replication evidence yet. Run ingestion and refresh the dashboard.',
+              'No VM backup or replication evidence yet. Run ingestion and refresh the dashboard.'
+            )}
           </div>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <PageTitle>Dashboard</PageTitle>
+        <PageTitle>{t('Dashboard', 'Dashboard')}</PageTitle>
         <HelpTip
           text={
             'Quick snapshot of compliance and risk.\n\nFramework cards show compliance by framework (DORA, NIS2, ISO 27001, SOC 2, GxP) using evidence.\nSecurity cards show current risk signals and remediation.\n\nScores: framework and infra scores are 0-100 (higher is better). Risk score is points (lower is better, no fixed max).\n\nUse Runs, Analytics, and Connectors for details.'
@@ -3962,7 +4013,7 @@ export function DashboardPage() {
         />
         <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Label>History window</Label>
+            <Label>{t('History window', 'History window')}</Label>
             <select
               value={historyLimit}
               onChange={(e) => setHistoryLimit(Number(e.target.value))}
@@ -3981,7 +4032,10 @@ export function DashboardPage() {
         </div>
       </div>
       <p className="text-sm text-slate-50">
-        Track overall posture at a glance. Drill into Runs, Analytics, or Connectors when needed.
+        {t(
+          'Track overall posture at a glance. Drill into Runs, Analytics, or Connectors when needed.',
+          'Track overall posture at a glance. Drill into Runs, Analytics, or Connectors when needed.'
+        )}
       </p>
       <FreshnessBanner />
       <div className="text-xs text-slate-300">
@@ -3995,64 +4049,73 @@ export function DashboardPage() {
           : ''}
         {refreshStatus ? ` | ${refreshStatus}` : ''}
       </div>
-
       {showGuide ? (
         <Card>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
-              <Label>How to read this</Label>
+              <Label>{t('How to read this', 'How to read this')}</Label>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-lg border border-[#274266] bg-[#0d1a2b]/70 p-3">
-                  <div className="text-sm font-semibold text-slate-50">Framework dashboard</div>
+                  <div className="text-sm font-semibold text-slate-50">{t('Framework dashboard', 'Framework dashboard')}</div>
                   <div className="mt-1 text-sm text-slate-100">
-                    Answers: &quot;Are we compliant?&quot; by framework, with evidence and control mappings.
+                    {t(
+                      'Answers: "Are we compliant?" by framework, with evidence and control mappings.',
+                      'Answers: "Are we compliant?" by framework, with evidence and control mappings.'
+                    )}
                   </div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-200">
-                    <li>Evidence-backed, audit-friendly</li>
-                    <li>Run-to-run deltas and exports</li>
-                    <li>Mapped to requirements/controls</li>
+                    <li>{t('Evidence-backed, audit-friendly', 'Evidence-backed, audit-friendly')}</li>
+                    <li>{t('Run-to-run deltas and exports', 'Run-to-run deltas and exports')}</li>
+                    <li>{t('Mapped to requirements/controls', 'Mapped to requirements/controls')}</li>
                   </ul>
                 </div>
                 <div className="rounded-lg border border-[#274266] bg-[#0d1a2b]/70 p-3">
-                  <div className="text-sm font-semibold text-slate-50">Security dashboard</div>
+                  <div className="text-sm font-semibold text-slate-50">{t('Security dashboard', 'Security dashboard')}</div>
                   <div className="mt-1 text-sm text-slate-100">
-                    Answers: &quot;Are we secure right now?&quot; with current risks and remediation.
+                    {t(
+                      'Answers: "Are we secure right now?" with current risks and remediation.',
+                      'Answers: "Are we secure right now?" with current risks and remediation.'
+                    )}
                   </div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-200">
-                    <li>Operational posture (near real-time)</li>
-                    <li>Risk drivers, exceptions, SLAs</li>
-                    <li>Action-oriented for teams</li>
+                    <li>{t(
+                      'Operational posture (near real-time)',
+                      'Operational posture (near real-time)'
+                    )}</li>
+                    <li>{t('Risk drivers, exceptions, SLAs', 'Risk drivers, exceptions, SLAs')}</li>
+                    <li>{t('Action-oriented for teams', 'Action-oriented for teams')}</li>
                   </ul>
                 </div>
               </div>
               <div className="text-xs text-slate-200">
-                Tip: lots of &quot;unknown&quot; connectors usually means they are not configured or ingestion has not run.
+                {t(
+                  'Tip: lots of "unknown" connectors usually means they are not configured or ingestion has not run.',
+                  'Tip: lots of "unknown" connectors usually means they are not configured or ingestion has not run.'
+                )}
               </div>
             </div>
             <div className="shrink-0">
-              <Button onClick={() => setShowGuide(false)}>Hide</Button>
+              <Button onClick={() => setShowGuide(false)}>{t('Hide', 'Hide')}</Button>
             </div>
           </div>
         </Card>
       ) : null}
-
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
-
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <Label>{`Runs (last ${historyLimit})`}</Label>
           <div className="mt-3 text-3xl font-semibold text-slate-50">{visibleRunCount}</div>
-          <div className="mt-1 text-[11px] text-slate-400">Completed runs in selected window</div>
-          <div className="mt-2 text-xs text-slate-200">Latest run: {latestRun?.run_id ?? 'n/a'}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{t('Completed runs in selected window', 'Completed runs in selected window')}</div>
+          <div className="mt-2 text-xs text-slate-200">{t('Latest run:', 'Latest run:')} {latestRun?.run_id ?? 'n/a'}</div>
         </Card>
         <Card>
-          <Label>Risk score (latest run)</Label>
+          <Label>{t('Risk score (latest run)', 'Risk score (latest run)')}</Label>
           <div className="mt-3 text-3xl font-semibold text-slate-50">
             {latestRun?.risk_score ?? 'n/a'}
           </div>
-          <div className="mt-1 text-[11px] text-slate-400">Lower is better; no fixed maximum</div>
+          <div className="mt-1 text-[11px] text-slate-400">{t('Lower is better; no fixed maximum', 'Lower is better; no fixed maximum')}</div>
           <div className={`mt-2 text-xs ${statusTone(latestRun?.overall_risk)}`}>
-            Risk tier: {latestRun?.overall_risk ?? 'unknown'}
+            {t('Risk tier:', 'Risk tier:')} {latestRun?.overall_risk ?? 'unknown'}
           </div>
         </Card>
         <Card>
@@ -4061,11 +4124,14 @@ export function DashboardPage() {
             onClick={() => toggleCard('findings')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>Critical findings (latest run)</Label>
+            <Label>{t('Critical findings (latest run)', 'Critical findings (latest run)')}</Label>
             <span className="text-xs text-slate-300">{isExpanded('findings') ? 'Hide' : 'Show top 10'}</span>
           </button>
           <div className="mt-3 text-3xl font-semibold text-slate-50">{findingCount}</div>
-          <div className="mt-1 text-[11px] text-slate-400">Critical findings stored for reporting</div>
+          <div className="mt-1 text-[11px] text-slate-400">{t(
+            'Critical findings stored for reporting',
+            'Critical findings stored for reporting'
+          )}</div>
           {isExpanded('findings') ? (
             <div className="mt-3 space-y-2 text-xs text-slate-200">
               {topFindings.length ? (
@@ -4092,7 +4158,10 @@ export function DashboardPage() {
                   ))}
                 </ul>
               ) : (
-                <div className="text-slate-400">No critical findings in the latest run.</div>
+                <div className="text-slate-400">{t(
+                  'No critical findings in the latest run.',
+                  'No critical findings in the latest run.'
+                )}</div>
               )}
             </div>
           ) : null}
@@ -4103,14 +4172,17 @@ export function DashboardPage() {
             onClick={() => toggleCard('risk-drivers')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>Risk drivers (latest run)</Label>
+            <Label>{t('Risk drivers (latest run)', 'Risk drivers (latest run)')}</Label>
             <span className="text-xs text-slate-300">{isExpanded('risk-drivers') ? 'Hide' : 'Details'}</span>
           </button>
           <div className="mt-3 text-3xl font-semibold text-slate-50">
             {riskDrivers ? riskDrivers.total_findings : 'n/a'}
           </div>
           <div className="mt-1 text-[11px] text-slate-400">
-            Total findings feeding the risk score (includes non-critical)
+            {t(
+              'Total findings feeding the risk score (includes non-critical)',
+              'Total findings feeding the risk score (includes non-critical)'
+            )}
           </div>
           <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-200">
             {['critical', 'high', 'medium', 'low'].map((level) => (
@@ -4123,7 +4195,7 @@ export function DashboardPage() {
           {isExpanded('risk-drivers') ? (
             <div className="mt-3 space-y-2 text-xs text-slate-200">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">By severity</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('By severity', 'By severity')}</div>
                 <div className="mt-1 grid grid-cols-2 gap-1">
                   {RISK_SEVERITY_ORDER.map((level) => (
                     <div key={level} className="flex items-center justify-between">
@@ -4134,7 +4206,7 @@ export function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Top sources</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Top sources', 'Top sources')}</div>
                 {riskTopSources.length ? (
                   <ul className="mt-2 space-y-1 text-slate-100">
                     {riskTopSources.map((source) => (
@@ -4147,21 +4219,24 @@ export function DashboardPage() {
                     ))}
                   </ul>
                 ) : (
-                  <div className="mt-2 text-slate-400">No risk drivers reported yet.</div>
+                  <div className="mt-2 text-slate-400">{t('No risk drivers reported yet.', 'No risk drivers reported yet.')}</div>
                 )}
                 {riskOtherSources ? (
-                  <div className="mt-1 text-[11px] text-slate-400">Other sources: {riskOtherSources}</div>
+                  <div className="mt-1 text-[11px] text-slate-400">{t('Other sources:', 'Other sources:')} {riskOtherSources}</div>
                 ) : null}
               </div>
             </div>
           ) : null}
         </Card>
         <Card>
-          <Label>Frameworks scored</Label>
+          <Label>{t('Frameworks scored', 'Frameworks scored')}</Label>
           <div className="mt-3 text-3xl font-semibold text-slate-50">{frameworkCount}</div>
-          <div className="mt-1 text-[11px] text-slate-400">Scores are 0-100 (higher is better)</div>
+          <div className="mt-1 text-[11px] text-slate-400">{t(
+            'Scores are 0-100 (higher is better)',
+            'Scores are 0-100 (higher is better)'
+          )}</div>
           <div className="mt-2 text-xs text-slate-200">
-            Trend focus: {frameworkTrend?.framework ?? frameworks?.[0] ?? 'n/a'}
+            {t('Trend focus:', 'Trend focus:')} {frameworkTrend?.framework ?? frameworks?.[0] ?? 'n/a'}
           </div>
         </Card>
           <div className={isExpanded('connector-health') ? 'md:col-span-2' : undefined}>
@@ -4171,10 +4246,10 @@ export function DashboardPage() {
                 onClick={() => toggleCard('connector-health')}
                 className="flex w-full items-center justify-between text-left"
               >
-                <Label>Connector status</Label>
+                <Label>{t('Connector status', 'Connector status')}</Label>
                 <span className="text-xs text-slate-300">{isExpanded('connector-health') ? 'Hide' : 'Details'}</span>
               </button>
-              <div className="mt-1 text-[11px] text-slate-400">Status counts from latest run</div>
+              <div className="mt-1 text-[11px] text-slate-400">{t('Status counts from latest run', 'Status counts from latest run')}</div>
               <div className="mt-3 space-y-1 text-sm text-slate-50">
                 <div>
                   <span className="text-emerald-300">{connectorHealth.ok}</span> healthy
@@ -4193,90 +4268,105 @@ export function DashboardPage() {
                 connectorDetails.entries.length ? (
                   <div className="mt-3 grid gap-3 text-xs text-slate-200 md:grid-cols-2">
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Healthy</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Healthy', 'Healthy')}</div>
                       {connectorDetails.healthy.length ? (
                         <ul className="mt-2 space-y-1 text-slate-100">
-                          {connectorDetails.healthy.map((entry) => (
-                            <li key={entry.name} className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate">{entry.name}</div>
-                                <div className="text-[10px] text-slate-400">
-                                  Last successful run: {entry.lastSuccess ? formatTimestamp(entry.lastSuccess) : 'n/a'}
+                          {connectorDetails.healthy.map(entry => {
+                            const {
+                              t
+                            } = useI18n();
+
+                            return (
+                              <li key={entry.name} className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="truncate">{entry.name}</div>
+                                  <div className="text-[10px] text-slate-400">
+                                    {t('Last successful run:', 'Last successful run:')} {entry.lastSuccess ? formatTimestamp(entry.lastSuccess) : 'n/a'}
+                                  </div>
+                                  {summarizeRemoteSystems(entry.remoteSystems) ? (
+                                    <div className="text-[10px] text-slate-400">
+                                      {summarizeRemoteSystems(entry.remoteSystems)}
+                                    </div>
+                                  ) : null}
+                                  {summarizeReplicationGroups(
+                                    entry.replicationVolumeGroups,
+                                    entry.replicationVolumes,
+                                  ) ? (
+                                    <div className="text-[10px] text-slate-400">
+                                      {summarizeReplicationGroups(
+                                        entry.replicationVolumeGroups,
+                                        entry.replicationVolumes,
+                                      )}
+                                    </div>
+                                  ) : null}
                                 </div>
-                                {summarizeRemoteSystems(entry.remoteSystems) ? (
-                                  <div className="text-[10px] text-slate-400">
-                                    {summarizeRemoteSystems(entry.remoteSystems)}
-                                  </div>
-                                ) : null}
-                                {summarizeReplicationGroups(
-                                  entry.replicationVolumeGroups,
-                                  entry.replicationVolumes,
-                                ) ? (
-                                  <div className="text-[10px] text-slate-400">
-                                    {summarizeReplicationGroups(
-                                      entry.replicationVolumeGroups,
-                                      entry.replicationVolumes,
-                                    )}
-                                  </div>
-                                ) : null}
-                              </div>
-                              <span className="text-[11px] text-emerald-300">ok</span>
-                            </li>
-                          ))}
+                                <span className="text-[11px] text-emerald-300">ok</span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
-                        <div className="mt-2 text-slate-400">No healthy connectors reported.</div>
+                        <div className="mt-2 text-slate-400">{t('No healthy connectors reported.', 'No healthy connectors reported.')}</div>
                       )}
                     </div>
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Needs attention</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Needs attention', 'Needs attention')}</div>
                       {connectorDetails.issues.length ? (
                         <ul className="mt-2 space-y-1 text-slate-100">
-                          {connectorDetails.issues.map((entry) => (
-                            <li key={entry.name} className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate">{entry.name}</div>
-                                <div className="text-[10px] text-slate-400">
-                                  Last successful run: {entry.lastSuccess ? formatTimestamp(entry.lastSuccess) : 'n/a'}
+                          {connectorDetails.issues.map(entry => {
+                            const {
+                              t
+                            } = useI18n();
+
+                            return (
+                              <li key={entry.name} className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="truncate">{entry.name}</div>
+                                  <div className="text-[10px] text-slate-400">
+                                    {t('Last successful run:', 'Last successful run:')} {entry.lastSuccess ? formatTimestamp(entry.lastSuccess) : 'n/a'}
+                                  </div>
+                                  {summarizeRemoteSystems(entry.remoteSystems) ? (
+                                    <div className="text-[10px] text-slate-400">
+                                      {summarizeRemoteSystems(entry.remoteSystems)}
+                                    </div>
+                                  ) : null}
+                                  {summarizeReplicationGroups(
+                                    entry.replicationVolumeGroups,
+                                    entry.replicationVolumes,
+                                  ) ? (
+                                    <div className="text-[10px] text-slate-400">
+                                      {summarizeReplicationGroups(
+                                        entry.replicationVolumeGroups,
+                                        entry.replicationVolumes,
+                                      )}
+                                    </div>
+                                  ) : null}
                                 </div>
-                                {summarizeRemoteSystems(entry.remoteSystems) ? (
-                                  <div className="text-[10px] text-slate-400">
-                                    {summarizeRemoteSystems(entry.remoteSystems)}
-                                  </div>
-                                ) : null}
-                                {summarizeReplicationGroups(
-                                  entry.replicationVolumeGroups,
-                                  entry.replicationVolumes,
-                                ) ? (
-                                  <div className="text-[10px] text-slate-400">
-                                    {summarizeReplicationGroups(
-                                      entry.replicationVolumeGroups,
-                                      entry.replicationVolumes,
-                                    )}
-                                  </div>
-                                ) : null}
-                              </div>
-                              <span
-                                className={
-                                  !entry.name.startsWith('powerstore') &&
-                                  (entry.haConfigured === false || entry.haStatus === 'error')
-                                    ? 'text-[11px] text-rose-300'
-                                    : 'text-[11px] text-amber-300'
-                                }
-                              >
-                                {connectorIssueLabel(entry)}
-                              </span>
-                            </li>
-                          ))}
+                                <span
+                                  className={
+                                    !entry.name.startsWith('powerstore') &&
+                                    (entry.haConfigured === false || entry.haStatus === 'error')
+                                      ? 'text-[11px] text-rose-300'
+                                      : 'text-[11px] text-amber-300'
+                                  }
+                                >
+                                  {connectorIssueLabel(entry)}
+                                </span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
-                        <div className="mt-2 text-slate-400">No connector issues reported.</div>
+                        <div className="mt-2 text-slate-400">{t('No connector issues reported.', 'No connector issues reported.')}</div>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="mt-3 text-xs text-slate-400">
-                    No health details yet. Run ingestion to populate connector status.
+                    {t(
+                      'No health details yet. Run ingestion to populate connector status.',
+                      'No health details yet. Run ingestion to populate connector status.'
+                    )}
                   </div>
                 )
               ) : null}
@@ -4289,7 +4379,7 @@ export function DashboardPage() {
             onClick={() => toggleCard('dora')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>DORA compliance score</Label>
+            <Label>{t('DORA compliance score', 'DORA compliance score')}</Label>
             <div className="text-2xl font-semibold text-slate-50">
               {doraControls?.score ?? resolveFrameworkScore(['dora']) ?? 'n/a'}
             </div>
@@ -4297,10 +4387,10 @@ export function DashboardPage() {
           {isExpanded('dora') ? (
             <div className="mt-3 space-y-2 text-sm text-slate-50">
               {isLoading('dora') && !doraMetrics && !doraControls ? (
-                <div className="text-xs text-slate-300">Loading DORA signals...</div>
+                <div className="text-xs text-slate-300">{t('Loading DORA signals...', 'Loading DORA signals...')}</div>
               ) : null}
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-200">Operational signals (latest run)</div>
+                <div className="text-xs text-slate-200">{t('Operational signals (latest run)', 'Operational signals (latest run)')}</div>
                 <HelpTip text="Latest run signals. Add connectors to improve deployment, incident, and recovery coverage." />
               </div>
               <OperationalMetricsBlock
@@ -4321,7 +4411,7 @@ export function DashboardPage() {
             onClick={() => toggleCard('nis2')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>NIS2 compliance score</Label>
+            <Label>{t('NIS2 compliance score', 'NIS2 compliance score')}</Label>
             <div className="text-2xl font-semibold text-slate-50">
               {nis2Controls?.score ?? resolveFrameworkScore(['nis2']) ?? 'n/a'}
             </div>
@@ -4329,10 +4419,10 @@ export function DashboardPage() {
           {isExpanded('nis2') ? (
             <div className="mt-3 space-y-2 text-sm text-slate-50">
               {isLoading('nis2') && !nis2Operational && !nis2Controls ? (
-                <div className="text-xs text-slate-300">Loading NIS2 signals...</div>
+                <div className="text-xs text-slate-300">{t('Loading NIS2 signals...', 'Loading NIS2 signals...')}</div>
               ) : null}
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-200">Operational signals (latest run)</div>
+                <div className="text-xs text-slate-200">{t('Operational signals (latest run)', 'Operational signals (latest run)')}</div>
                 <HelpTip text="Latest run signals and NIS2 control summary." />
               </div>
               <OperationalMetricsBlock
@@ -4353,7 +4443,7 @@ export function DashboardPage() {
             onClick={() => toggleCard('iso')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>ISO 27001 compliance score</Label>
+            <Label>{t('ISO 27001 compliance score', 'ISO 27001 compliance score')}</Label>
             <div className="text-2xl font-semibold text-slate-50">
               {isoControls?.score ?? resolveFrameworkScore(['iso', 'iso27001']) ?? 'n/a'}
             </div>
@@ -4361,10 +4451,10 @@ export function DashboardPage() {
           {isExpanded('iso') ? (
             <div className="mt-3 space-y-2 text-sm text-slate-50">
               {isLoading('iso') && !isoOperational && !isoControls ? (
-                <div className="text-xs text-slate-300">Loading ISO 27001 signals...</div>
+                <div className="text-xs text-slate-300">{t('Loading ISO 27001 signals...', 'Loading ISO 27001 signals...')}</div>
               ) : null}
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-200">Operational signals (latest run)</div>
+                <div className="text-xs text-slate-200">{t('Operational signals (latest run)', 'Operational signals (latest run)')}</div>
                 <HelpTip text="Latest run signals and ISO 27001 control summary." />
               </div>
               <OperationalMetricsBlock
@@ -4385,7 +4475,7 @@ export function DashboardPage() {
             onClick={() => toggleCard('soc2')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>SOC 2 compliance score</Label>
+            <Label>{t('SOC 2 compliance score', 'SOC 2 compliance score')}</Label>
             <div className="text-2xl font-semibold text-slate-50">
               {soc2Controls?.score ?? resolveFrameworkScore(['soc2']) ?? 'n/a'}
             </div>
@@ -4393,10 +4483,10 @@ export function DashboardPage() {
           {isExpanded('soc2') ? (
             <div className="mt-3 space-y-2 text-sm text-slate-50">
               {isLoading('soc2') && !soc2Operational && !soc2Controls ? (
-                <div className="text-xs text-slate-300">Loading SOC 2 signals...</div>
+                <div className="text-xs text-slate-300">{t('Loading SOC 2 signals...', 'Loading SOC 2 signals...')}</div>
               ) : null}
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-200">Operational signals (latest run)</div>
+                <div className="text-xs text-slate-200">{t('Operational signals (latest run)', 'Operational signals (latest run)')}</div>
                 <HelpTip text="Latest run signals and SOC 2 control summary." />
               </div>
               <OperationalMetricsBlock
@@ -4417,7 +4507,7 @@ export function DashboardPage() {
             onClick={() => toggleCard('gxp')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>GxP compliance score</Label>
+            <Label>{t('GxP compliance score', 'GxP compliance score')}</Label>
             <div className="text-2xl font-semibold text-slate-50">
               {gxpControls?.score ?? resolveFrameworkScore(['gxp']) ?? 'n/a'}
             </div>
@@ -4425,10 +4515,10 @@ export function DashboardPage() {
           {isExpanded('gxp') ? (
             <div className="mt-3 space-y-2 text-sm text-slate-50">
               {isLoading('gxp') && !gxpOperational && !gxpControls ? (
-                <div className="text-xs text-slate-300">Loading GxP signals...</div>
+                <div className="text-xs text-slate-300">{t('Loading GxP signals...', 'Loading GxP signals...')}</div>
               ) : null}
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-200">Operational signals (latest run)</div>
+                <div className="text-xs text-slate-200">{t('Operational signals (latest run)', 'Operational signals (latest run)')}</div>
                 <HelpTip text="Latest run signals and GxP control summary." />
               </div>
               <OperationalMetricsBlock
@@ -4443,11 +4533,13 @@ export function DashboardPage() {
         </Card>
         </div>
       </div>
-
       <Card>
-        <Label>Shared resilience view</Label>
+        <Label>{t('Shared resilience view', 'Shared resilience view')}</Label>
         <div className="mt-1 text-[11px] text-slate-400">
-          Consolidated resilience evidence is shown once to keep framework cards focused on key operational signals.
+          {t(
+            'Consolidated resilience evidence is shown once to keep framework cards focused on key operational signals.',
+            'Consolidated resilience evidence is shown once to keep framework cards focused on key operational signals.'
+          )}
           {sharedResilienceCoverage ? ` Source: ${sharedResilienceCoverage.label}.` : ''}
         </div>
         {vmResilienceSummaryBlock()}
@@ -4462,11 +4554,13 @@ export function DashboardPage() {
           )
           : (
             <div className="mt-3 rounded border border-slate-700 bg-[#0d1a2b]/70 p-2 text-xs text-slate-300">
-              No resilience playbook data yet. Expand a framework card to load controls and resilience details.
+              {t(
+                'No resilience playbook data yet. Expand a framework card to load controls and resilience details.',
+                'No resilience playbook data yet. Expand a framework card to load controls and resilience details.'
+              )}
             </div>
           )}
       </Card>
-
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <Label>{`Risk score trend (last ${historyLimit} runs)`}</Label>
@@ -4482,25 +4576,28 @@ export function DashboardPage() {
                 <circle cx="236" cy="8" r="3" fill="#38bdf8" />
               </svg>
             ) : (
-              <div className="text-sm text-slate-50">No trend data yet.</div>
+              <div className="text-sm text-slate-50">{t('No trend data yet.', 'No trend data yet.')}</div>
             )}
           </div>
-          <div className="mt-1 text-[11px] text-slate-400">Risk points (lower is better)</div>
-          <div className="mt-2 text-xs text-slate-200">Updated {formatTimestamp(latestRun?.timestamp)}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{t('Risk points (lower is better)', 'Risk points (lower is better)')}</div>
+          <div className="mt-2 text-xs text-slate-200">{t('Updated', 'Updated')} {formatTimestamp(latestRun?.timestamp)}</div>
         </Card>
 
         <Card>
-          <Label>Framework trend (risk + findings)</Label>
+          <Label>{t('Framework trend (risk + findings)', 'Framework trend (risk + findings)')}</Label>
           <div className="mt-1 text-[11px] text-slate-400">
-            Risk points and findings for the selected framework
+            {t(
+              'Risk points and findings for the selected framework',
+              'Risk points and findings for the selected framework'
+            )}
           </div>
           <div className="mt-3 space-y-3 text-sm text-slate-50">
             {frameworkTrendPoints.length ? (
               <>
                 <div className="flex items-center justify-between px-2 text-[11px] text-slate-400">
-                  <span>Run time</span>
-                  <span>Risk points</span>
-                  <span>Findings</span>
+                  <span>{t('Run time', 'Run time')}</span>
+                  <span>{t('Risk points', 'Risk points')}</span>
+                  <span>{t('Findings', 'Findings')}</span>
                 </div>
                 {frameworkTrendPoints.slice(-4).map((point) => {
                   const isSelected = point.run_id && point.run_id === trendFindingsRun
@@ -4523,23 +4620,23 @@ export function DashboardPage() {
                 })}
               </>
             ) : (
-              <div>No framework trend data.</div>
+              <div>{t('No framework trend data.', 'No framework trend data.')}</div>
             )}
           </div>
           {trendFindingsRun ? (
             <div className="mt-3 rounded border border-slate-700 bg-[#0d1a2b]/70 p-2 text-xs text-slate-200">
               <div className="mb-2 flex items-center justify-between">
-                <div className="text-[11px] font-semibold text-slate-50">Findings for run {trendFindingsRun}</div>
+                <div className="text-[11px] font-semibold text-slate-50">{t('Findings for run', 'Findings for run')} {trendFindingsRun}</div>
                 <button
                   type="button"
                   onClick={() => setTrendFindingsRun(null)}
                   className="text-[11px] text-slate-400 hover:text-slate-200"
                 >
-                  Hide
+                  {t('Hide', 'Hide')}
                 </button>
               </div>
               {trendFindingsLoading === trendFindingsRun ? (
-                <div className="text-[11px] text-slate-400">Loading findings...</div>
+                <div className="text-[11px] text-slate-400">{t('Loading findings...', 'Loading findings...')}</div>
               ) : trendFindingsError ? (
                 <div className="text-[11px] text-rose-300">{trendFindingsError.message}</div>
               ) : selectedTrendFindings?.items?.length ? (
@@ -4566,31 +4663,30 @@ export function DashboardPage() {
                   ))}
                 </ul>
               ) : (
-                <div className="text-[11px] text-slate-400">No findings returned for this run.</div>
+                <div className="text-[11px] text-slate-400">{t('No findings returned for this run.', 'No findings returned for this run.')}</div>
               )}
             </div>
           ) : null}
         </Card>
 
         <Card>
-          <Label>Latest run details</Label>
+          <Label>{t('Latest run details', 'Latest run details')}</Label>
           <div className="mt-3 space-y-2 text-sm text-slate-50">
             <div>
-              <span className="text-slate-200">Run ID:</span> {latestRun?.run_id ?? 'n/a'}
+              <span className="text-slate-200">{t('Run ID:', 'Run ID:')}</span> {latestRun?.run_id ?? 'n/a'}
             </div>
             <div>
-              <span className="text-slate-200">Time:</span> {formatTimestamp(latestRun?.timestamp)}
+              <span className="text-slate-200">{t('Time:', 'Time:')}</span> {formatTimestamp(latestRun?.timestamp)}
             </div>
             <div>
-              <span className="text-slate-200">Risk tier:</span> {latestRun?.overall_risk ?? 'n/a'}
+              <span className="text-slate-200">{t('Risk tier:', 'Risk tier:')}</span> {latestRun?.overall_risk ?? 'n/a'}
             </div>
             <div>
-              <span className="text-slate-200">Risk points:</span> {latestRun?.risk_score ?? 'n/a'}
+              <span className="text-slate-200">{t('Risk points:', 'Risk points:')}</span> {latestRun?.risk_score ?? 'n/a'}
             </div>
           </div>
         </Card>
       </div>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <button
@@ -4598,7 +4694,7 @@ export function DashboardPage() {
             onClick={() => toggleCard('infra')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>Infrastructure benchmark</Label>
+            <Label>{t('Infrastructure benchmark', 'Infrastructure benchmark')}</Label>
             <div className="text-2xl font-semibold text-slate-50">
               {typeof infraBenchmark?.overall_score === 'number'
                 ? `${infraBenchmark.overall_score.toFixed(0)}`
@@ -4606,12 +4702,18 @@ export function DashboardPage() {
             </div>
           </button>
           <div className="mt-1 text-[11px] text-slate-400">
-            Score 0-100 (average pass rate across layers)
+            {t(
+              'Score 0-100 (average pass rate across layers)',
+              'Score 0-100 (average pass rate across layers)'
+            )}
           </div>
           {isExpanded('infra') ? (
             <div className="mt-2">
               {isLoading('infra') && !infraBenchmark ? (
-                <div className="text-xs text-slate-300">Loading infrastructure benchmark...</div>
+                <div className="text-xs text-slate-300">{t(
+                  'Loading infrastructure benchmark...',
+                  'Loading infrastructure benchmark...'
+                )}</div>
               ) : null}
               <div className="text-xs text-slate-300">
                 {infraBenchmark?.framework
@@ -4630,11 +4732,11 @@ export function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <div className="mt-3 text-xs text-slate-300">No infra benchmark data yet.</div>
+                <div className="mt-3 text-xs text-slate-300">{t('No infra benchmark data yet.', 'No infra benchmark data yet.')}</div>
               )}
               {infraBenchmark?.per_connector && Object.keys(infraBenchmark.per_connector).length ? (
                 <div className="mt-3 rounded border border-slate-700 bg-[#0d1a2b]/70 p-2 text-xs text-slate-200">
-                  <div className="mb-1 font-semibold text-slate-50">Top connectors (benchmark)</div>
+                  <div className="mb-1 font-semibold text-slate-50">{t('Top connectors (benchmark)', 'Top connectors (benchmark)')}</div>
                   {Object.entries(infraBenchmark.per_connector)
                     .sort((a, b) => (b[1].score ?? 0) - (a[1].score ?? 0))
                     .slice(0, 4)
@@ -4650,7 +4752,7 @@ export function DashboardPage() {
               ) : null}
             </div>
           ) : (
-            <div className="mt-2 text-xs text-slate-300">Expand for benchmark details.</div>
+            <div className="mt-2 text-xs text-slate-300">{t('Expand for benchmark details.', 'Expand for benchmark details.')}</div>
           )}
         </Card>
 
@@ -4660,14 +4762,14 @@ export function DashboardPage() {
             onClick={() => toggleCard('exec')}
             className="flex w-full items-center justify-between text-left"
           >
-            <Label>Executive risk trend</Label>
+            <Label>{t('Executive risk trend', 'Executive risk trend')}</Label>
             <div className="text-2xl font-semibold text-slate-50">{execLatest?.risk_score ?? 'n/a'}</div>
           </button>
-          <div className="mt-1 text-[11px] text-slate-400">Risk points (lower is better)</div>
+          <div className="mt-1 text-[11px] text-slate-400">{t('Risk points (lower is better)', 'Risk points (lower is better)')}</div>
           {isExpanded('exec') ? (
             <>
               {isLoading('exec') && !execKpis ? (
-                <div className="mt-2 text-xs text-slate-300">Loading executive KPIs...</div>
+                <div className="mt-2 text-xs text-slate-300">{t('Loading executive KPIs...', 'Loading executive KPIs...')}</div>
               ) : null}
               <div className="mt-3">
                 {execTrendValues.length ? (
@@ -4681,35 +4783,38 @@ export function DashboardPage() {
                     <circle cx="236" cy="8" r="3" fill="#fbbf24" />
                   </svg>
                 ) : (
-                  <div className="text-sm text-slate-50">No executive KPI trend data.</div>
+                  <div className="text-sm text-slate-50">{t('No executive KPI trend data.', 'No executive KPI trend data.')}</div>
                 )}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-200">
                 <div>
-                  <div className="text-slate-300">Infrastructure score (0-100)</div>
+                  <div className="text-slate-300">{t('Infrastructure score (0-100)', 'Infrastructure score (0-100)')}</div>
                   <div className="text-sm font-semibold text-slate-50">
                     {typeof execLatest?.infra_score === 'number' ? execLatest.infra_score.toFixed(0) : 'n/a'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-300">Connector health (percent)</div>
+                  <div className="text-slate-300">{t('Connector health (percent)', 'Connector health (percent)')}</div>
                   <div className="text-sm font-semibold text-slate-50">
                     {formatRatio(execLatest?.connector_health_ratio)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-300">Risk points</div>
+                  <div className="text-slate-300">{t('Risk points', 'Risk points')}</div>
                   <div className="text-sm font-semibold text-slate-50">{execLatest?.risk_score ?? 'n/a'}</div>
                 </div>
                 <div>
-                  <div className="text-slate-300">Validation issues</div>
+                  <div className="text-slate-300">{t('Validation issues', 'Validation issues')}</div>
                   <div className="text-sm font-semibold text-slate-50">
                     {execLatest?.validation_issue_count ?? 'n/a'}
                   </div>
                 </div>
               </div>
               <div className="mt-3 text-[11px] text-slate-400">
-                Infrastructure score and connector health over time
+                {t(
+                  'Infrastructure score and connector health over time',
+                  'Infrastructure score and connector health over time'
+                )}
               </div>
               <div className="mt-2 space-y-2 text-xs text-slate-200">
                 {(execKpis?.trend ?? []).slice(-4).map((point) => (
@@ -4722,15 +4827,15 @@ export function DashboardPage() {
                   </div>
                 ))}
                 {!execKpis?.trend?.length ? (
-                  <div className="text-xs text-slate-400">No executive trend runs yet.</div>
+                  <div className="text-xs text-slate-400">{t('No executive trend runs yet.', 'No executive trend runs yet.')}</div>
                 ) : null}
               </div>
             </>
           ) : (
-            <div className="mt-2 text-xs text-slate-300">Expand to load KPI details.</div>
+            <div className="mt-2 text-xs text-slate-300">{t('Expand to load KPI details.', 'Expand to load KPI details.')}</div>
           )}
         </Card>
       </div>
     </div>
-  )
+  );
 }

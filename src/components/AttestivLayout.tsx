@@ -32,7 +32,13 @@ import { LanguageSwitcher } from './LanguageSwitcher'
 // forcing a separate tKey for every nav entry.
 function useNavTranslator() {
   const { t } = useI18n()
-  return (label: string) => t(label, label)
+  return (label: string) => {
+    const {
+      t
+    } = useI18n();
+
+    return t(label, label);
+  };
 }
 
 // Translation keys for the rail tooltips. Kept as a side table rather
@@ -272,15 +278,23 @@ function sectionFromPath(pathname: string): SectionKey {
 function useRailLabel() {
   const { t } = useI18n()
   return (key: SectionKey, fallback: string) => {
+    const {
+      t
+    } = useI18n();
+
     const translated = t(RAIL_LABEL_TKEY[key])
     // The translator returns the key itself when nothing matches;
     // fall back to the seed English label so a missing entry doesn't
     // surface `nav.dashboard` as a tooltip.
     return translated === RAIL_LABEL_TKEY[key] ? fallback : translated
-  }
+  };
 }
 
 export function AttestivLayout({ children }: { children: ReactNode }) {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const pathname = usePathname() || '/'
   const activeSection = useMemo(() => sectionFromPath(pathname), [pathname])
@@ -394,10 +408,9 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
         <div className="attestiv-rail-spacer" />
         {railBottom.map(renderRailButton)}
       </div>
-
       <aside className="attestiv-sidebar">
         <div className="attestiv-sidebar-header">
-          <div className="attestiv-sidebar-title">Attestiv</div>
+          <div className="attestiv-sidebar-title">{t('Attestiv', 'Attestiv')}</div>
           <div className="attestiv-sidebar-sub">{navT(section.navLabel)}</div>
         </div>
         <div className="attestiv-nav-group">
@@ -417,10 +430,9 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-
       <main className="attestiv-main">{children}</main>
     </div>
-  )
+  );
 }
 
 // Inline brand mark from the mockup. Shield + check, three-tone

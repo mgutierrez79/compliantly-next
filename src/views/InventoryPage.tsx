@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Button, Card, DangerButton, ErrorBox, HelpTip, Input, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type ConnectorConfigResponse = { available: string[]; enabled: string[] }
 type InventoryExternalRef = { source: string; external_id: string }
@@ -111,6 +112,10 @@ const readFrameworkEvaluationEnabled = (asset: InventoryAsset): boolean => {
 }
 
 export function InventoryPage() {
+  const {
+    t
+  } = useI18n();
+
   const ASSET_FETCH_STEP = 200
   const [assets, setAssets] = useState<InventoryAsset[]>([])
   const [error, setError] = useState<ApiError | null>(null)
@@ -547,29 +552,31 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <PageTitle>Inventory</PageTitle>
-      {error ? <ErrorBox title="Inventory error" detail={error.message} /> : null}
-      {configError ? <ErrorBox title="Inventory config error" detail={configError.message} /> : null}
-
+      <PageTitle>{t('Inventory', 'Inventory')}</PageTitle>
+      {error ? <ErrorBox title={t('Inventory error', 'Inventory error')} detail={error.message} /> : null}
+      {configError ? <ErrorBox title={t('Inventory config error', 'Inventory config error')} detail={configError.message} /> : null}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Label>Inventory import</Label>
+            <Label>{t('Inventory import', 'Inventory import')}</Label>
             <p className="text-sm text-slate-50">
-              Pull assets from connector snapshots (ServiceNow, GLPI, Palo Alto, etc.) into the inventory register.
+              {t(
+                'Pull assets from connector snapshots (ServiceNow, GLPI, Palo Alto, etc.) into the inventory register.',
+                'Pull assets from connector snapshots (ServiceNow, GLPI, Palo Alto, etc.) into the inventory register.'
+              )}
             </p>
           </div>
           <HelpTip text={'Import reads the connector snapshot and creates inventory assets. Use overwrite to refresh existing entries.'} />
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
-            <Label>Source (optional)</Label>
+            <Label>{t('Source (optional)', 'Source (optional)')}</Label>
             <select
               className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
               value={importSource}
               onChange={(event) => setImportSource(event.target.value)}
             >
-              <option value="">All sources</option>
+              <option value="">{t('All sources', 'All sources')}</option>
               {sourceOptions.map((source) => (
                 <option key={source} value={source}>
                   {source}
@@ -578,7 +585,7 @@ export function InventoryPage() {
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Refresh connectors</Label>
+            <Label>{t('Refresh connectors', 'Refresh connectors')}</Label>
             <label className="flex items-center gap-2 text-sm text-slate-50">
               <input
                 type="checkbox"
@@ -586,11 +593,11 @@ export function InventoryPage() {
                 onChange={(event) => setImportRefresh(event.target.checked)}
                 className="h-4 w-4 rounded border-slate-600 bg-slate-900"
               />
-              Force refresh before import
+              {t('Force refresh before import', 'Force refresh before import')}
             </label>
           </div>
           <div className="space-y-2">
-            <Label>Overwrite</Label>
+            <Label>{t('Overwrite', 'Overwrite')}</Label>
             <label className="flex items-center gap-2 text-sm text-slate-50">
               <input
                 type="checkbox"
@@ -598,16 +605,15 @@ export function InventoryPage() {
                 onChange={(event) => setImportOverwrite(event.target.checked)}
                 className="h-4 w-4 rounded border-slate-600 bg-slate-900"
               />
-              Update existing assets
+              {t('Update existing assets', 'Update existing assets')}
             </label>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button size="sm" onClick={runImport}>Import assets</Button>
+          <Button size="sm" onClick={runImport}>{t('Import assets', 'Import assets')}</Button>
           {importMessage ? <span className="text-sm text-slate-50">{importMessage}</span> : null}
         </div>
       </Card>
-
       {showForm ? (
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -622,15 +628,15 @@ export function InventoryPage() {
                     setMessage(null)
                   }}
                 >
-                  New asset
+                  {t('New asset', 'New asset')}
                 </Button>
               ) : null}
-              <Button size="sm" onClick={resetDraft}>Close</Button>
+              <Button size="sm" onClick={resetDraft}>{t('Close', 'Close')}</Button>
             </div>
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Asset ID</Label>
+              <Label>{t('Asset ID', 'Asset ID')}</Label>
               <Input
                 value={draft.asset_id}
                 onChange={(event) => setDraft({ ...draft, asset_id: event.target.value })}
@@ -639,28 +645,28 @@ export function InventoryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>{t('Name', 'Name')}</Label>
               <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Owner</Label>
+              <Label>{t('Owner', 'Owner')}</Label>
               <Input value={draft.owner} onChange={(event) => setDraft({ ...draft, owner: event.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Business unit</Label>
+              <Label>{t('Business unit', 'Business unit')}</Label>
               <Input
                 value={draft.business_unit}
                 onChange={(event) => setDraft({ ...draft, business_unit: event.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Asset type</Label>
+              <Label>{t('Asset type', 'Asset type')}</Label>
               <select
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={draft.asset_type}
                 onChange={(event) => setDraft({ ...draft, asset_type: event.target.value })}
               >
-                <option value="">Select asset type</option>
+                <option value="">{t('Select asset type', 'Select asset type')}</option>
                 {assetTypeOptions.map((option) => (
                   <option key={`type-${option.value}`} value={option.value}>
                     {option.label}
@@ -669,15 +675,15 @@ export function InventoryPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Criticality</Label>
+              <Label>{t('Criticality', 'Criticality')}</Label>
               <Input
                 value={draft.criticality}
                 onChange={(event) => setDraft({ ...draft, criticality: event.target.value })}
-                placeholder="low, medium, high"
+                placeholder={t('low, medium, high', 'low, medium, high')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Framework evaluation</Label>
+              <Label>{t('Framework evaluation', 'Framework evaluation')}</Label>
               <label className="flex items-center gap-2 text-sm text-slate-50">
                 <input
                   type="checkbox"
@@ -690,20 +696,23 @@ export function InventoryPage() {
                   }
                   className="h-4 w-4 rounded border-slate-600 bg-slate-900"
                 />
-                Include this asset in framework evaluation
+                {t(
+                  'Include this asset in framework evaluation',
+                  'Include this asset in framework evaluation'
+                )}
               </label>
             </div>
             <div className="space-y-2">
-              <Label>Datacenter</Label>
+              <Label>{t('Datacenter', 'Datacenter')}</Label>
               <select
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={draft.datacenter_id}
                 onChange={(event) => setDraft({ ...draft, datacenter_id: event.target.value })}
               >
-                <option value="">Select datacenter asset</option>
+                <option value="">{t('Select datacenter asset', 'Select datacenter asset')}</option>
                 {!datacenterOptions.length ? (
                   <option value="" disabled>
-                    No datacenter assets available
+                    {t('No datacenter assets available', 'No datacenter assets available')}
                   </option>
                 ) : null}
                 {datacenterOptions.map((option) => (
@@ -714,16 +723,16 @@ export function InventoryPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Application</Label>
+              <Label>{t('Application', 'Application')}</Label>
               <select
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={draft.application_id}
                 onChange={(event) => setDraft({ ...draft, application_id: event.target.value })}
               >
-                <option value="">Select application asset</option>
+                <option value="">{t('Select application asset', 'Select application asset')}</option>
                 {!applicationOptions.length ? (
                   <option value="" disabled>
-                    No application assets available
+                    {t('No application assets available', 'No application assets available')}
                   </option>
                 ) : null}
                 {applicationOptions.map((option) => (
@@ -734,7 +743,7 @@ export function InventoryPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Access tier</Label>
+              <Label>{t('Access tier', 'Access tier')}</Label>
               <Input
                 value={draft.access_tier}
                 onChange={(event) => setDraft({ ...draft, access_tier: event.target.value })}
@@ -742,47 +751,53 @@ export function InventoryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Tags</Label>
+              <Label>{t('Tags', 'Tags')}</Label>
               <Input
                 value={draft.tags}
                 onChange={(event) => setDraft({ ...draft, tags: event.target.value })}
-                placeholder="comma-separated tags"
+                placeholder={t('comma-separated tags', 'comma-separated tags')}
               />
             </div>
             <div className="md:col-span-2">
-              <Label>External references</Label>
+              <Label>{t('External references', 'External references')}</Label>
               <div className="mt-2 space-y-2">
                 {draft.external_refs.length ? (
                   <div className="space-y-2">
-                    {draft.external_refs.map((ref, index) => (
-                      <div key={`${ref.source}-${ref.external_id}-${index}`} className="grid gap-2 md:grid-cols-3">
-                        <Input
-                          value={ref.source}
-                          onChange={(event) => updateExternalRef(index, { source: event.target.value })}
-                          placeholder="source"
-                        />
-                        <Input
-                          value={ref.external_id}
-                          onChange={(event) => updateExternalRef(index, { external_id: event.target.value })}
-                          placeholder="external id"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => removeExternalRef(index)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
+                    {draft.external_refs.map((ref, index) => {
+                      const {
+                        t
+                      } = useI18n();
+
+                      return (
+                        <div key={`${ref.source}-${ref.external_id}-${index}`} className="grid gap-2 md:grid-cols-3">
+                          <Input
+                            value={ref.source}
+                            onChange={(event) => updateExternalRef(index, { source: event.target.value })}
+                            placeholder="source"
+                          />
+                          <Input
+                            value={ref.external_id}
+                            onChange={(event) => updateExternalRef(index, { external_id: event.target.value })}
+                            placeholder={t('external id', 'external id')}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => removeExternalRef(index)}
+                          >
+                            {t('Remove', 'Remove')}
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="text-xs text-slate-400">No external references yet.</div>
+                  <div className="text-xs text-slate-400">{t('No external references yet.', 'No external references yet.')}</div>
                 )}
                 <Button
                   size="sm"
                   onClick={addExternalRef}
                 >
-                  Add external reference
+                  {t('Add external reference', 'Add external reference')}
                 </Button>
               </div>
             </div>
@@ -797,10 +812,9 @@ export function InventoryPage() {
           </div>
         </Card>
       ) : null}
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Inventory register</Label>
+          <Label>{t('Inventory register', 'Inventory register')}</Label>
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-50">
             <span>
               {loading
@@ -810,24 +824,24 @@ export function InventoryPage() {
                   : `${filteredAssets.length} assets`}
             </span>
             <Button size="sm" disabled={!filteredAssets.length || saving} onClick={selectFilteredAssets}>
-              Select filtered ({filteredAssets.length})
-            </Button>
+              {t('Select filtered (', 'Select filtered (')}{filteredAssets.length})
+                          </Button>
             <Button
               size="sm"
               disabled={!selectedAssetIds.length || saving}
               onClick={() => void enableFrameworkEvaluationSelected()}
             >
-              Enable eval selected{selectedAssetIds.length ? ` (${selectedAssetIds.length})` : ''}
+              {t('Enable eval selected', 'Enable eval selected')}{selectedAssetIds.length ? ` (${selectedAssetIds.length})` : ''}
             </Button>
             <Button
               size="sm"
               disabled={!selectedAssetIds.length || saving}
               onClick={() => void disableFrameworkEvaluationSelected()}
             >
-              Disable eval selected{selectedAssetIds.length ? ` (${selectedAssetIds.length})` : ''}
+              {t('Disable eval selected', 'Disable eval selected')}{selectedAssetIds.length ? ` (${selectedAssetIds.length})` : ''}
             </Button>
             <DangerButton size="sm" disabled={!selectedAssetIds.length} onClick={deleteSelectedAssets}>
-              Delete selected{selectedAssetIds.length ? ` (${selectedAssetIds.length})` : ''}
+              {t('Delete selected', 'Delete selected')}{selectedAssetIds.length ? ` (${selectedAssetIds.length})` : ''}
             </DangerButton>
             <Button
               size="sm"
@@ -838,10 +852,10 @@ export function InventoryPage() {
                 setMessage(null)
               }}
             >
-              Add asset
+              {t('Add asset', 'Add asset')}
             </Button>
             <label className="flex items-center gap-2">
-              <span>Rows</span>
+              <span>{t('Rows', 'Rows')}</span>
               <select
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-50"
                 value={pageSize}
@@ -861,14 +875,14 @@ export function InventoryPage() {
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-50">
           <span>
-            Page {pageIndex} of {pageCount}
+            {t('Page', 'Page')} {pageIndex}of {pageCount}
           </span>
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => setPageIndex(1)} disabled={pageIndex <= 1}>
-              First
+              {t('First', 'First')}
             </Button>
             <Button size="sm" onClick={() => setPageIndex((prev) => Math.max(1, prev - 1))} disabled={pageIndex <= 1}>
-              Prev
+              {t('Prev', 'Prev')}
             </Button>
             {Array.from({ length: pageCount }).map((_, idx) => {
               const page = idx + 1
@@ -893,10 +907,10 @@ export function InventoryPage() {
               onClick={() => setPageIndex((prev) => Math.min(pageCount, prev + 1))}
               disabled={pageIndex >= pageCount}
             >
-              Next
+              {t('Next', 'Next')}
             </Button>
             <Button size="sm" onClick={() => setPageIndex(pageCount)} disabled={pageIndex >= pageCount}>
-              Last
+              {t('Last', 'Last')}
             </Button>
           </div>
         </div>
@@ -910,37 +924,37 @@ export function InventoryPage() {
                     type="checkbox"
                     checked={allPageSelected}
                     onChange={(event) => toggleSelectAllPage(event.target.checked)}
-                    aria-label="Select all assets on page"
+                    aria-label={t('Select all assets on page', 'Select all assets on page')}
                     className="h-4 w-4 rounded border-slate-600 bg-slate-900"
                   />
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('asset_id')}>
-                    Asset ID{sortLabel('asset_id')}
+                    {t('Asset ID', 'Asset ID')}{sortLabel('asset_id')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('name')}>
-                    Name{sortLabel('name')}
+                    {t('Name', 'Name')}{sortLabel('name')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('asset_type')}>
-                    Type{sortLabel('asset_type')}
+                    {t('Type', 'Type')}{sortLabel('asset_type')}
                   </button>
                 </th>
                 <th className="py-2 pr-4">
                   <button type="button" className="text-left" onClick={() => toggleSort('criticality')}>
-                    Criticality{sortLabel('criticality')}
+                    {t('Criticality', 'Criticality')}{sortLabel('criticality')}
                   </button>
                 </th>
-                <th className="py-2 pr-4">Datacenter</th>
-                <th className="py-2 pr-4">Application</th>
-                <th className="py-2 pr-4">Access tier</th>
-                <th className="py-2 pr-4">Owner</th>
-                <th className="py-2 pr-4">Sources</th>
-                <th className="py-2 pr-4">Framework eval</th>
-                <th className="py-2 pr-4">Actions</th>
+                <th className="py-2 pr-4">{t('Datacenter', 'Datacenter')}</th>
+                <th className="py-2 pr-4">{t('Application', 'Application')}</th>
+                <th className="py-2 pr-4">{t('Access tier', 'Access tier')}</th>
+                <th className="py-2 pr-4">{t('Owner', 'Owner')}</th>
+                <th className="py-2 pr-4">{t('Sources', 'Sources')}</th>
+                <th className="py-2 pr-4">{t('Framework eval', 'Framework eval')}</th>
+                <th className="py-2 pr-4">{t('Actions', 'Actions')}</th>
               </tr>
               <tr className="text-slate-50">
                 <th className="pb-2 pr-4" />
@@ -948,8 +962,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.asset_id}
                     onChange={(event) => setFilters({ ...filters, asset_id: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by asset id"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by asset id', 'Filter by asset id')}
                     className="text-xs"
                   />
                 </th>
@@ -957,8 +971,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.name}
                     onChange={(event) => setFilters({ ...filters, name: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by name"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by name', 'Filter by name')}
                     className="text-xs"
                   />
                 </th>
@@ -966,8 +980,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.asset_type}
                     onChange={(event) => setFilters({ ...filters, asset_type: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by asset type"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by asset type', 'Filter by asset type')}
                     className="text-xs"
                   />
                 </th>
@@ -975,8 +989,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.criticality}
                     onChange={(event) => setFilters({ ...filters, criticality: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by criticality"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by criticality', 'Filter by criticality')}
                     className="text-xs"
                   />
                 </th>
@@ -984,8 +998,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.datacenter_id}
                     onChange={(event) => setFilters({ ...filters, datacenter_id: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by datacenter"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by datacenter', 'Filter by datacenter')}
                     className="text-xs"
                   />
                 </th>
@@ -993,8 +1007,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.application_id}
                     onChange={(event) => setFilters({ ...filters, application_id: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by application"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by application', 'Filter by application')}
                     className="text-xs"
                   />
                 </th>
@@ -1002,8 +1016,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.access_tier}
                     onChange={(event) => setFilters({ ...filters, access_tier: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by access tier"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by access tier', 'Filter by access tier')}
                     className="text-xs"
                   />
                 </th>
@@ -1012,8 +1026,8 @@ export function InventoryPage() {
                   <Input
                     value={filters.source}
                     onChange={(event) => setFilters({ ...filters, source: event.target.value })}
-                    placeholder="Filter"
-                    aria-label="Filter by source"
+                    placeholder={t('Filter', 'Filter')}
+                    aria-label={t('Filter by source', 'Filter by source')}
                     className="text-xs"
                   />
                 </th>
@@ -1022,46 +1036,52 @@ export function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1f365a]">
-              {pagedAssets.map((asset) => (
-                <tr key={asset.asset_id} className="text-slate-50">
-                  <td className="py-2 pr-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedAssetIds.includes(asset.asset_id)}
-                      onChange={() => toggleSelectAsset(asset.asset_id)}
-                      aria-label={`Select asset ${asset.asset_id}`}
-                      className="h-4 w-4 rounded border-slate-600 bg-slate-900"
-                    />
-                  </td>
-                  <td className="py-2 pr-4 font-mono text-xs">{asset.asset_id}</td>
-                  <td className="py-2 pr-4">{asset.name ?? '-'}</td>
-                  <td className="py-2 pr-4">{asset.asset_type ?? '-'}</td>
-                  <td className="py-2 pr-4">{asset.criticality ?? '-'}</td>
-                  <td className="py-2 pr-4">{asset.datacenter_id ?? '-'}</td>
-                  <td className="py-2 pr-4">{asset.application_id ?? '-'}</td>
-                  <td className="py-2 pr-4">{asset.access_tier ?? '-'}</td>
-                  <td className="py-2 pr-4">{asset.owner ?? '-'}</td>
-                  <td className="py-2 pr-4 text-xs text-slate-200/80">
-                    {(asset.external_refs ?? []).map((ref) => ref.source).join(', ') || '-'}
-                  </td>
-                  <td className="py-2 pr-4">
-                    {readFrameworkEvaluationEnabled(asset) ? (
-                      <span className="rounded bg-emerald-500/15 px-2 py-1 text-xs text-emerald-200">Enabled</span>
-                    ) : (
-                      <span className="rounded bg-rose-500/15 px-2 py-1 text-xs text-rose-200">Disabled</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button size="sm" onClick={() => editAsset(asset)}>Edit</Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {pagedAssets.map(asset => {
+                const {
+                  t
+                } = useI18n();
+
+                return (
+                  <tr key={asset.asset_id} className="text-slate-50">
+                    <td className="py-2 pr-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedAssetIds.includes(asset.asset_id)}
+                        onChange={() => toggleSelectAsset(asset.asset_id)}
+                        aria-label={`Select asset ${asset.asset_id}`}
+                        className="h-4 w-4 rounded border-slate-600 bg-slate-900"
+                      />
+                    </td>
+                    <td className="py-2 pr-4 font-mono text-xs">{asset.asset_id}</td>
+                    <td className="py-2 pr-4">{asset.name ?? '-'}</td>
+                    <td className="py-2 pr-4">{asset.asset_type ?? '-'}</td>
+                    <td className="py-2 pr-4">{asset.criticality ?? '-'}</td>
+                    <td className="py-2 pr-4">{asset.datacenter_id ?? '-'}</td>
+                    <td className="py-2 pr-4">{asset.application_id ?? '-'}</td>
+                    <td className="py-2 pr-4">{asset.access_tier ?? '-'}</td>
+                    <td className="py-2 pr-4">{asset.owner ?? '-'}</td>
+                    <td className="py-2 pr-4 text-xs text-slate-200/80">
+                      {(asset.external_refs ?? []).map((ref) => ref.source).join(', ') || '-'}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {readFrameworkEvaluationEnabled(asset) ? (
+                        <span className="rounded bg-emerald-500/15 px-2 py-1 text-xs text-emerald-200">{t('Enabled', 'Enabled')}</span>
+                      ) : (
+                        <span className="rounded bg-rose-500/15 px-2 py-1 text-xs text-rose-200">{t('Disabled', 'Disabled')}</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button size="sm" onClick={() => editAsset(asset)}>{t('Edit', 'Edit')}</Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {!filteredAssets.length ? (
                 <tr>
                   <td className="py-4 text-sm text-slate-50" colSpan={12}>
-                    No inventory assets yet.
+                    {t('No inventory assets yet.', 'No inventory assets yet.')}
                   </td>
                 </tr>
               ) : null}
@@ -1069,7 +1089,6 @@ export function InventoryPage() {
           </table>
         </div>
       </Card>
-
     </div>
-  )
+  );
 }

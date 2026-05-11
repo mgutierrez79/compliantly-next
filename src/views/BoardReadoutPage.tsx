@@ -1,9 +1,10 @@
-'use client'
-
+'use client';
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Card, ErrorBox, Label, PageTitle } from '../components/Ui'
 import { MarkdownView } from '../components/MarkdownView'
+
+import { useI18n } from '../lib/i18n';
 
 type MarkdownViewResponse = {
   run_id: string
@@ -18,6 +19,10 @@ const languageOptions = [
 ]
 
 export function BoardReadoutPage() {
+  const {
+    t
+  } = useI18n();
+
   const [language, setLanguage] = useState('en')
   const [data, setData] = useState<MarkdownViewResponse | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
@@ -52,16 +57,14 @@ export function BoardReadoutPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageTitle>Board Readout</PageTitle>
+        <PageTitle>{t('Board Readout', 'Board Readout')}</PageTitle>
         <div className="text-xs text-slate-400">{data?.run_id ? `Run ${data.run_id}` : ''}</div>
       </div>
-
-      {error ? <ErrorBox title="Board readout error" detail={error.message} /> : null}
-
+      {error ? <ErrorBox title={t('Board readout error', 'Board readout error')} detail={error.message} /> : null}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Label>Language</Label>
+            <Label>{t('Language', 'Language')}</Label>
             <select
               value={language}
               onChange={(event) => setLanguage(event.target.value)}
@@ -77,16 +80,15 @@ export function BoardReadoutPage() {
           <div className="text-xs text-slate-400">{data?.path ? `Source: ${data.path}` : ''}</div>
         </div>
       </Card>
-
       <Card>
         {loading ? (
-          <div className="text-sm text-slate-300">Loading board readout…</div>
+          <div className="text-sm text-slate-300">{t('Loading board readout…', 'Loading board readout…')}</div>
         ) : data?.content ? (
           <MarkdownView content={data.content} />
         ) : (
-          <div className="text-sm text-slate-300">No board readout available.</div>
+          <div className="text-sm text-slate-300">{t('No board readout available.', 'No board readout available.')}</div>
         )}
       </Card>
     </div>
-  )
+  );
 }

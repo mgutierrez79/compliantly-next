@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Policy detail page — single policy + linked controls + approval.
 //
 // Three blocks:
@@ -23,6 +22,8 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+
+import { useI18n } from '../lib/i18n';
 
 type Policy = {
   id: string
@@ -62,6 +63,10 @@ const STATUS_TONE: Record<string, 'amber' | 'green' | 'gray' | 'red'> = {
 }
 
 export function AttestivPolicyDetailPage() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -217,10 +222,10 @@ export function AttestivPolicyDetailPage() {
     return (
       <>
         <Topbar
-          title="Policy"
+          title={t('Policy', 'Policy')}
           left={
             <GhostButton onClick={() => router.push('/policies')}>
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
             </GhostButton>
           }
         />
@@ -228,18 +233,21 @@ export function AttestivPolicyDetailPage() {
           <Skeleton lines={5} height={42} />
         </div>
       </>
-    )
+    );
   }
 
   if (!data) {
     return (
       <>
-        <Topbar title="Policy" />
+        <Topbar title={t('Policy', 'Policy')} />
         <div className="attestiv-content">
-          <EmptyState icon="ti-file-text" title="Policy not found" description="The policy may have been deleted or you may not have access." />
+          <EmptyState icon="ti-file-text" title={t('Policy not found', 'Policy not found')} description={t(
+            'The policy may have been deleted or you may not have access.',
+            'The policy may have been deleted or you may not have access.'
+          )} />
         </div>
       </>
-    )
+    );
   }
 
   const { policy, links } = data
@@ -252,7 +260,7 @@ export function AttestivPolicyDetailPage() {
         title={policy.title || 'Policy'}
         left={
           <GhostButton onClick={() => router.push('/policies')}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Back
+            <i className="ti ti-arrow-left" aria-hidden="true" /> {t('Back', 'Back')}
           </GhostButton>
         }
         right={
@@ -264,17 +272,19 @@ export function AttestivPolicyDetailPage() {
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
         {reviewOverdue ? (
-          <Banner tone="warning" title="Overdue for review">
-            This policy is past its review_due_date. Linked controls are losing 10% of their score
-            until you bump the review date.
+          <Banner tone="warning" title={t('Overdue for review', 'Overdue for review')}>
+            {t(
+              'This policy is past its review_due_date. Linked controls are losing 10% of their score\n            until you bump the review date.',
+              'This policy is past its review_due_date. Linked controls are losing 10% of their score\n            until you bump the review date.'
+            )}
           </Banner>
         ) : null}
 
         <Card>
-          <CardTitle right={<Badge tone={tone}>{status}</Badge>}>Summary</CardTitle>
+          <CardTitle right={<Badge tone={tone}>{status}</Badge>}>{t('Summary', 'Summary')}</CardTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <Field label="Category">{(policy.category || '—').replace(/_/g, ' ')}</Field>
-            <Field label="Approval">
+            <Field label={t('Category', 'Category')}>{(policy.category || '—').replace(/_/g, ' ')}</Field>
+            <Field label={t('Approval', 'Approval')}>
               {approved ? (
                 <span style={{ color: 'var(--color-status-green-mid)' }}>
                   <i className="ti ti-circle-check" aria-hidden="true" /> by {policy.approved_by_user_id} on{' '}
@@ -282,14 +292,14 @@ export function AttestivPolicyDetailPage() {
                 </span>
               ) : (
                 <span style={{ color: 'var(--color-status-amber-text)' }}>
-                  <i className="ti ti-alert-triangle" aria-hidden="true" /> awaiting approval
+                  <i className="ti ti-alert-triangle" aria-hidden="true" /> {t('awaiting approval', 'awaiting approval')}
                 </span>
               )}
             </Field>
             {policy.document_url ? (
-              <Field label="Document">
+              <Field label={t('Document', 'Document')}>
                 <a href={policy.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-brand-blue)' }}>
-                  open document <i className="ti ti-external-link" aria-hidden="true" />
+                  {t('open document', 'open document')} <i className="ti ti-external-link" aria-hidden="true" />
                 </a>
               </Field>
             ) : null}
@@ -306,32 +316,32 @@ export function AttestivPolicyDetailPage() {
             right={
               !approved ? (
                 <PrimaryButton onClick={approve} disabled={busy}>
-                  <i className="ti ti-stamp" aria-hidden="true" /> Approve policy
+                  <i className="ti ti-stamp" aria-hidden="true" /> {t('Approve policy', 'Approve policy')}
                 </PrimaryButton>
               ) : null
             }
           >
-            Edit
+            {t('Edit', 'Edit')}
           </CardTitle>
           <FormGrid>
-            <FormRow label="Title">
+            <FormRow label={t('Title', 'Title')}>
               <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} />
             </FormRow>
-            <FormRow label="Version">
+            <FormRow label={t('Version', 'Version')}>
               <input value={version} onChange={(e) => setVersion(e.target.value)} style={inputStyle} />
             </FormRow>
-            <FormRow label="Status">
+            <FormRow label={t('Status', 'Status')}>
               <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
                 {['draft', 'active', 'retired'].map((opt) => (
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
             </FormRow>
-            <FormRow label="Review due date">
+            <FormRow label={t('Review due date', 'Review due date')}>
               <input type="date" value={reviewDueDate} onChange={(e) => setReviewDueDate(e.target.value)} style={inputStyle} />
             </FormRow>
           </FormGrid>
-          <FormRow label="Document URL">
+          <FormRow label={t('Document URL', 'Document URL')}>
             <input value={documentUrl} onChange={(e) => setDocumentUrl(e.target.value)} style={inputStyle} />
           </FormRow>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 8 }}>
@@ -342,9 +352,9 @@ export function AttestivPolicyDetailPage() {
         </Card>
 
         <Card style={{ marginTop: 12 }}>
-          <CardTitle right={<Badge tone="navy">{links.length} links</Badge>}>Linked controls</CardTitle>
+          <CardTitle right={<Badge tone="navy">{links.length} links</Badge>}>{t('Linked controls', 'Linked controls')}</CardTitle>
           <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', marginBottom: 10 }}>
-            <FormRow label="Framework ID">
+            <FormRow label={t('Framework ID', 'Framework ID')}>
               <input
                 value={linkFramework}
                 onChange={(e) => setLinkFramework(e.target.value)}
@@ -352,56 +362,65 @@ export function AttestivPolicyDetailPage() {
                 style={inputStyle}
               />
             </FormRow>
-            <FormRow label="Control ID">
+            <FormRow label={t('Control ID', 'Control ID')}>
               <input
                 value={linkControl}
                 onChange={(e) => setLinkControl(e.target.value)}
-                placeholder="A.12.3.1"
+                placeholder={t('A.12.3.1', 'A.12.3.1')}
                 style={inputStyle}
               />
             </FormRow>
             <PrimaryButton onClick={addLink} disabled={busy || !linkFramework.trim() || !linkControl.trim()}>
-              <i className="ti ti-link" aria-hidden="true" /> Link
+              <i className="ti ti-link" aria-hidden="true" /> {t('Link', 'Link')}
             </PrimaryButton>
           </div>
           {links.length === 0 ? (
             <EmptyState
               icon="ti-link-off"
-              title="No control links yet"
-              description="Link a (framework, control) pair so this policy contributes to that control's evaluation."
+              title={t('No control links yet', 'No control links yet')}
+              description={t(
+                'Link a (framework, control) pair so this policy contributes to that control\'s evaluation.',
+                'Link a (framework, control) pair so this policy contributes to that control\'s evaluation.'
+              )}
             />
           ) : (
             <div>
-              {links.map((link) => (
-                <div
-                  key={link.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 0',
-                    borderBottom: '0.5px solid var(--color-border-tertiary)',
-                    fontSize: 12,
-                  }}
-                >
-                  <code style={{ flex: 1 }}>
-                    {link.framework_id}/{link.control_id}
-                  </code>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                    linked {link.linked_at ? link.linked_at.slice(0, 10) : '—'}
-                    {link.linked_by ? ` by ${link.linked_by}` : ''}
-                  </span>
-                  <GhostButton onClick={() => unlink(link.id)} disabled={busy}>
-                    <i className="ti ti-x" aria-hidden="true" /> Unlink
-                  </GhostButton>
-                </div>
-              ))}
+              {links.map(link => {
+                const {
+                  t
+                } = useI18n();
+
+                return (
+                  <div
+                    key={link.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 0',
+                      borderBottom: '0.5px solid var(--color-border-tertiary)',
+                      fontSize: 12,
+                    }}
+                  >
+                    <code style={{ flex: 1 }}>
+                      {link.framework_id}/{link.control_id}
+                    </code>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                      linked {link.linked_at ? link.linked_at.slice(0, 10) : '—'}
+                      {link.linked_by ? ` by ${link.linked_by}` : ''}
+                    </span>
+                    <GhostButton onClick={() => unlink(link.id)} disabled={busy}>
+                      <i className="ti ti-x" aria-hidden="true" /> {t('Unlink', 'Unlink')}
+                    </GhostButton>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

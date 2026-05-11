@@ -1,8 +1,9 @@
-'use client'
-
+'use client';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Button, Card, DangerButton, ErrorBox, HelpTip, Label, PageTitle } from '../components/Ui'
+
+import { useI18n } from '../lib/i18n';
 
 type ConnectorAlert = {
   key: string
@@ -773,6 +774,10 @@ const normalizeEventMappings = (mappings?: ConnectorEventMapping[]) =>
   (mappings ?? []).map((mapping) => normalizeEventMapping(mapping))
 
 const renderDebugCounts = (debug?: ConnectorDebugResponse | null) => {
+  const {
+    t
+  } = useI18n();
+
   if (!debug) return null
   const entries = Object.entries(debug.counts ?? {})
   const samples = debug.samples ?? {}
@@ -780,7 +785,7 @@ const renderDebugCounts = (debug?: ConnectorDebugResponse | null) => {
   const sampleEntries = Object.entries(samples)
   return (
     <div className="mt-3 rounded-md border border-[#274266] bg-[#0d1a2b] p-3 text-sm text-slate-50">
-      <div className="text-xs uppercase text-slate-300">Debug snapshot</div>
+      <div className="text-xs uppercase text-slate-300">{t('Debug snapshot', 'Debug snapshot')}</div>
       <div className="mt-2 grid gap-2 md:grid-cols-3">
         {entries.length ? (
           entries.map(([key, value]) => (
@@ -789,12 +794,12 @@ const renderDebugCounts = (debug?: ConnectorDebugResponse | null) => {
             </div>
           ))
         ) : (
-          <div>No counts available.</div>
+          <div>{t('No counts available.', 'No counts available.')}</div>
         )}
       </div>
       {sampleEntries.length ? (
         <div className="mt-3">
-          <div className="text-xs uppercase text-slate-300">Samples</div>
+          <div className="text-xs uppercase text-slate-300">{t('Samples', 'Samples')}</div>
           <div className="mt-1 grid gap-2 text-xs text-slate-200 md:grid-cols-2">
             {sampleEntries.map(([key, values]) => (
               <div key={`debug-sample-${key}`}>
@@ -806,7 +811,7 @@ const renderDebugCounts = (debug?: ConnectorDebugResponse | null) => {
       ) : null}
       {matches.length ? (
         <div className="mt-3">
-          <div className="text-xs uppercase text-slate-300">Mapping matches</div>
+          <div className="text-xs uppercase text-slate-300">{t('Mapping matches', 'Mapping matches')}</div>
           <div className="mt-1 text-xs text-slate-200">
             {matches.map((match) => (
               <div key={`debug-match-${match.name}`}>
@@ -816,19 +821,23 @@ const renderDebugCounts = (debug?: ConnectorDebugResponse | null) => {
           </div>
         </div>
       ) : null}
-      {debug.error ? <div className="mt-2 text-amber-200">Error: {debug.error}</div> : null}
+      {debug.error ? <div className="mt-2 text-amber-200">{t('Error:', 'Error:')} {debug.error}</div> : null}
     </div>
-  )
+  );
 }
 
 const renderPaloAltoDebug = (debug?: PaloAltoDebugResponse | null) => {
+  const {
+    t
+  } = useI18n();
+
   if (!debug) return null
   const samples = debug.samples ?? {}
   const matches = debug.matches ?? []
   const sampleEntries = Object.entries(samples)
   return (
     <div className="mt-3 rounded-md border border-[#274266] bg-[#0d1a2b] p-3 text-sm text-slate-50">
-      <div className="text-xs uppercase text-slate-300">Debug snapshot</div>
+      <div className="text-xs uppercase text-slate-300">{t('Debug snapshot', 'Debug snapshot')}</div>
       <div className="mt-2 grid gap-2 md:grid-cols-3">
         {Object.entries(debug.counts ?? {}).map(([key, value]) => (
           <div key={`palo-count-${key}`}>
@@ -838,7 +847,7 @@ const renderPaloAltoDebug = (debug?: PaloAltoDebugResponse | null) => {
       </div>
       {sampleEntries.length ? (
         <div className="mt-3">
-          <div className="text-xs uppercase text-slate-300">Samples</div>
+          <div className="text-xs uppercase text-slate-300">{t('Samples', 'Samples')}</div>
           <div className="mt-1 grid gap-2 text-xs text-slate-200 md:grid-cols-2">
             {sampleEntries.map(([key, values]) => (
               <div key={`palo-sample-${key}`}>
@@ -850,7 +859,7 @@ const renderPaloAltoDebug = (debug?: PaloAltoDebugResponse | null) => {
       ) : null}
       {matches.length ? (
         <div className="mt-3">
-          <div className="text-xs uppercase text-slate-300">Mapping matches</div>
+          <div className="text-xs uppercase text-slate-300">{t('Mapping matches', 'Mapping matches')}</div>
           <div className="mt-1 text-xs text-slate-200">
             {matches.map((match) => (
               <div key={`palo-match-${match.name}`}>
@@ -860,9 +869,9 @@ const renderPaloAltoDebug = (debug?: PaloAltoDebugResponse | null) => {
           </div>
         </div>
       ) : null}
-      {debug.error ? <div className="mt-2 text-amber-200">Error: {debug.error}</div> : null}
+      {debug.error ? <div className="mt-2 text-amber-200">{t('Error:', 'Error:')} {debug.error}</div> : null}
     </div>
-  )
+  );
 }
 
 const requiresAssetBinding = (name: string) => {
@@ -940,6 +949,10 @@ const healthStateClass = (ok: boolean | undefined) => {
 }
 
 export function ConnectorsPage() {
+  const {
+    t
+  } = useI18n();
+
   const [data, setData] = useState<ConnectorsResponse | null>(null)
   const connectorsLoadInFlightRef = useRef(false)
   const [error, setError] = useState<ApiError | null>(null)
@@ -1469,6 +1482,10 @@ export function ConnectorsPage() {
     helpText?: string
     label?: string
   }) => {
+    const {
+      t
+    } = useI18n();
+
     const [query, setQuery] = useState('')
     const selectId = useId()
     const inputId = `${selectId}-filter`
@@ -1511,7 +1528,7 @@ export function ConnectorsPage() {
             e.preventDefault()
             onChange(singleMatch.asset_id)
           }}
-          placeholder="Filter by name or asset ID..."
+          placeholder={t('Filter by name or asset ID...', 'Filter by name or asset ID...')}
           id={inputId}
           name={inputId}
         />
@@ -1522,7 +1539,7 @@ export function ConnectorsPage() {
           id={listId}
           name={listId}
         >
-          <option value="">Select asset...</option>
+          <option value="">{t('Select asset...', 'Select asset...')}</option>
           {filteredAssets.map((asset) => (
             <option key={asset.asset_id} value={asset.asset_id}>
               {assetOptionLabel(asset)}
@@ -1531,25 +1548,28 @@ export function ConnectorsPage() {
         </select>
         {query && singleMatch ? (
           <p className="text-xs text-slate-300">
-            Press Enter to select {assetOptionLabel(singleMatch)}.
-          </p>
+            {t('Press Enter to select', 'Press Enter to select')} {assetOptionLabel(singleMatch)}.
+                      </p>
         ) : null}
         {assetTotal !== null ? (
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
             <span>
-              {assetOptions.length} of {assetTotal} assets loaded
+              {assetOptions.length}of {assetTotal} {t('assets loaded', 'assets loaded')}
             </span>
           </div>
         ) : null}
         {assetError ? <p className="text-xs text-rose-200">{assetError}</p> : null}
         {!sortedAssets.length && !assetError ? (
-          <p className="text-xs text-amber-200">No inventory assets found. Create one first.</p>
+          <p className="text-xs text-amber-200">{t(
+            'No inventory assets found. Create one first.',
+            'No inventory assets found. Create one first.'
+          )}</p>
         ) : null}
         {sortedAssets.length > 0 && !filteredAssets.length && !assetError ? (
-          <p className="text-xs text-amber-200">No assets match the filter.</p>
+          <p className="text-xs text-amber-200">{t('No assets match the filter.', 'No assets match the filter.')}</p>
         ) : null}
       </div>
-    )
+    );
   }
 
   const defaultGlpiAssetEndpoints = (serverEndpoint?: string): GlpiAssetEndpoint[] => {
@@ -3736,6 +3756,10 @@ export function ConnectorsPage() {
     onUpdate: (index: number, patch: Partial<ConnectorEventMapping>) => void
     onRemove: (index: number) => void
   }) => {
+    const {
+      t
+    } = useI18n();
+
     const allowedKinds = EVENT_KINDS_BY_CONNECTOR[connectorKey]
     return (
       <div className="space-y-3 md:col-span-2">
@@ -3745,13 +3769,17 @@ export function ConnectorsPage() {
             <HelpTip text={helpText} />
           </div>
           <div className="flex flex-wrap gap-2">
-            {onLoadDefaults ? <Button onClick={onLoadDefaults}>Load defaults</Button> : null}
-            <Button onClick={onAdd}>Add mapping</Button>
+            {onLoadDefaults ? <Button onClick={onLoadDefaults}>{t('Load defaults', 'Load defaults')}</Button> : null}
+            <Button onClick={onAdd}>{t('Add mapping', 'Add mapping')}</Button>
           </div>
         </div>
         {mappings?.length ? (
           <div className="space-y-4">
             {mappings.map((mapping, index) => {
+              const {
+                t
+              } = useI18n();
+
               const currentKind = mapping.event_kind ?? allowedKinds[0]
               const kindOptions = Array.from(new Set([...allowedKinds, currentKind]))
               const matchFields =
@@ -3766,16 +3794,16 @@ export function ConnectorsPage() {
                 >
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Mapping name</Label>
+                      <Label>{t('Mapping name', 'Mapping name')}</Label>
                       <input
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={mapping.name ?? ''}
                         onChange={(e) => onUpdate(index, { name: e.target.value })}
-                        placeholder="HA role change"
+                        placeholder={t('HA role change', 'HA role change')}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Event kind</Label>
+                      <Label>{t('Event kind', 'Event kind')}</Label>
                       <select
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={currentKind}
@@ -3791,7 +3819,7 @@ export function ConnectorsPage() {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Match field</Label>
+                      <Label>{t('Match field', 'Match field')}</Label>
                       <select
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={currentMatchField ?? ''}
@@ -3807,7 +3835,7 @@ export function ConnectorsPage() {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Match value</Label>
+                      <Label>{t('Match value', 'Match value')}</Label>
                       <input
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={mapping.match_value ?? ''}
@@ -3816,7 +3844,7 @@ export function ConnectorsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Finding type</Label>
+                      <Label>{t('Finding type', 'Finding type')}</Label>
                       <input
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={mapping.finding_type ?? ''}
@@ -3825,7 +3853,7 @@ export function ConnectorsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Severity</Label>
+                      <Label>{t('Severity', 'Severity')}</Label>
                       <select
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                         value={mapping.severity ?? 'medium'}
@@ -3835,14 +3863,14 @@ export function ConnectorsPage() {
                           })
                         }
                       >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
+                        <option value="low">{t('Low', 'Low')}</option>
+                        <option value="medium">{t('Medium', 'Medium')}</option>
+                        <option value="high">{t('High', 'High')}</option>
+                        <option value="critical">{t('Critical', 'Critical')}</option>
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Score delta</Label>
+                      <Label>{t('Score delta', 'Score delta')}</Label>
                       <input
                         type="number"
                         className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -3852,7 +3880,7 @@ export function ConnectorsPage() {
                             score_delta: e.target.value ? Number(e.target.value) : null,
                           })
                         }
-                        placeholder="Optional override"
+                        placeholder={t('Optional override', 'Optional override')}
                       />
                     </div>
                     <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -3861,21 +3889,21 @@ export function ConnectorsPage() {
                         checked={mapping.enabled ?? true}
                         onChange={(e) => onUpdate(index, { enabled: e.target.checked })}
                       />
-                      Enabled
+                      {t('Enabled', 'Enabled')}
                     </label>
                   </div>
                   <div className="mt-3 flex justify-end">
-                    <Button onClick={() => onRemove(index)}>Remove mapping</Button>
+                    <Button onClick={() => onRemove(index)}>{t('Remove mapping', 'Remove mapping')}</Button>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         ) : (
-          <p className="text-sm text-slate-50">No event mappings configured yet.</p>
+          <p className="text-sm text-slate-50">{t('No event mappings configured yet.', 'No event mappings configured yet.')}</p>
         )}
       </div>
-    )
+    );
   }
 
   async function savePowerstore() {
@@ -4786,22 +4814,27 @@ export function ConnectorsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <PageTitle>Connectors</PageTitle>
+        <PageTitle>{t('Connectors', 'Connectors')}</PageTitle>
         <HelpTip text={'Enable connectors and configure credentials (GLPI, ServiceNow, Palo Alto, Cisco). Save, then test connections before running ingestion.'} />
       </div>
       <p className="text-sm text-slate-50">
-        Choose which data sources are enabled and configure credentials for each connector below.
+        {t(
+          'Choose which data sources are enabled and configure credentials for each connector below.',
+          'Choose which data sources are enabled and configure credentials for each connector below.'
+        )}
       </p>
       {error ? <ErrorBox title={error.message} detail={error.bodyText} /> : null}
       {configError ? <ErrorBox title={configError.message} detail={configError.bodyText} /> : null}
-
       <Card>
         <div className="flex items-center gap-2">
-          <Label>Connector selection</Label>
+          <Label>{t('Connector selection', 'Connector selection')}</Label>
           <HelpTip text={'Pick a connector to configure. Selection enables it for ingestion.'} />
         </div>
         <p className="mt-2 text-sm text-slate-50">
-          Choose which connectors are enabled for ingestion. Changes apply to new runs.
+          {t(
+            'Choose which connectors are enabled for ingestion. Changes apply to new runs.',
+            'Choose which connectors are enabled for ingestion. Changes apply to new runs.'
+          )}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <select
@@ -4813,7 +4846,7 @@ export function ConnectorsPage() {
               addConnector(name)
             }}
           >
-            <option value="">Select a connector...</option>
+            <option value="">{t('Select a connector...', 'Select a connector...')}</option>
             {Object.entries(groupedAvailable).map(([category, names]) => (
               <optgroup key={category} label={category}>
                 {names.map((name) => (
@@ -4825,11 +4858,10 @@ export function ConnectorsPage() {
             ))}
           </select>
           {!config?.available?.length ? (
-            <span className="text-sm text-slate-50">No connectors available.</span>
+            <span className="text-sm text-slate-50">{t('No connectors available.', 'No connectors available.')}</span>
           ) : null}
         </div>
       </Card>
-
       {selectedConnector &&
       selectedConnector !== 'glpi' &&
       selectedConnector !== 'vcenter' &&
@@ -4856,7 +4888,10 @@ export function ConnectorsPage() {
         <Card>
           <Label>{selectedConnector} configuration</Label>
           <p className="mt-2 text-sm text-slate-50">
-            {connectorCategory(selectedConnector)} connector. Save to enable and test connectivity if supported.
+            {connectorCategory(selectedConnector)} {t(
+              'connector. Save to enable and test connectivity if supported.',
+              'connector. Save to enable and test connectivity if supported.'
+            )}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={saveConfig} disabled={saving}>
@@ -4870,22 +4905,24 @@ export function ConnectorsPage() {
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'dell_datadomain' ? (
         <Card>
-          <Label>Dell Data Domain instances</Label>
+          <Label>{t('Dell Data Domain instances', 'Dell Data Domain instances')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure Dell Data Domain credentials to collect resilience and backup signals.
+            {t(
+              'Configure Dell Data Domain credentials to collect resilience and backup signals.',
+              'Configure Dell Data Domain credentials to collect resilience and backup signals.'
+            )}
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="space-y-2">
-              <Label>Instance</Label>
+              <Label>{t('Instance', 'Instance')}</Label>
               <select
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={dellDataDomainSelected}
                 onChange={(e) => setDellDataDomainSelected(e.target.value)}
               >
-                <option value="">Select instance...</option>
+                <option value="">{t('Select instance...', 'Select instance...')}</option>
                 {dellDataDomainConfigs.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.name}
@@ -4894,7 +4931,7 @@ export function ConnectorsPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>New instance name</Label>
+              <Label>{t('New instance name', 'New instance name')}</Label>
               <input
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={dellDataDomainNewName}
@@ -4902,7 +4939,7 @@ export function ConnectorsPage() {
                 placeholder="datadomain-primary"
               />
             </div>
-            <Button onClick={addDellDataDomainInstance}>Add instance</Button>
+            <Button onClick={addDellDataDomainInstance}>{t('Add instance', 'Add instance')}</Button>
           </div>
           {currentDellDataDomain ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -4915,7 +4952,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'Data Domain API URL. Example: https://dd.example.com:3009.'} />
                 </div>
                 <input
@@ -4929,7 +4966,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>API base override</Label>
+                  <Label>{t('API base override', 'API base override')}</Label>
                   <HelpTip
                     text={
                       'Optional full REST base (ex: https://dd.example.com:3009/rest/v1.0) if the default path differs.'
@@ -4947,7 +4984,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                   <HelpTip text={'Data Domain API username.'} />
                 </div>
                 <input
@@ -4961,7 +4998,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'Data Domain API password.'} />
                 </div>
                 <input
@@ -4984,7 +5021,7 @@ export function ConnectorsPage() {
                   className="h-4 w-4 rounded border-slate-600 bg-slate-900"
                 />
                 <span className="flex items-center gap-2">
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                   <HelpTip text={'Disable only for self-signed lab appliances.'} />
                 </span>
               </label>
@@ -5000,7 +5037,7 @@ export function ConnectorsPage() {
               })}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">No Data Domain instance selected.</p>
+            <p className="mt-3 text-sm text-slate-50">{t('No Data Domain instance selected.', 'No Data Domain instance selected.')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -5028,7 +5065,7 @@ export function ConnectorsPage() {
               {dellDataDomainDebugging ? 'Debugging...' : 'Debug fetch'}
             </Button>
             <DangerButton onClick={deleteDellDataDomain} disabled={dellDataDomainSaving}>
-              Delete instance
+              {t('Delete instance', 'Delete instance')}
             </DangerButton>
             {dellDataDomainMessage ? (
               <span className="text-sm text-slate-50">{dellDataDomainMessage}</span>
@@ -5037,12 +5074,14 @@ export function ConnectorsPage() {
           {renderDebugCounts(dellDataDomainDebug)}
         </Card>
       ) : null}
-
       {['dnac', 'cisco_dnac', 'catalyst'].includes(selectedConnector) ? (
         <Card>
-          <Label>Cisco DNA Center settings</Label>
+          <Label>{t('Cisco DNA Center settings', 'Cisco DNA Center settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure DNA Center credentials to pull inventory and maintenance history.
+            {t(
+              'Configure DNA Center credentials to pull inventory and maintenance history.',
+              'Configure DNA Center credentials to pull inventory and maintenance history.'
+            )}
           </p>
           {dnac ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -5053,7 +5092,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'DNA Center URL. Example: https://dnac.example.com'} />
                 </div>
                 <input
@@ -5065,7 +5104,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                   <HelpTip text={'DNA Center username.'} />
                 </div>
                 <input
@@ -5077,7 +5116,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'DNA Center password.'} />
                 </div>
                 <input
@@ -5090,7 +5129,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>TLS verification</Label>
+                  <Label>{t('TLS verification', 'TLS verification')}</Label>
                   <HelpTip text={'Disable only for lab environments.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5099,12 +5138,12 @@ export function ConnectorsPage() {
                     checked={dnac.verify_tls ?? true}
                     onChange={(e) => setDnac({ ...dnac, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Audit logs</Label>
+                  <Label>{t('Audit logs', 'Audit logs')}</Label>
                   <HelpTip text={'Include audit log history in maintenance events.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5113,12 +5152,12 @@ export function ConnectorsPage() {
                     checked={dnac.include_audit_logs ?? true}
                     onChange={(e) => setDnac({ ...dnac, include_audit_logs: e.target.checked })}
                   />
-                  Include audit logs
+                  {t('Include audit logs', 'Include audit logs')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Events</Label>
+                  <Label>{t('Events', 'Events')}</Label>
                   <HelpTip text={'Include event stream history for role changes.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5127,12 +5166,12 @@ export function ConnectorsPage() {
                     checked={dnac.include_events ?? true}
                     onChange={(e) => setDnac({ ...dnac, include_events: e.target.checked })}
                   />
-                  Include events
+                  {t('Include events', 'Include events')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Page size</Label>
+                  <Label>{t('Page size', 'Page size')}</Label>
                   <HelpTip text={'Inventory page size.'} />
                 </div>
                 <input
@@ -5145,7 +5184,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max log entries</Label>
+                  <Label>{t('Max log entries', 'Max log entries')}</Label>
                   <HelpTip text={'Limit audit/event log entries.'} />
                 </div>
                 <input
@@ -5158,7 +5197,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>History window (hours)</Label>
+                  <Label>{t('History window (hours)', 'History window (hours)')}</Label>
                   <HelpTip text={'Ignore log entries older than this window.'} />
                 </div>
                 <input
@@ -5181,7 +5220,7 @@ export function ConnectorsPage() {
               })}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading DNA Center settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading DNA Center settings...', 'Loading DNA Center settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={saveDnac} disabled={dnacSaving || !dnac || Boolean(validateDnac(dnac))}>
@@ -5194,19 +5233,21 @@ export function ConnectorsPage() {
               {dnacDebugging ? 'Debugging...' : 'Debug fetch'}
             </Button>
             <DangerButton onClick={deleteDnac} disabled={dnacSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {dnacMessage ? <span className="text-sm text-slate-50">{dnacMessage}</span> : null}
           </div>
           {renderDebugCounts(dnacDebug)}
         </Card>
       ) : null}
-
       {['restconf', 'cisco_restconf'].includes(selectedConnector) ? (
         <Card>
-          <Label>Cisco RESTCONF settings</Label>
+          <Label>{t('Cisco RESTCONF settings', 'Cisco RESTCONF settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure RESTCONF credentials for Catalyst state snapshots.
+            {t(
+              'Configure RESTCONF credentials for Catalyst state snapshots.',
+              'Configure RESTCONF credentials for Catalyst state snapshots.'
+            )}
           </p>
           {restconf ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -5217,7 +5258,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'Device RESTCONF base URL. Example: https://switch.example.com'} />
                 </div>
                 <input
@@ -5229,7 +5270,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                   <HelpTip text={'RESTCONF username.'} />
                 </div>
                 <input
@@ -5241,7 +5282,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'RESTCONF password.'} />
                 </div>
                 <input
@@ -5254,7 +5295,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>TLS verification</Label>
+                  <Label>{t('TLS verification', 'TLS verification')}</Label>
                   <HelpTip text={'Disable only for lab environments.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5263,12 +5304,12 @@ export function ConnectorsPage() {
                     checked={restconf.verify_tls ?? true}
                     onChange={(e) => setRestconf({ ...restconf, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Inventory snapshot</Label>
+                  <Label>{t('Inventory snapshot', 'Inventory snapshot')}</Label>
                   <HelpTip text={'Collect hardware inventory via RESTCONF.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5277,12 +5318,12 @@ export function ConnectorsPage() {
                     checked={restconf.include_inventory ?? true}
                     onChange={(e) => setRestconf({ ...restconf, include_inventory: e.target.checked })}
                   />
-                  Include inventory
+                  {t('Include inventory', 'Include inventory')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Running config snapshot</Label>
+                  <Label>{t('Running config snapshot', 'Running config snapshot')}</Label>
                   <HelpTip text={'Hash running configuration for traceability.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5291,12 +5332,12 @@ export function ConnectorsPage() {
                     checked={restconf.include_running_config ?? true}
                     onChange={(e) => setRestconf({ ...restconf, include_running_config: e.target.checked })}
                   />
-                  Include running config
+                  {t('Include running config', 'Include running config')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>HA state</Label>
+                  <Label>{t('HA state', 'HA state')}</Label>
                   <HelpTip text={'Collect redundancy state if supported.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5305,12 +5346,12 @@ export function ConnectorsPage() {
                     checked={restconf.include_ha_state ?? true}
                     onChange={(e) => setRestconf({ ...restconf, include_ha_state: e.target.checked })}
                   />
-                  Include HA state
+                  {t('Include HA state', 'Include HA state')}
                 </label>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Inventory endpoint</Label>
+                  <Label>{t('Inventory endpoint', 'Inventory endpoint')}</Label>
                   <HelpTip text={'Optional override for inventory endpoint.'} />
                 </div>
                 <input
@@ -5319,24 +5360,24 @@ export function ConnectorsPage() {
                   onChange={(e) =>
                     setRestconf({ ...restconf, inventory_endpoint: e.target.value })
                   }
-                  placeholder="/restconf/data/..."
+                  placeholder={t('/restconf/data/...', '/restconf/data/...')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>HA endpoint</Label>
+                  <Label>{t('HA endpoint', 'HA endpoint')}</Label>
                   <HelpTip text={'Optional override for HA endpoint.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={restconf.ha_endpoint ?? ''}
                   onChange={(e) => setRestconf({ ...restconf, ha_endpoint: e.target.value })}
-                  placeholder="/restconf/data/..."
+                  placeholder={t('/restconf/data/...', '/restconf/data/...')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Running config endpoint</Label>
+                  <Label>{t('Running config endpoint', 'Running config endpoint')}</Label>
                   <HelpTip text={'Optional override for running config endpoint.'} />
                 </div>
                 <input
@@ -5345,12 +5386,12 @@ export function ConnectorsPage() {
                   onChange={(e) =>
                     setRestconf({ ...restconf, running_config_endpoint: e.target.value })
                   }
-                  placeholder="/restconf/data/..."
+                  placeholder={t('/restconf/data/...', '/restconf/data/...')}
                 />
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading RESTCONF settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading RESTCONF settings...', 'Loading RESTCONF settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -5366,18 +5407,20 @@ export function ConnectorsPage() {
               {restconfTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteRestconf} disabled={restconfSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {restconfMessage ? <span className="text-sm text-slate-50">{restconfMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {['netconf', 'cisco_netconf'].includes(selectedConnector) ? (
         <Card>
-          <Label>Cisco NETCONF settings</Label>
+          <Label>{t('Cisco NETCONF settings', 'Cisco NETCONF settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure NETCONF credentials for Catalyst state snapshots.
+            {t(
+              'Configure NETCONF credentials for Catalyst state snapshots.',
+              'Configure NETCONF credentials for Catalyst state snapshots.'
+            )}
           </p>
           {netconf ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -5388,19 +5431,19 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Host</Label>
+                  <Label>{t('Host', 'Host')}</Label>
                   <HelpTip text={'Device hostname or IP for NETCONF.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={netconf.host ?? ''}
                   onChange={(e) => setNetconf({ ...netconf, host: e.target.value })}
-                  placeholder="switch.example.com"
+                  placeholder={t('switch.example.com', 'switch.example.com')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                   <HelpTip text={'NETCONF username.'} />
                 </div>
                 <input
@@ -5412,7 +5455,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'NETCONF password.'} />
                 </div>
                 <input
@@ -5425,7 +5468,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Port</Label>
+                  <Label>{t('Port', 'Port')}</Label>
                   <HelpTip text={'NETCONF port (default 830).'} />
                 </div>
                 <input
@@ -5438,7 +5481,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Device type</Label>
+                  <Label>{t('Device type', 'Device type')}</Label>
                   <HelpTip text={'NETCONF device type (ncclient).'} />
                 </div>
                 <input
@@ -5450,7 +5493,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Host key verification</Label>
+                  <Label>{t('Host key verification', 'Host key verification')}</Label>
                   <HelpTip text={'Enable only if host keys are managed.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5459,12 +5502,12 @@ export function ConnectorsPage() {
                     checked={netconf.hostkey_verify ?? false}
                     onChange={(e) => setNetconf({ ...netconf, hostkey_verify: e.target.checked })}
                   />
-                  Verify host key
+                  {t('Verify host key', 'Verify host key')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Inventory snapshot</Label>
+                  <Label>{t('Inventory snapshot', 'Inventory snapshot')}</Label>
                   <HelpTip text={'Collect hardware inventory via NETCONF.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5473,12 +5516,12 @@ export function ConnectorsPage() {
                     checked={netconf.include_inventory ?? true}
                     onChange={(e) => setNetconf({ ...netconf, include_inventory: e.target.checked })}
                   />
-                  Include inventory
+                  {t('Include inventory', 'Include inventory')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Running config snapshot</Label>
+                  <Label>{t('Running config snapshot', 'Running config snapshot')}</Label>
                   <HelpTip text={'Hash running configuration for traceability.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5489,12 +5532,12 @@ export function ConnectorsPage() {
                       setNetconf({ ...netconf, include_running_config: e.target.checked })
                     }
                   />
-                  Include running config
+                  {t('Include running config', 'Include running config')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>HA state</Label>
+                  <Label>{t('HA state', 'HA state')}</Label>
                   <HelpTip text={'Collect redundancy state if supported.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5503,12 +5546,12 @@ export function ConnectorsPage() {
                     checked={netconf.include_ha_state ?? true}
                     onChange={(e) => setNetconf({ ...netconf, include_ha_state: e.target.checked })}
                   />
-                  Include HA state
+                  {t('Include HA state', 'Include HA state')}
                 </label>
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading NETCONF settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading NETCONF settings...', 'Loading NETCONF settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -5524,28 +5567,30 @@ export function ConnectorsPage() {
               {netconfTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteNetconf} disabled={netconfSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {netconfMessage ? <span className="text-sm text-slate-50">{netconfMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'vcenter' ? (
         <Card>
-          <Label>vCenter instances</Label>
+          <Label>{t('vCenter instances', 'vCenter instances')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure one or more vCenter instances to ingest inventory and tasks (as change events).
+            {t(
+              'Configure one or more vCenter instances to ingest inventory and tasks (as change events).',
+              'Configure one or more vCenter instances to ingest inventory and tasks (as change events).'
+            )}
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="space-y-2">
-              <Label>Instance</Label>
+              <Label>{t('Instance', 'Instance')}</Label>
               <select
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={vcenterSelected}
                 onChange={(e) => setVcenterSelected(e.target.value)}
               >
-                <option value="">Select instance...</option>
+                <option value="">{t('Select instance...', 'Select instance...')}</option>
                 {vcenterConfigs.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.name}
@@ -5554,7 +5599,7 @@ export function ConnectorsPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>New instance name</Label>
+              <Label>{t('New instance name', 'New instance name')}</Label>
               <input
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={vcenterNewName}
@@ -5562,7 +5607,7 @@ export function ConnectorsPage() {
                 placeholder="vcenter-primary"
               />
             </div>
-            <Button onClick={addVcenterInstance}>Add instance</Button>
+            <Button onClick={addVcenterInstance}>{t('Add instance', 'Add instance')}</Button>
           </div>
           {currentVcenter ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -5573,7 +5618,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'vCenter URL. Example: https://vcenter.example.com'} />
                 </div>
                 <input
@@ -5585,7 +5630,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -5596,7 +5641,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                 </div>
                 <input
                   type="password"
@@ -5608,7 +5653,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Tasks</Label>
+                  <Label>{t('Tasks', 'Tasks')}</Label>
                   <HelpTip text={'Tasks are ingested as change events.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5617,12 +5662,12 @@ export function ConnectorsPage() {
                     checked={currentVcenter.include_tasks ?? true}
                     onChange={(e) => updateVcenterInstance(currentVcenter.name, { include_tasks: e.target.checked })}
                   />
-                  Include tasks
+                  {t('Include tasks', 'Include tasks')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>VM hardware</Label>
+                  <Label>{t('VM hardware', 'VM hardware')}</Label>
                   <HelpTip text={'Collect CPU, memory, disk IDs, and datastore mapping for VMs.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5633,12 +5678,12 @@ export function ConnectorsPage() {
                       updateVcenterInstance(currentVcenter.name, { include_vm_hardware: e.target.checked })
                     }
                   />
-                  Include VM hardware & disks
+                  {t('Include VM hardware & disks', 'Include VM hardware & disks')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -5646,7 +5691,7 @@ export function ConnectorsPage() {
                     checked={currentVcenter.verify_tls ?? true}
                     onChange={(e) => updateVcenterInstance(currentVcenter.name, { verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               {renderEventMappings({
@@ -5661,7 +5706,7 @@ export function ConnectorsPage() {
               })}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">No vCenter instance selected.</p>
+            <p className="mt-3 text-sm text-slate-50">{t('No vCenter instance selected.', 'No vCenter instance selected.')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={saveVcenter} disabled={vcenterSaving || !vcenterConfigs.length}>
@@ -5674,29 +5719,31 @@ export function ConnectorsPage() {
               {vcenterDebugging ? 'Debugging...' : 'Debug fetch'}
             </Button>
             <DangerButton onClick={deleteVcenter} disabled={vcenterSaving || !currentVcenter}>
-              Delete instance
+              {t('Delete instance', 'Delete instance')}
             </DangerButton>
             {vcenterMessage ? <span className="text-sm text-slate-50">{vcenterMessage}</span> : null}
           </div>
           {renderDebugCounts(vcenterDebug)}
         </Card>
       ) : null}
-
       {selectedConnector === 'powerstore' ? (
         <Card>
-          <Label>PowerStore instances</Label>
+          <Label>{t('PowerStore instances', 'PowerStore instances')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure one or more PowerStore arrays to ingest replication health and immutability signals.
+            {t(
+              'Configure one or more PowerStore arrays to ingest replication health and immutability signals.',
+              'Configure one or more PowerStore arrays to ingest replication health and immutability signals.'
+            )}
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="space-y-2">
-              <Label>Instance</Label>
+              <Label>{t('Instance', 'Instance')}</Label>
               <select
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={powerstoreSelected}
                 onChange={(e) => setPowerstoreSelected(e.target.value)}
               >
-                <option value="">Select instance...</option>
+                <option value="">{t('Select instance...', 'Select instance...')}</option>
                 {powerstoreConfigs.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.name}
@@ -5705,7 +5752,7 @@ export function ConnectorsPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>New instance name</Label>
+              <Label>{t('New instance name', 'New instance name')}</Label>
               <input
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={powerstoreNewName}
@@ -5713,7 +5760,7 @@ export function ConnectorsPage() {
                 placeholder="powerstore-primary"
               />
             </div>
-            <Button onClick={addPowerstoreInstance}>Add instance</Button>
+            <Button onClick={addPowerstoreInstance}>{t('Add instance', 'Add instance')}</Button>
           </div>
           {currentPowerstore ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -5724,7 +5771,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'PowerStore management URL. Example: https://powerstore.example.com'} />
                 </div>
                 <input
@@ -5738,7 +5785,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -5751,7 +5798,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                 </div>
                 <input
                   type="password"
@@ -5765,7 +5812,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -5775,7 +5822,7 @@ export function ConnectorsPage() {
                       updatePowerstoreInstance(currentPowerstore.name, { verify_tls: e.target.checked })
                     }
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               {renderEventMappings({
@@ -5790,7 +5837,7 @@ export function ConnectorsPage() {
               })}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">No PowerStore instance selected.</p>
+            <p className="mt-3 text-sm text-slate-50">{t('No PowerStore instance selected.', 'No PowerStore instance selected.')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={savePowerstore} disabled={powerstoreSaving || !powerstoreConfigs.length}>
@@ -5803,20 +5850,21 @@ export function ConnectorsPage() {
               {powerstoreDebugging ? 'Debugging...' : 'Debug fetch'}
             </Button>
             <DangerButton onClick={deletePowerstore} disabled={powerstoreSaving || !currentPowerstore}>
-              Delete instance
+              {t('Delete instance', 'Delete instance')}
             </DangerButton>
             {powerstoreMessage ? <span className="text-sm text-slate-50">{powerstoreMessage}</span> : null}
           </div>
           {renderDebugCounts(powerstoreDebug)}
         </Card>
       ) : null}
-
       {selectedConnector === 'veeam_enterprise_manager' ? (
         <Card>
-          <Label>Veeam Enterprise Manager settings</Label>
+          <Label>{t('Veeam Enterprise Manager settings', 'Veeam Enterprise Manager settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure Veeam Enterprise Manager to ingest backup sessions, restore sessions, and VM last
-            successful backups.
+            {t(
+              'Configure Veeam Enterprise Manager to ingest backup sessions, restore sessions, and VM last\n            successful backups.',
+              'Configure Veeam Enterprise Manager to ingest backup sessions, restore sessions, and VM last\n            successful backups.'
+            )}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -5825,7 +5873,7 @@ export function ConnectorsPage() {
                 checked={veeamEnterpriseManagerEnabled}
                 onChange={(e) => setConnectorEnabled('veeam_enterprise_manager', e.target.checked)}
               />
-              Enabled for ingestion
+              {t('Enabled for ingestion', 'Enabled for ingestion')}
             </label>
             <Button onClick={saveConfig} disabled={saving}>
               {saving ? 'Saving...' : 'Save selection'}
@@ -5840,7 +5888,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'Enterprise Manager API base URL. Example: https://veeam-em.example.com:9398'} />
                 </div>
                 <input
@@ -5852,7 +5900,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -5863,7 +5911,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                 </div>
                 <input
                   type="password"
@@ -5875,7 +5923,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -5885,12 +5933,12 @@ export function ConnectorsPage() {
                       setVeeamEnterpriseManager({ ...veeamEnterpriseManager, verify_tls: e.target.checked })
                     }
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Backup sessions endpoint</Label>
+                  <Label>{t('Backup sessions endpoint', 'Backup sessions endpoint')}</Label>
                   <HelpTip text={'Endpoint path for backup sessions. Example: /api/backupSessions'} />
                 </div>
                 <input
@@ -5907,7 +5955,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Backup task sessions endpoint</Label>
+                  <Label>{t('Backup task sessions endpoint', 'Backup task sessions endpoint')}</Label>
                   <HelpTip text={'Endpoint path for backup task sessions. Example: /api/query?type=BackupTaskSession&format=Entities'} />
                 </div>
                 <input
@@ -5919,12 +5967,15 @@ export function ConnectorsPage() {
                       backup_task_sessions_endpoint: e.target.value,
                     })
                   }
-                  placeholder="/api/query?type=BackupTaskSession&format=Entities"
+                  placeholder={t(
+                    '/api/query?type=BackupTaskSession&format=Entities',
+                    '/api/query?type=BackupTaskSession&format=Entities'
+                  )}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Restore sessions endpoint</Label>
+                  <Label>{t('Restore sessions endpoint', 'Restore sessions endpoint')}</Label>
                   <HelpTip text={'Endpoint path for restore sessions. Example: /api/restoreSessions'} />
                 </div>
                 <input
@@ -5941,7 +5992,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum items to fetch per endpoint.'} />
                 </div>
                 <input
@@ -5969,7 +6020,10 @@ export function ConnectorsPage() {
               })}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading Veeam Enterprise Manager settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t(
+              'Loading Veeam Enterprise Manager settings...',
+              'Loading Veeam Enterprise Manager settings...'
+            )}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6003,7 +6057,7 @@ export function ConnectorsPage() {
               {veeamEnterpriseManagerDebugging ? 'Debugging...' : 'Debug fetch'}
             </Button>
             <DangerButton onClick={deleteVeeamEnterpriseManager} disabled={veeamEnterpriseManagerSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {veeamEnterpriseManagerMessage ? (
               <span className="text-sm text-slate-50">{veeamEnterpriseManagerMessage}</span>
@@ -6013,40 +6067,40 @@ export function ConnectorsPage() {
             <div className="mt-4 rounded-md border border-[#274266] bg-[#0d1a2b] p-3 text-sm text-slate-50">
               <div className="grid gap-2 md:grid-cols-3">
                 <div>
-                  <div className="text-xs uppercase text-slate-300">Backup sessions</div>
-                  <div>Endpoint: {veeamEnterpriseManagerDebug.backup_sessions.endpoint ?? 'n/a'}</div>
-                  <div>Status: {veeamEnterpriseManagerDebug.backup_sessions.status_code ?? 'n/a'}</div>
-                  <div>Count: {veeamEnterpriseManagerDebug.backup_sessions.count}</div>
+                  <div className="text-xs uppercase text-slate-300">{t('Backup sessions', 'Backup sessions')}</div>
+                  <div>{t('Endpoint:', 'Endpoint:')} {veeamEnterpriseManagerDebug.backup_sessions.endpoint ?? 'n/a'}</div>
+                  <div>{t('Status:', 'Status:')} {veeamEnterpriseManagerDebug.backup_sessions.status_code ?? 'n/a'}</div>
+                  <div>{t('Count:', 'Count:')} {veeamEnterpriseManagerDebug.backup_sessions.count}</div>
                   {veeamEnterpriseManagerDebug.backup_sessions.error ? (
-                    <div>Error: {veeamEnterpriseManagerDebug.backup_sessions.error}</div>
+                    <div>{t('Error:', 'Error:')} {veeamEnterpriseManagerDebug.backup_sessions.error}</div>
                   ) : null}
                 </div>
                 <div>
-                  <div className="text-xs uppercase text-slate-300">Backup task sessions</div>
-                  <div>Endpoint: {veeamEnterpriseManagerDebug.backup_task_sessions.endpoint ?? 'n/a'}</div>
-                  <div>Status: {veeamEnterpriseManagerDebug.backup_task_sessions.status_code ?? 'n/a'}</div>
-                  <div>Count: {veeamEnterpriseManagerDebug.backup_task_sessions.count}</div>
+                  <div className="text-xs uppercase text-slate-300">{t('Backup task sessions', 'Backup task sessions')}</div>
+                  <div>{t('Endpoint:', 'Endpoint:')} {veeamEnterpriseManagerDebug.backup_task_sessions.endpoint ?? 'n/a'}</div>
+                  <div>{t('Status:', 'Status:')} {veeamEnterpriseManagerDebug.backup_task_sessions.status_code ?? 'n/a'}</div>
+                  <div>{t('Count:', 'Count:')} {veeamEnterpriseManagerDebug.backup_task_sessions.count}</div>
                   {veeamEnterpriseManagerDebug.backup_task_sessions.error ? (
-                    <div>Error: {veeamEnterpriseManagerDebug.backup_task_sessions.error}</div>
+                    <div>{t('Error:', 'Error:')} {veeamEnterpriseManagerDebug.backup_task_sessions.error}</div>
                   ) : null}
                 </div>
                 <div>
-                  <div className="text-xs uppercase text-slate-300">Restore sessions</div>
-                  <div>Endpoint: {veeamEnterpriseManagerDebug.restore_sessions.endpoint ?? 'n/a'}</div>
-                  <div>Status: {veeamEnterpriseManagerDebug.restore_sessions.status_code ?? 'n/a'}</div>
-                  <div>Count: {veeamEnterpriseManagerDebug.restore_sessions.count}</div>
+                  <div className="text-xs uppercase text-slate-300">{t('Restore sessions', 'Restore sessions')}</div>
+                  <div>{t('Endpoint:', 'Endpoint:')} {veeamEnterpriseManagerDebug.restore_sessions.endpoint ?? 'n/a'}</div>
+                  <div>{t('Status:', 'Status:')} {veeamEnterpriseManagerDebug.restore_sessions.status_code ?? 'n/a'}</div>
+                  <div>{t('Count:', 'Count:')} {veeamEnterpriseManagerDebug.restore_sessions.count}</div>
                   {veeamEnterpriseManagerDebug.restore_sessions.error ? (
-                    <div>Error: {veeamEnterpriseManagerDebug.restore_sessions.error}</div>
+                    <div>{t('Error:', 'Error:')} {veeamEnterpriseManagerDebug.restore_sessions.error}</div>
                   ) : null}
                 </div>
               </div>
               {veeamEnterpriseManagerDebug.normalized ? (
                 <div className="mt-3">
-                  <div className="text-xs uppercase text-slate-300">Normalized</div>
+                  <div className="text-xs uppercase text-slate-300">{t('Normalized', 'Normalized')}</div>
                   <div className="mt-1 grid gap-2 text-xs text-slate-200 md:grid-cols-3">
-                    <div>resilience_signals: {veeamEnterpriseManagerDebug.normalized.resilience_signals}</div>
-                    <div>recovery_jobs: {veeamEnterpriseManagerDebug.normalized.recovery_jobs}</div>
-                    <div>task_sessions: {veeamEnterpriseManagerDebug.normalized.task_sessions}</div>
+                    <div>{t('resilience_signals:', 'resilience_signals:')} {veeamEnterpriseManagerDebug.normalized.resilience_signals}</div>
+                    <div>{t('recovery_jobs:', 'recovery_jobs:')} {veeamEnterpriseManagerDebug.normalized.recovery_jobs}</div>
+                    <div>{t('task_sessions:', 'task_sessions:')} {veeamEnterpriseManagerDebug.normalized.task_sessions}</div>
                   </div>
                 </div>
               ) : null}
@@ -6054,18 +6108,20 @@ export function ConnectorsPage() {
           ) : null}
         </Card>
       ) : null}
-
       {selectedConnector === 'github' ? (
         <Card>
-          <Label>GitHub settings</Label>
+          <Label>{t('GitHub settings', 'GitHub settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure GitHub API access and repository scope (comma or newline separated).
+            {t(
+              'Configure GitHub API access and repository scope (comma or newline separated).',
+              'Configure GitHub API access and repository scope (comma or newline separated).'
+            )}
           </p>
           {github ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'GitHub API base URL. Example: https://api.github.com'} />
                 </div>
                 <input
@@ -6077,7 +6133,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Token</Label>
+                  <Label>{t('Token', 'Token')}</Label>
                   <HelpTip text={'Personal access token with repo + security_events scopes.'} />
                 </div>
                 <input
@@ -6085,24 +6141,24 @@ export function ConnectorsPage() {
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={github.token ?? ''}
                   onChange={(e) => setGithub({ ...github, token: e.target.value })}
-                  placeholder="ghp_..."
+                  placeholder={t('ghp_...', 'ghp_...')}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Repositories</Label>
+                  <Label>{t('Repositories', 'Repositories')}</Label>
                   <HelpTip text={'owner/repo list separated by commas or new lines.'} />
                 </div>
                 <textarea
                   className="min-h-[96px] w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={githubRepositories}
                   onChange={(e) => setGithubRepositories(e.target.value)}
-                  placeholder="acme/app, acme/platform"
+                  placeholder={t('acme/app, acme/platform', 'acme/app, acme/platform')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6110,12 +6166,12 @@ export function ConnectorsPage() {
                     checked={github.verify_tls ?? true}
                     onChange={(e) => setGithub({ ...github, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Pull requests</Label>
+                  <Label>{t('Pull requests', 'Pull requests')}</Label>
                   <HelpTip text={'Include pull request updates as change events.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6126,12 +6182,12 @@ export function ConnectorsPage() {
                       setGithub({ ...github, include_pull_requests: e.target.checked })
                     }
                   />
-                  Include PRs
+                  {t('Include PRs', 'Include PRs')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Workflow runs</Label>
+                  <Label>{t('Workflow runs', 'Workflow runs')}</Label>
                   <HelpTip text={'Include GitHub Actions workflow runs.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6140,12 +6196,12 @@ export function ConnectorsPage() {
                     checked={github.include_workflows ?? true}
                     onChange={(e) => setGithub({ ...github, include_workflows: e.target.checked })}
                   />
-                  Include workflows
+                  {t('Include workflows', 'Include workflows')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Security alerts</Label>
+                  <Label>{t('Security alerts', 'Security alerts')}</Label>
                   <HelpTip text={'Include code scanning and Dependabot alerts.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6156,12 +6212,12 @@ export function ConnectorsPage() {
                       setGithub({ ...github, include_security_alerts: e.target.checked })
                     }
                   />
-                  Include alerts
+                  {t('Include alerts', 'Include alerts')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Lookback days</Label>
+                  <Label>{t('Lookback days', 'Lookback days')}</Label>
                   <HelpTip text={'Limit items to recent updates.'} />
                 </div>
                 <input
@@ -6174,7 +6230,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum items per endpoint.'} />
                 </div>
                 <input
@@ -6187,7 +6243,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading GitHub settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading GitHub settings...', 'Loading GitHub settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6203,24 +6259,26 @@ export function ConnectorsPage() {
               {githubTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteGithub} disabled={githubSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {githubMessage ? <span className="text-sm text-slate-50">{githubMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'gitlab' ? (
         <Card>
-          <Label>GitLab settings</Label>
+          <Label>{t('GitLab settings', 'GitLab settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure GitLab API access and projects (comma or newline separated).
+            {t(
+              'Configure GitLab API access and projects (comma or newline separated).',
+              'Configure GitLab API access and projects (comma or newline separated).'
+            )}
           </p>
           {gitlab ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'GitLab API base URL. Example: https://gitlab.com/api/v4'} />
                 </div>
                 <input
@@ -6232,7 +6290,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Token</Label>
+                  <Label>{t('Token', 'Token')}</Label>
                   <HelpTip text={'GitLab personal access token with read_api scope.'} />
                 </div>
                 <input
@@ -6240,24 +6298,24 @@ export function ConnectorsPage() {
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={gitlab.token ?? ''}
                   onChange={(e) => setGitlab({ ...gitlab, token: e.target.value })}
-                  placeholder="glpat-..."
+                  placeholder={t('glpat-...', 'glpat-...')}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Projects</Label>
+                  <Label>{t('Projects', 'Projects')}</Label>
                   <HelpTip text={'Group/project paths separated by commas or new lines.'} />
                 </div>
                 <textarea
                   className="min-h-[96px] w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={gitlabProjects}
                   onChange={(e) => setGitlabProjects(e.target.value)}
-                  placeholder="group/app, group/platform"
+                  placeholder={t('group/app, group/platform', 'group/app, group/platform')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6265,12 +6323,12 @@ export function ConnectorsPage() {
                     checked={gitlab.verify_tls ?? true}
                     onChange={(e) => setGitlab({ ...gitlab, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Merge requests</Label>
+                  <Label>{t('Merge requests', 'Merge requests')}</Label>
                   <HelpTip text={'Include merge request updates as change events.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6281,12 +6339,12 @@ export function ConnectorsPage() {
                       setGitlab({ ...gitlab, include_merge_requests: e.target.checked })
                     }
                   />
-                  Include MRs
+                  {t('Include MRs', 'Include MRs')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Pipelines</Label>
+                  <Label>{t('Pipelines', 'Pipelines')}</Label>
                   <HelpTip text={'Include pipeline runs for resilience signals.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6295,12 +6353,12 @@ export function ConnectorsPage() {
                     checked={gitlab.include_pipelines ?? true}
                     onChange={(e) => setGitlab({ ...gitlab, include_pipelines: e.target.checked })}
                   />
-                  Include pipelines
+                  {t('Include pipelines', 'Include pipelines')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Vulnerabilities</Label>
+                  <Label>{t('Vulnerabilities', 'Vulnerabilities')}</Label>
                   <HelpTip text={'Include GitLab security findings.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6311,12 +6369,12 @@ export function ConnectorsPage() {
                       setGitlab({ ...gitlab, include_vulnerabilities: e.target.checked })
                     }
                   />
-                  Include vulnerabilities
+                  {t('Include vulnerabilities', 'Include vulnerabilities')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Lookback days</Label>
+                  <Label>{t('Lookback days', 'Lookback days')}</Label>
                   <HelpTip text={'Limit items to recent updates.'} />
                 </div>
                 <input
@@ -6329,7 +6387,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum items per endpoint.'} />
                 </div>
                 <input
@@ -6342,7 +6400,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading GitLab settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading GitLab settings...', 'Loading GitLab settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6358,24 +6416,26 @@ export function ConnectorsPage() {
               {gitlabTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteGitlab} disabled={gitlabSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {gitlabMessage ? <span className="text-sm text-slate-50">{gitlabMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'bamboohr' ? (
         <Card>
-          <Label>BambooHR settings</Label>
+          <Label>{t('BambooHR settings', 'BambooHR settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure BambooHR API access to ingest employee directory data.
+            {t(
+              'Configure BambooHR API access to ingest employee directory data.',
+              'Configure BambooHR API access to ingest employee directory data.'
+            )}
           </p>
           {bambooHr ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'BambooHR base URL. Example: https://acme.bamboohr.com'} />
                 </div>
                 <input
@@ -6387,7 +6447,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>API key</Label>
+                  <Label>{t('API key', 'API key')}</Label>
                   <HelpTip text={'BambooHR API key (Basic auth username).' } />
                 </div>
                 <input
@@ -6400,7 +6460,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6408,12 +6468,12 @@ export function ConnectorsPage() {
                     checked={bambooHr.verify_tls ?? true}
                     onChange={(e) => setBambooHr({ ...bambooHr, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum employees to fetch.'} />
                 </div>
                 <input
@@ -6426,7 +6486,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading BambooHR settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading BambooHR settings...', 'Loading BambooHR settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6442,24 +6502,26 @@ export function ConnectorsPage() {
               {bambooHrTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteBambooHr} disabled={bambooHrSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {bambooHrMessage ? <span className="text-sm text-slate-50">{bambooHrMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'workday' ? (
         <Card>
-          <Label>Workday settings</Label>
+          <Label>{t('Workday settings', 'Workday settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure Workday Report-as-a-Service access to ingest employee data.
+            {t(
+              'Configure Workday Report-as-a-Service access to ingest employee data.',
+              'Configure Workday Report-as-a-Service access to ingest employee data.'
+            )}
           </p>
           {workday ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'Workday tenant base URL. Example: https://wd5.myworkday.com'} />
                 </div>
                 <input
@@ -6471,30 +6533,33 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Report path</Label>
+                  <Label>{t('Report path', 'Report path')}</Label>
                   <HelpTip text={'Report path or full URL for Workday RaaS.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={workday.report_path ?? ''}
                   onChange={(e) => setWorkday({ ...workday, report_path: e.target.value })}
-                  placeholder="ccx/service/customreport/tenant/report?format=json"
+                  placeholder={t(
+                    'ccx/service/customreport/tenant/report?format=json',
+                    'ccx/service/customreport/tenant/report?format=json'
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={workday.username ?? ''}
                   onChange={(e) => setWorkday({ ...workday, username: e.target.value })}
-                  placeholder="integration.user"
+                  placeholder={t('integration.user', 'integration.user')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                 </div>
                 <input
                   type="password"
@@ -6506,7 +6571,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6514,12 +6579,12 @@ export function ConnectorsPage() {
                     checked={workday.verify_tls ?? true}
                     onChange={(e) => setWorkday({ ...workday, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum employees to fetch.'} />
                 </div>
                 <input
@@ -6532,7 +6597,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading Workday settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading Workday settings...', 'Loading Workday settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6548,24 +6613,26 @@ export function ConnectorsPage() {
               {workdayTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteWorkday} disabled={workdaySaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {workdayMessage ? <span className="text-sm text-slate-50">{workdayMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'jira' ? (
         <Card>
-          <Label>Jira settings</Label>
+          <Label>{t('Jira settings', 'Jira settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure Jira API access to ingest issues as change or security events.
+            {t(
+              'Configure Jira API access to ingest issues as change or security events.',
+              'Configure Jira API access to ingest issues as change or security events.'
+            )}
           </p>
           {jira ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'Jira site URL. Example: https://acme.atlassian.net'} />
                 </div>
                 <input
@@ -6577,19 +6644,19 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                   <HelpTip text={'Jira account email or username.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={jira.username ?? ''}
                   onChange={(e) => setJira({ ...jira, username: e.target.value })}
-                  placeholder="user@example.com"
+                  placeholder={t('user@example.com', 'user@example.com')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>API token</Label>
+                  <Label>{t('API token', 'API token')}</Label>
                   <HelpTip text={'Atlassian API token (preferred).' } />
                 </div>
                 <input
@@ -6602,7 +6669,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'Optional basic auth password if no API token.'} />
                 </div>
                 <input
@@ -6615,7 +6682,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>API version</Label>
+                  <Label>{t('API version', 'API version')}</Label>
                   <HelpTip text={'Jira REST API version (2 or 3).'} />
                 </div>
                 <input
@@ -6627,14 +6694,14 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Projects</Label>
+                  <Label>{t('Projects', 'Projects')}</Label>
                   <HelpTip text={'Project keys separated by commas or new lines (optional).'} />
                 </div>
                 <textarea
                   className="min-h-[96px] w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={jiraProjects}
                   onChange={(e) => setJiraProjects(e.target.value)}
-                  placeholder="SEC, OPS"
+                  placeholder={t('SEC, OPS', 'SEC, OPS')}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -6646,12 +6713,15 @@ export function ConnectorsPage() {
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={jira.jql ?? ''}
                   onChange={(e) => setJira({ ...jira, jql: e.target.value })}
-                  placeholder="project in (SEC) order by updated desc"
+                  placeholder={t(
+                    'project in (SEC) order by updated desc',
+                    'project in (SEC) order by updated desc'
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6659,12 +6729,12 @@ export function ConnectorsPage() {
                     checked={jira.verify_tls ?? true}
                     onChange={(e) => setJira({ ...jira, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Include change issues</Label>
+                  <Label>{t('Include change issues', 'Include change issues')}</Label>
                   <HelpTip text={'Add change events for non-security issues.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6673,12 +6743,12 @@ export function ConnectorsPage() {
                     checked={jira.include_changes ?? true}
                     onChange={(e) => setJira({ ...jira, include_changes: e.target.checked })}
                   />
-                  Include change issues
+                  {t('Include change issues', 'Include change issues')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Include security issues</Label>
+                  <Label>{t('Include security issues', 'Include security issues')}</Label>
                   <HelpTip text={'Add security events for incident/security issues.'} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -6687,12 +6757,12 @@ export function ConnectorsPage() {
                     checked={jira.include_security ?? true}
                     onChange={(e) => setJira({ ...jira, include_security: e.target.checked })}
                   />
-                  Include security issues
+                  {t('Include security issues', 'Include security issues')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum issues to fetch per run.'} />
                 </div>
                 <input
@@ -6705,7 +6775,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading Jira settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading Jira settings...', 'Loading Jira settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={saveJira} disabled={jiraSaving || !jira || Boolean(validateJira(jira))}>
@@ -6715,18 +6785,20 @@ export function ConnectorsPage() {
               {jiraTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteJira} disabled={jiraSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {jiraMessage ? <span className="text-sm text-slate-50">{jiraMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'aws_posture' ? (
         <Card>
-          <Label>AWS posture settings</Label>
+          <Label>{t('AWS posture settings', 'AWS posture settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure AWS Security Hub access to ingest posture findings.
+            {t(
+              'Configure AWS Security Hub access to ingest posture findings.',
+              'Configure AWS Security Hub access to ingest posture findings.'
+            )}
           </p>
           {awsPosture ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -6737,7 +6809,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Region</Label>
+                  <Label>{t('Region', 'Region')}</Label>
                   <HelpTip text={'AWS region where Security Hub is enabled.'} />
                 </div>
                 <input
@@ -6749,19 +6821,19 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Access key</Label>
+                  <Label>{t('Access key', 'Access key')}</Label>
                   <HelpTip text={'Optional. Leave blank to use IAM role credentials.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={awsPosture.access_key ?? ''}
                   onChange={(e) => setAwsPosture({ ...awsPosture, access_key: e.target.value })}
-                  placeholder="AKIA..."
+                  placeholder={t('AKIA...', 'AKIA...')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Secret key</Label>
+                  <Label>{t('Secret key', 'Secret key')}</Label>
                   <HelpTip text={'Optional. Required if access key is set.'} />
                 </div>
                 <input
@@ -6774,7 +6846,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Session token</Label>
+                  <Label>{t('Session token', 'Session token')}</Label>
                   <HelpTip text={'Optional session token for temporary credentials.'} />
                 </div>
                 <input
@@ -6787,7 +6859,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum findings to fetch.'} />
                 </div>
                 <input
@@ -6800,7 +6872,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading AWS posture settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading AWS posture settings...', 'Loading AWS posture settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6816,18 +6888,20 @@ export function ConnectorsPage() {
               {awsPostureTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteAwsPosture} disabled={awsPostureSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {awsPostureMessage ? <span className="text-sm text-slate-50">{awsPostureMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'azure_posture' ? (
         <Card>
-          <Label>Azure posture settings</Label>
+          <Label>{t('Azure posture settings', 'Azure posture settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure Defender for Cloud access to ingest assessment posture signals.
+            {t(
+              'Configure Defender for Cloud access to ingest assessment posture signals.',
+              'Configure Defender for Cloud access to ingest assessment posture signals.'
+            )}
           </p>
           {azurePosture ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -6838,7 +6912,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Tenant ID</Label>
+                  <Label>{t('Tenant ID', 'Tenant ID')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -6849,7 +6923,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Client ID</Label>
+                  <Label>{t('Client ID', 'Client ID')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -6860,7 +6934,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Client secret</Label>
+                  <Label>{t('Client secret', 'Client secret')}</Label>
                 </div>
                 <input
                   type="password"
@@ -6872,7 +6946,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Subscription ID</Label>
+                  <Label>{t('Subscription ID', 'Subscription ID')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -6885,7 +6959,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6895,12 +6969,12 @@ export function ConnectorsPage() {
                       setAzurePosture({ ...azurePosture, verify_tls: e.target.checked })
                     }
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum assessments to fetch.'} />
                 </div>
                 <input
@@ -6915,7 +6989,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading Azure posture settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading Azure posture settings...', 'Loading Azure posture settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -6931,18 +7005,20 @@ export function ConnectorsPage() {
               {azurePostureTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteAzurePosture} disabled={azurePostureSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {azurePostureMessage ? <span className="text-sm text-slate-50">{azurePostureMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'gcp_posture' ? (
         <Card>
-          <Label>GCP posture settings</Label>
+          <Label>{t('GCP posture settings', 'GCP posture settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure Security Command Center access to ingest posture findings.
+            {t(
+              'Configure Security Command Center access to ingest posture findings.',
+              'Configure Security Command Center access to ingest posture findings.'
+            )}
           </p>
           {gcpPosture ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -6953,7 +7029,7 @@ export function ConnectorsPage() {
               />
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Organization ID</Label>
+                  <Label>{t('Organization ID', 'Organization ID')}</Label>
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
@@ -6964,7 +7040,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Access token</Label>
+                  <Label>{t('Access token', 'Access token')}</Label>
                   <HelpTip text={'OAuth access token for Security Command Center.'} />
                 </div>
                 <input
@@ -6972,12 +7048,12 @@ export function ConnectorsPage() {
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={gcpPosture.access_token ?? ''}
                   onChange={(e) => setGcpPosture({ ...gcpPosture, access_token: e.target.value })}
-                  placeholder="ya29..."
+                  placeholder={t('ya29...', 'ya29...')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Verify TLS</Label>
+                  <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-50">
                   <input
@@ -6985,12 +7061,12 @@ export function ConnectorsPage() {
                     checked={gcpPosture.verify_tls ?? true}
                     onChange={(e) => setGcpPosture({ ...gcpPosture, verify_tls: e.target.checked })}
                   />
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max items</Label>
+                  <Label>{t('Max items', 'Max items')}</Label>
                   <HelpTip text={'Maximum findings to fetch.'} />
                 </div>
                 <input
@@ -7005,7 +7081,7 @@ export function ConnectorsPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading GCP posture settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading GCP posture settings...', 'Loading GCP posture settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -7021,24 +7097,26 @@ export function ConnectorsPage() {
               {gcpPostureTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteGcpPosture} disabled={gcpPostureSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {gcpPostureMessage ? <span className="text-sm text-slate-50">{gcpPostureMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'glpi' ? (
         <Card>
-          <Label>GLPI settings</Label>
+          <Label>{t('GLPI settings', 'GLPI settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure GLPI credentials for the selected connector.
+            {t(
+              'Configure GLPI credentials for the selected connector.',
+              'Configure GLPI credentials for the selected connector.'
+            )}
           </p>
           {glpi ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Base URL</Label>
+                  <Label>{t('Base URL', 'Base URL')}</Label>
                   <HelpTip text={'GLPI API base URL including /apirest.php.'} />
                 </div>
                 <input
@@ -7050,7 +7128,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>App token</Label>
+                  <Label>{t('App token', 'App token')}</Label>
                   <HelpTip text={'GLPI application token for API access.'} />
                 </div>
                 <input
@@ -7062,7 +7140,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>User token</Label>
+                  <Label>{t('User token', 'User token')}</Label>
                   <HelpTip text={'GLPI user token with asset read permissions.'} />
                 </div>
                 <input
@@ -7074,86 +7152,95 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Server endpoint</Label>
+                  <Label>{t('Server endpoint', 'Server endpoint')}</Label>
                   <HelpTip text={'GLPI item type for servers. Example: Server.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={glpi.server_endpoint ?? ''}
                   onChange={(e) => setGlpi({ ...glpi, server_endpoint: e.target.value })}
-                  placeholder="Server"
+                  placeholder={t('Server', 'Server')}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Asset name filter</Label>
+                  <Label>{t('Asset name filter', 'Asset name filter')}</Label>
                   <HelpTip text={'Optional. Comma-separated name fragments to include.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={glpi.asset_name_filter ?? ''}
                   onChange={(e) => setGlpi({ ...glpi, asset_name_filter: e.target.value })}
-                  placeholder="db-, core-, firewall"
+                  placeholder={t('db-, core-, firewall', 'db-, core-, firewall')}
                 />
               </div>
               <div className="space-y-3 md:col-span-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Label>Asset endpoints</Label>
+                      <Label>{t('Asset endpoints', 'Asset endpoints')}</Label>
                       <HelpTip text={'Define which GLPI item types to ingest as assets.'} />
                     </div>
-                    <Button onClick={addGlpiAssetEndpoint}>Add endpoint</Button>
+                    <Button onClick={addGlpiAssetEndpoint}>{t('Add endpoint', 'Add endpoint')}</Button>
                   </div>
                   <div className="grid gap-3">
-                    {(glpi.asset_endpoints ?? []).map((endpoint, index) => (
-                      <div
-                        key={`glpi-endpoint-${index}`}
-                        className="grid gap-3 rounded-lg border border-[#274266] p-3 md:grid-cols-3"
-                      >
-                        <div className="space-y-2">
-                          <Label>Endpoint</Label>
-                          <input
-                            className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                            value={endpoint.endpoint ?? ''}
-                            onChange={(e) => updateGlpiAssetEndpoint(index, { endpoint: e.target.value })}
-                            placeholder="Computer"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Asset type</Label>
-                          <input
-                            className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                            value={endpoint.asset_type ?? ''}
-                            onChange={(e) => updateGlpiAssetEndpoint(index, { asset_type: e.target.value })}
-                            placeholder="network_device"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Tag</Label>
-                          <input
-                            className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                            value={endpoint.tag ?? ''}
-                            onChange={(e) => updateGlpiAssetEndpoint(index, { tag: e.target.value })}
-                            placeholder="network"
-                          />
-                        </div>
-                        <div className="md:col-span-3">
-                          <div className="flex justify-end">
-                            <Button onClick={() => removeGlpiAssetEndpoint(index)}>Remove</Button>
+                    {(glpi.asset_endpoints ?? []).map((endpoint, index) => {
+                      const {
+                        t
+                      } = useI18n();
+
+                      return (
+                        <div
+                          key={`glpi-endpoint-${index}`}
+                          className="grid gap-3 rounded-lg border border-[#274266] p-3 md:grid-cols-3"
+                        >
+                          <div className="space-y-2">
+                            <Label>{t('Endpoint', 'Endpoint')}</Label>
+                            <input
+                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                              value={endpoint.endpoint ?? ''}
+                              onChange={(e) => updateGlpiAssetEndpoint(index, { endpoint: e.target.value })}
+                              placeholder={t('Computer', 'Computer')}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{t('Asset type', 'Asset type')}</Label>
+                            <input
+                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                              value={endpoint.asset_type ?? ''}
+                              onChange={(e) => updateGlpiAssetEndpoint(index, { asset_type: e.target.value })}
+                              placeholder="network_device"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{t('Tag', 'Tag')}</Label>
+                            <input
+                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                              value={endpoint.tag ?? ''}
+                              onChange={(e) => updateGlpiAssetEndpoint(index, { tag: e.target.value })}
+                              placeholder="network"
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <div className="flex justify-end">
+                              <Button onClick={() => removeGlpiAssetEndpoint(index)}>{t('Remove', 'Remove')}</Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {!(glpi.asset_endpoints ?? []).length ? (
                       <p className="text-sm text-slate-50">
-                        No asset endpoints configured. Add at least one GLPI item type to ingest.
+                        {t(
+                          'No asset endpoints configured. Add at least one GLPI item type to ingest.',
+                          'No asset endpoints configured. Add at least one GLPI item type to ingest.'
+                        )}
                       </p>
                     ) : null}
                   </div>
                 </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Evidence types</Label>
+                  <Label>{t('Evidence types', 'Evidence types')}</Label>
                   <HelpTip text={'Enable optional ITSM evidence ingestion (changes and/or tickets).'} />
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
@@ -7163,7 +7250,7 @@ export function ConnectorsPage() {
                       checked={glpi.include_changes ?? true}
                       onChange={(e) => setGlpi({ ...glpi, include_changes: e.target.checked })}
                     />
-                    Include Changes (as change events)
+                    {t('Include Changes (as change events)', 'Include Changes (as change events)')}
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-50">
                     <input
@@ -7171,7 +7258,7 @@ export function ConnectorsPage() {
                       checked={glpi.include_tickets ?? false}
                       onChange={(e) => setGlpi({ ...glpi, include_tickets: e.target.checked })}
                     />
-                    Include Tickets (as incidents)
+                    {t('Include Tickets (as incidents)', 'Include Tickets (as incidents)')}
                   </label>
                 </div>
               </div>
@@ -7186,7 +7273,7 @@ export function ConnectorsPage() {
               })}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Page size</Label>
+                  <Label>{t('Page size', 'Page size')}</Label>
                   <HelpTip text={'Batch size for API pagination. Example: 200.'} />
                 </div>
                 <input
@@ -7198,7 +7285,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Max pages</Label>
+                  <Label>{t('Max pages', 'Max pages')}</Label>
                   <HelpTip text={'Max pages to fetch per run. Example: 10.'} />
                 </div>
                 <input
@@ -7216,13 +7303,13 @@ export function ConnectorsPage() {
                   className="h-4 w-4 rounded border-slate-600 bg-slate-900"
                 />
                 <span className="flex items-center gap-2">
-                  Verify TLS certificates
+                  {t('Verify TLS certificates', 'Verify TLS certificates')}
                   <HelpTip text={'Disable only for self-signed lab instances.'} />
                 </span>
               </label>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading GLPI settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading GLPI settings...', 'Loading GLPI settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -7238,24 +7325,26 @@ export function ConnectorsPage() {
               {glpiTesting ? 'Testing...' : 'Test connection'}
             </Button>
             <DangerButton onClick={deleteGlpi} disabled={glpiSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {glpiMessage ? <span className="text-sm text-slate-50">{glpiMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'service_now' ? (
         <Card>
-          <Label>ServiceNow settings</Label>
+          <Label>{t('ServiceNow settings', 'ServiceNow settings')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure ServiceNow CMDB credentials and tables (comma-separated).
+            {t(
+              'Configure ServiceNow CMDB credentials and tables (comma-separated).',
+              'Configure ServiceNow CMDB credentials and tables (comma-separated).'
+            )}
           </p>
           {serviceNow ? (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Instance</Label>
+                  <Label>{t('Instance', 'Instance')}</Label>
                   <HelpTip text={'ServiceNow instance name (subdomain). Example: acme.'} />
                 </div>
                 <input
@@ -7267,7 +7356,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Username</Label>
+                  <Label>{t('Username', 'Username')}</Label>
                   <HelpTip text={'ServiceNow user with CMDB read access.'} />
                 </div>
                 <input
@@ -7279,7 +7368,7 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Password</Label>
+                  <Label>{t('Password', 'Password')}</Label>
                   <HelpTip text={'ServiceNow password or API token.'} />
                 </div>
                 <input
@@ -7292,19 +7381,22 @@ export function ConnectorsPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Tables</Label>
+                  <Label>{t('Tables', 'Tables')}</Label>
                   <HelpTip text={'Comma-separated CMDB tables. Example: cmdb_ci, cmdb_ci_server.'} />
                 </div>
                 <input
                   className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                   value={serviceNowTables}
                   onChange={(e) => setServiceNowTables(e.target.value)}
-                  placeholder="cmdb_ci, cmdb_ci_server, cmdb_ci_network, cmdb_ci_appl"
+                  placeholder={t(
+                    'cmdb_ci, cmdb_ci_server, cmdb_ci_network, cmdb_ci_appl',
+                    'cmdb_ci, cmdb_ci_server, cmdb_ci_network, cmdb_ci_appl'
+                  )}
                 />
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">Loading ServiceNow settings...</p>
+            <p className="mt-3 text-sm text-slate-50">{t('Loading ServiceNow settings...', 'Loading ServiceNow settings...')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
@@ -7314,28 +7406,30 @@ export function ConnectorsPage() {
               {serviceNowSaving ? 'Saving...' : 'Save ServiceNow settings'}
             </Button>
             <DangerButton onClick={deleteServiceNow} disabled={serviceNowSaving}>
-              Delete configuration
+              {t('Delete configuration', 'Delete configuration')}
             </DangerButton>
             {serviceNowMessage ? <span className="text-sm text-slate-50">{serviceNowMessage}</span> : null}
           </div>
         </Card>
       ) : null}
-
       {selectedConnector === 'palo_alto' ? (
         <Card>
-          <Label>Palo Alto (PAN-OS) instances</Label>
+          <Label>{t('Palo Alto (PAN-OS) instances', 'Palo Alto (PAN-OS) instances')}</Label>
           <p className="mt-2 text-sm text-slate-50">
-            Configure one or more Palo Alto firewall pairs. Use one cluster per active/passive pair.
+            {t(
+              'Configure one or more Palo Alto firewall pairs. Use one cluster per active/passive pair.',
+              'Configure one or more Palo Alto firewall pairs. Use one cluster per active/passive pair.'
+            )}
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="space-y-2">
-              <Label>Instance</Label>
+              <Label>{t('Instance', 'Instance')}</Label>
               <select
                 className="rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={paloAltoSelected}
                 onChange={(e) => setPaloAltoSelected(e.target.value)}
               >
-                <option value="">Select instance...</option>
+                <option value="">{t('Select instance...', 'Select instance...')}</option>
                 {paloAltoConfigs.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.name}
@@ -7344,7 +7438,7 @@ export function ConnectorsPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>New instance name</Label>
+              <Label>{t('New instance name', 'New instance name')}</Label>
               <input
                 className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                 value={paloAltoNewName}
@@ -7352,13 +7446,13 @@ export function ConnectorsPage() {
                 placeholder="pa-edge-a"
               />
             </div>
-            <Button onClick={addPaloAltoInstance}>Add instance</Button>
+            <Button onClick={addPaloAltoInstance}>{t('Add instance', 'Add instance')}</Button>
           </div>
           {currentPaloAlto ? (
             <div key={`palo-alto-editor-${currentPaloAlto.name}`} className="mt-4 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Instance name</Label>
+                  <Label>{t('Instance name', 'Instance name')}</Label>
                   <input
                     className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
                     value={currentPaloAlto.name}
@@ -7375,7 +7469,7 @@ export function ConnectorsPage() {
                 />
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Label>Auth mode</Label>
+                    <Label>{t('Auth mode', 'Auth mode')}</Label>
                     <HelpTip text={'Choose API key or username/password for PAN-OS.'} />
                   </div>
                   <select
@@ -7388,13 +7482,13 @@ export function ConnectorsPage() {
                       })
                     }
                   >
-                    <option value="api_key">API key</option>
-                    <option value="password">Username + password</option>
+                    <option value="api_key">{t('API key', 'API key')}</option>
+                    <option value="password">{t('Username + password', 'Username + password')}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Label>Verify TLS</Label>
+                    <Label>{t('Verify TLS', 'Verify TLS')}</Label>
                     <HelpTip text={'Validate firewall TLS certificates.'} />
                   </div>
                   <label className="flex items-center gap-2 text-sm text-slate-50">
@@ -7406,13 +7500,13 @@ export function ConnectorsPage() {
                       }
                       className="h-4 w-4 rounded border-slate-600 bg-slate-900"
                     />
-                    <span>Validate firewall certificates</span>
+                    <span>{t('Validate firewall certificates', 'Validate firewall certificates')}</span>
                   </label>
                 </div>
                 {currentPaloAlto.auth_mode === 'api_key' ? (
                   <div className="space-y-2 md:col-span-2">
                     <div className="flex items-center gap-2">
-                      <Label>API key</Label>
+                      <Label>{t('API key', 'API key')}</Label>
                       <HelpTip text={'PAN-OS API key generated on the firewall.'} />
                     </div>
                     <input
@@ -7422,14 +7516,14 @@ export function ConnectorsPage() {
                       onChange={(e) =>
                         updatePaloAltoInstance(currentPaloAlto.name, { api_key: e.target.value })
                       }
-                      placeholder="key..."
+                      placeholder={t('key...', 'key...')}
                     />
                   </div>
                 ) : (
                   <>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <Label>Username</Label>
+                        <Label>{t('Username', 'Username')}</Label>
                         <HelpTip text={'PAN-OS admin username.'} />
                       </div>
                       <input
@@ -7444,7 +7538,7 @@ export function ConnectorsPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <Label>Password</Label>
+                        <Label>{t('Password', 'Password')}</Label>
                         <HelpTip text={'PAN-OS admin password.'} />
                       </div>
                       <input
@@ -7464,7 +7558,7 @@ export function ConnectorsPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Log collection</Label>
+                  <Label>{t('Log collection', 'Log collection')}</Label>
                   <HelpTip text={'Control which PAN-OS logs are pulled for maintenance and HA history.'} />
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
@@ -7478,7 +7572,10 @@ export function ConnectorsPage() {
                         })
                       }
                     />
-                    HA-only query first (auto fallback to broader query)
+                    {t(
+                      'HA-only query first (auto fallback to broader query)',
+                      'HA-only query first (auto fallback to broader query)'
+                    )}
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-50">
                     <input
@@ -7490,7 +7587,7 @@ export function ConnectorsPage() {
                         })
                       }
                     />
-                    Include system logs
+                    {t('Include system logs', 'Include system logs')}
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-50">
                     <input
@@ -7502,11 +7599,11 @@ export function ConnectorsPage() {
                         })
                       }
                     />
-                    Include config logs
+                    {t('Include config logs', 'Include config logs')}
                   </label>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Label>Max log entries</Label>
+                      <Label>{t('Max log entries', 'Max log entries')}</Label>
                       <HelpTip text={'Maximum log entries to fetch per node.'} />
                     </div>
                     <input
@@ -7524,7 +7621,7 @@ export function ConnectorsPage() {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Label>History window (hours)</Label>
+                      <Label>{t('History window (hours)', 'History window (hours)')}</Label>
                       <HelpTip text={'Ignore log entries older than this window.'} />
                     </div>
                     <input
@@ -7542,7 +7639,7 @@ export function ConnectorsPage() {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Label>Log since time (optional)</Label>
+                      <Label>{t('Log since time (optional)', 'Log since time (optional)')}</Label>
                       <HelpTip text={'Override history window with a specific start time. Format: YYYY-MM-DD HH:MM:SS.'} />
                     </div>
                     <input
@@ -7556,7 +7653,10 @@ export function ConnectorsPage() {
                         })
                       }
                     />
-                    <div className="text-xs text-slate-400">Leave blank to use the history window.</div>
+                    <div className="text-xs text-slate-400">{t(
+                      'Leave blank to use the history window.',
+                      'Leave blank to use the history window.'
+                    )}</div>
                   </div>
                 </div>
               </div>
@@ -7564,106 +7664,115 @@ export function ConnectorsPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label>Clusters</Label>
+                    <Label>{t('Clusters', 'Clusters')}</Label>
                     <HelpTip text={'Add one entry per active/passive firewall pair. Enter a management IP, hostname, or full URL.'} />
                   </div>
-                  <Button onClick={addPaloAltoCluster}>Add cluster</Button>
+                  <Button onClick={addPaloAltoCluster}>{t('Add cluster', 'Add cluster')}</Button>
                 </div>
                 <div className="text-xs text-slate-300">
-                  Enter the PAN-OS management IP/hostname or full base URL. The collector calls the PAN-OS API endpoint at /api/.
+                  {t(
+                    'Enter the PAN-OS management IP/hostname or full base URL. The collector calls the PAN-OS API endpoint at /api/.',
+                    'Enter the PAN-OS management IP/hostname or full base URL. The collector calls the PAN-OS API endpoint at /api/.'
+                  )}
                 </div>
                 {currentPaloAlto.clusters.length ? (
                   <div className="space-y-4">
-                    {currentPaloAlto.clusters.map((cluster, index) => (
-                      <div
-                        key={`palo-alto-cluster-${currentPaloAlto.name}-${index}`}
-                        className="rounded-lg border border-[#274266] p-3"
-                      >
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Label>Cluster name</Label>
-                              <HelpTip text={'Friendly name for the firewall pair. Example: DC1-Edge.'} />
+                    {currentPaloAlto.clusters.map((cluster, index) => {
+                      const {
+                        t
+                      } = useI18n();
+
+                      return (
+                        <div
+                          key={`palo-alto-cluster-${currentPaloAlto.name}-${index}`}
+                          className="rounded-lg border border-[#274266] p-3"
+                        >
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Label>{t('Cluster name', 'Cluster name')}</Label>
+                                <HelpTip text={'Friendly name for the firewall pair. Example: DC1-Edge.'} />
+                              </div>
+                              <input
+                                className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                value={cluster.name ?? ''}
+                                autoComplete="off"
+                                onChange={(e) => updatePaloAltoCluster(index, { name: e.target.value })}
+                                placeholder={t('Primary DC', 'Primary DC')}
+                              />
                             </div>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={cluster.name ?? ''}
-                              autoComplete="off"
-                              onChange={(e) => updatePaloAltoCluster(index, { name: e.target.value })}
-                              placeholder="Primary DC"
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Label>{t('Active firewall IP or URL', 'Active firewall IP or URL')}</Label>
+                                <HelpTip text={'Management IP, hostname, or URL for the active node. Plain IPs and hostnames use HTTPS.'} />
+                              </div>
+                              <input
+                                className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                value={cluster.active_url ?? ''}
+                                autoComplete="off"
+                                onChange={(e) => updatePaloAltoCluster(index, { active_url: e.target.value })}
+                                placeholder="10.0.0.10 or https://fw-active.example.com"
+                              />
+                            </div>
+                            <AssetSelect
+                              value={cluster.active_asset_id}
+                              label={t('Active node asset', 'Active node asset')}
+                              helpText="Bind the active firewall to an inventory asset. Required if the instance asset is empty."
+                              onChange={(value) =>
+                                updatePaloAltoCluster(index, { active_asset_id: value })
+                              }
                             />
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Label>{t('Passive firewall IP or URL', 'Passive firewall IP or URL')}</Label>
+                                <HelpTip text={'Optional standby node management IP, hostname, or URL. Plain IPs and hostnames use HTTPS.'} />
+                              </div>
+                              <input
+                                className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                value={cluster.passive_url ?? ''}
+                                autoComplete="off"
+                                onChange={(e) => updatePaloAltoCluster(index, { passive_url: e.target.value })}
+                                placeholder="10.0.0.11 or https://fw-passive.example.com"
+                              />
+                            </div>
+                            <AssetSelect
+                              value={cluster.passive_asset_id}
+                              label={t('Passive node asset', 'Passive node asset')}
+                              helpText="Bind the passive firewall to an inventory asset. Required if a passive URL is set and the instance asset is empty."
+                              onChange={(value) =>
+                                updatePaloAltoCluster(index, { passive_asset_id: value })
+                              }
+                            />
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Label>{t('Description', 'Description')}</Label>
+                                <HelpTip text={'Short description for this firewall pair.'} />
+                              </div>
+                              <input
+                                className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                value={cluster.description ?? ''}
+                                autoComplete="off"
+                                onChange={(e) => updatePaloAltoCluster(index, { description: e.target.value })}
+                                placeholder={t('Active/passive pair in DC1', 'Active/passive pair in DC1')}
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Label>Active firewall IP or URL</Label>
-                              <HelpTip text={'Management IP, hostname, or URL for the active node. Plain IPs and hostnames use HTTPS.'} />
-                            </div>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={cluster.active_url ?? ''}
-                              autoComplete="off"
-                              onChange={(e) => updatePaloAltoCluster(index, { active_url: e.target.value })}
-                              placeholder="10.0.0.10 or https://fw-active.example.com"
-                            />
-                          </div>
-                          <AssetSelect
-                            value={cluster.active_asset_id}
-                            label="Active node asset"
-                            helpText="Bind the active firewall to an inventory asset. Required if the instance asset is empty."
-                            onChange={(value) =>
-                              updatePaloAltoCluster(index, { active_asset_id: value })
-                            }
-                          />
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Label>Passive firewall IP or URL</Label>
-                              <HelpTip text={'Optional standby node management IP, hostname, or URL. Plain IPs and hostnames use HTTPS.'} />
-                            </div>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={cluster.passive_url ?? ''}
-                              autoComplete="off"
-                              onChange={(e) => updatePaloAltoCluster(index, { passive_url: e.target.value })}
-                              placeholder="10.0.0.11 or https://fw-passive.example.com"
-                            />
-                          </div>
-                          <AssetSelect
-                            value={cluster.passive_asset_id}
-                            label="Passive node asset"
-                            helpText="Bind the passive firewall to an inventory asset. Required if a passive URL is set and the instance asset is empty."
-                            onChange={(value) =>
-                              updatePaloAltoCluster(index, { passive_asset_id: value })
-                            }
-                          />
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Label>Description</Label>
-                              <HelpTip text={'Short description for this firewall pair.'} />
-                            </div>
-                            <input
-                              className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                              value={cluster.description ?? ''}
-                              autoComplete="off"
-                              onChange={(e) => updatePaloAltoCluster(index, { description: e.target.value })}
-                              placeholder="Active/passive pair in DC1"
-                            />
+                          <div className="mt-3 flex justify-end">
+                            <Button onClick={() => removePaloAltoCluster(index)}>{t('Remove cluster', 'Remove cluster')}</Button>
                           </div>
                         </div>
-                        <div className="mt-3 flex justify-end">
-                          <Button onClick={() => removePaloAltoCluster(index)}>Remove cluster</Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-50">No clusters configured yet.</p>
+                  <p className="text-sm text-slate-50">{t('No clusters configured yet.', 'No clusters configured yet.')}</p>
                 )}
               </div>
 
               <div className="rounded-lg border border-[#274266] bg-[#0d1a2b]/40 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <Label>Advanced event mappings</Label>
+                    <Label>{t('Advanced event mappings', 'Advanced event mappings')}</Label>
                     <HelpTip text={'Map Palo Alto events into findings and scoring for this instance.'} />
                     <span className="text-xs text-slate-400">
                       {currentPaloAlto.event_mappings?.length ?? 0} configured
@@ -7686,137 +7795,143 @@ export function ConnectorsPage() {
                 {paloAltoMappingsOpen ? (
                   <div className="mt-4 space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      <Button onClick={loadPaloAltoDefaultMappings}>Load defaults</Button>
-                      <Button onClick={addPaloAltoEventMapping}>Add mapping</Button>
+                      <Button onClick={loadPaloAltoDefaultMappings}>{t('Load defaults', 'Load defaults')}</Button>
+                      <Button onClick={addPaloAltoEventMapping}>{t('Add mapping', 'Add mapping')}</Button>
                     </div>
                     {currentPaloAlto.event_mappings?.length ? (
                       <div className="space-y-4">
-                        {currentPaloAlto.event_mappings.map((mapping, index) => (
-                          <div key={`palo-alto-mapping-${currentPaloAlto.name}-${index}`} className="rounded-lg border border-[#274266] p-3">
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label>Mapping name</Label>
-                                <input
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.name ?? ''}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, { name: e.target.value })
-                                  }
-                                  placeholder="HA role change"
-                                />
+                        {currentPaloAlto.event_mappings.map((mapping, index) => {
+                          const {
+                            t
+                          } = useI18n();
+
+                          return (
+                            <div key={`palo-alto-mapping-${currentPaloAlto.name}-${index}`} className="rounded-lg border border-[#274266] p-3">
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div className="space-y-2">
+                                  <Label>{t('Mapping name', 'Mapping name')}</Label>
+                                  <input
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.name ?? ''}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, { name: e.target.value })
+                                    }
+                                    placeholder={t('HA role change', 'HA role change')}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>{t('Event kind', 'Event kind')}</Label>
+                                  <select
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.event_kind ?? 'change_event'}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, {
+                                        event_kind: e.target.value as PaloAltoEventKind,
+                                      })
+                                    }
+                                  >
+                                    <option value="change_event">{t('Change event', 'Change event')}</option>
+                                    <option value="resilience_signal">{t('Resilience signal', 'Resilience signal')}</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>{t('Match field', 'Match field')}</Label>
+                                  <select
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.match_field ?? 'change_type'}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, {
+                                        match_field: e.target.value as PaloAltoEventMatchField,
+                                      })
+                                    }
+                                  >
+                                    <option value="change_type">{t('Change type', 'Change type')}</option>
+                                    <option value="signal_type">{t('Signal type', 'Signal type')}</option>
+                                    <option value="log_type">{t('Log type', 'Log type')}</option>
+                                    <option value="subtype">{t('Log subtype', 'Log subtype')}</option>
+                                    <option value="contains">{t('Contains text', 'Contains text')}</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>{t('Match value', 'Match value')}</Label>
+                                  <input
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.match_value ?? ''}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, { match_value: e.target.value })
+                                    }
+                                    placeholder="ha_role_change"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>{t('Finding type', 'Finding type')}</Label>
+                                  <input
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.finding_type ?? ''}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, { finding_type: e.target.value })
+                                    }
+                                    placeholder="resilience"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>{t('Severity', 'Severity')}</Label>
+                                  <select
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.severity ?? 'medium'}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, {
+                                        severity: e.target.value as PaloAltoEventMapping['severity'],
+                                      })
+                                    }
+                                  >
+                                    <option value="low">{t('Low', 'Low')}</option>
+                                    <option value="medium">{t('Medium', 'Medium')}</option>
+                                    <option value="high">{t('High', 'High')}</option>
+                                    <option value="critical">{t('Critical', 'Critical')}</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>{t('Score delta', 'Score delta')}</Label>
+                                  <input
+                                    type="number"
+                                    className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                                    value={mapping.score_delta ?? ''}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, {
+                                        score_delta: e.target.value ? Number(e.target.value) : null,
+                                      })
+                                    }
+                                    placeholder={t('Optional override', 'Optional override')}
+                                  />
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-slate-50">
+                                  <input
+                                    type="checkbox"
+                                    checked={mapping.enabled ?? true}
+                                    onChange={(e) =>
+                                      updatePaloAltoEventMapping(index, { enabled: e.target.checked })
+                                    }
+                                  />
+                                  {t('Enabled', 'Enabled')}
+                                </label>
                               </div>
-                              <div className="space-y-2">
-                                <Label>Event kind</Label>
-                                <select
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.event_kind ?? 'change_event'}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, {
-                                      event_kind: e.target.value as PaloAltoEventKind,
-                                    })
-                                  }
-                                >
-                                  <option value="change_event">Change event</option>
-                                  <option value="resilience_signal">Resilience signal</option>
-                                </select>
+                              <div className="mt-3 flex justify-end">
+                                <Button onClick={() => removePaloAltoEventMapping(index)}>{t('Remove mapping', 'Remove mapping')}</Button>
                               </div>
-                              <div className="space-y-2">
-                                <Label>Match field</Label>
-                                <select
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.match_field ?? 'change_type'}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, {
-                                      match_field: e.target.value as PaloAltoEventMatchField,
-                                    })
-                                  }
-                                >
-                                  <option value="change_type">Change type</option>
-                                  <option value="signal_type">Signal type</option>
-                                  <option value="log_type">Log type</option>
-                                  <option value="subtype">Log subtype</option>
-                                  <option value="contains">Contains text</option>
-                                </select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Match value</Label>
-                                <input
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.match_value ?? ''}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, { match_value: e.target.value })
-                                  }
-                                  placeholder="ha_role_change"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Finding type</Label>
-                                <input
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.finding_type ?? ''}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, { finding_type: e.target.value })
-                                  }
-                                  placeholder="resilience"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Severity</Label>
-                                <select
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.severity ?? 'medium'}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, {
-                                      severity: e.target.value as PaloAltoEventMapping['severity'],
-                                    })
-                                  }
-                                >
-                                  <option value="low">Low</option>
-                                  <option value="medium">Medium</option>
-                                  <option value="high">High</option>
-                                  <option value="critical">Critical</option>
-                                </select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Score delta</Label>
-                                <input
-                                  type="number"
-                                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
-                                  value={mapping.score_delta ?? ''}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, {
-                                      score_delta: e.target.value ? Number(e.target.value) : null,
-                                    })
-                                  }
-                                  placeholder="Optional override"
-                                />
-                              </div>
-                              <label className="flex items-center gap-2 text-sm text-slate-50">
-                                <input
-                                  type="checkbox"
-                                  checked={mapping.enabled ?? true}
-                                  onChange={(e) =>
-                                    updatePaloAltoEventMapping(index, { enabled: e.target.checked })
-                                  }
-                                />
-                                Enabled
-                              </label>
                             </div>
-                            <div className="mt-3 flex justify-end">
-                              <Button onClick={() => removePaloAltoEventMapping(index)}>Remove mapping</Button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-50">No event mappings configured yet.</p>
+                      <p className="text-sm text-slate-50">{t('No event mappings configured yet.', 'No event mappings configured yet.')}</p>
                     )}
                   </div>
                 ) : null}
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-50">No Palo Alto instance selected.</p>
+            <p className="mt-3 text-sm text-slate-50">{t('No Palo Alto instance selected.', 'No Palo Alto instance selected.')}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={savePaloAlto} disabled={paloAltoSaving || !paloAltoConfigs.length}>
@@ -7829,32 +7944,31 @@ export function ConnectorsPage() {
               {paloAltoDebugging ? 'Debugging...' : 'Debug fetch'}
             </Button>
             <DangerButton onClick={deletePaloAlto} disabled={paloAltoSaving || !currentPaloAlto}>
-              Delete instance
+              {t('Delete instance', 'Delete instance')}
             </DangerButton>
             {paloAltoMessage ? <span className="text-sm text-slate-50">{paloAltoMessage}</span> : null}
           </div>
           {renderPaloAltoDebug(paloAltoDebug)}
         </Card>
       ) : null}
-
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Connector health</Label>
+          <Label>{t('Connector health', 'Connector health')}</Label>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200">
-            <span className="text-slate-300">Sort</span>
+            <span className="text-slate-300">{t('Sort', 'Sort')}</span>
             <select
               className="rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
               value={healthSortKey}
               onChange={(e) => setHealthSortKey(e.target.value as HealthSortKey)}
-              aria-label="Sort connectors by"
+              aria-label={t('Sort connectors by', 'Sort connectors by')}
             >
-              <option value="name">Name</option>
-              <option value="category">Category</option>
-              <option value="status">Status</option>
-              <option value="last_run">Last run</option>
-              <option value="success">Success</option>
-              <option value="validation">Validation issues</option>
-              <option value="signals">Signals</option>
+              <option value="name">{t('Name', 'Name')}</option>
+              <option value="category">{t('Category', 'Category')}</option>
+              <option value="status">{t('Status', 'Status')}</option>
+              <option value="last_run">{t('Last run', 'Last run')}</option>
+              <option value="success">{t('Success', 'Success')}</option>
+              <option value="validation">{t('Validation issues', 'Validation issues')}</option>
+              <option value="signals">{t('Signals', 'Signals')}</option>
             </select>
             <button
               type="button"
@@ -7871,56 +7985,56 @@ export function ConnectorsPage() {
             name="health-filter-name"
             value={healthFilters.name}
             onChange={(e) => setHealthFilters({ ...healthFilters, name: e.target.value })}
-            placeholder="Filter name"
-            aria-label="Filter connector name"
+            placeholder={t('Filter name', 'Filter name')}
+            aria-label={t('Filter connector name', 'Filter connector name')}
           />
           <input
             className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
             name="health-filter-category"
             value={healthFilters.category}
             onChange={(e) => setHealthFilters({ ...healthFilters, category: e.target.value })}
-            placeholder="Filter category"
-            aria-label="Filter connector category"
+            placeholder={t('Filter category', 'Filter category')}
+            aria-label={t('Filter connector category', 'Filter connector category')}
           />
           <input
             className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
             name="health-filter-status"
             value={healthFilters.status}
             onChange={(e) => setHealthFilters({ ...healthFilters, status: e.target.value })}
-            placeholder="Filter status"
-            aria-label="Filter connector status"
+            placeholder={t('Filter status', 'Filter status')}
+            aria-label={t('Filter connector status', 'Filter connector status')}
           />
           <input
             className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
             name="health-filter-last-run"
             value={healthFilters.last_run}
             onChange={(e) => setHealthFilters({ ...healthFilters, last_run: e.target.value })}
-            placeholder="Filter last run"
-            aria-label="Filter last run"
+            placeholder={t('Filter last run', 'Filter last run')}
+            aria-label={t('Filter last run', 'Filter last run')}
           />
           <input
             className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
             name="health-filter-success"
             value={healthFilters.success}
             onChange={(e) => setHealthFilters({ ...healthFilters, success: e.target.value })}
-            placeholder="Filter success/fail"
-            aria-label="Filter success fail"
+            placeholder={t('Filter success/fail', 'Filter success/fail')}
+            aria-label={t('Filter success fail', 'Filter success fail')}
           />
           <input
             className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
             name="health-filter-validation"
             value={healthFilters.validation}
             onChange={(e) => setHealthFilters({ ...healthFilters, validation: e.target.value })}
-            placeholder="Filter validation issues"
-            aria-label="Filter validation issues"
+            placeholder={t('Filter validation issues', 'Filter validation issues')}
+            aria-label={t('Filter validation issues', 'Filter validation issues')}
           />
           <input
             className="w-full rounded border border-[#274266] bg-[#0d1a2b] px-2 py-1 text-xs text-slate-200"
             name="health-filter-signals"
             value={healthFilters.signals}
             onChange={(e) => setHealthFilters({ ...healthFilters, signals: e.target.value })}
-            placeholder="Filter signals"
-            aria-label="Filter signals"
+            placeholder={t('Filter signals', 'Filter signals')}
+            aria-label={t('Filter signals', 'Filter signals')}
           />
         </div>
         <div className="mt-4 space-y-4">
@@ -7934,6 +8048,10 @@ export function ConnectorsPage() {
               </div>
               <div className="mt-3 space-y-3">
                   {connectors.map((connector) => {
+                    const {
+                      t
+                    } = useI18n();
+
                     const isExpanded = !!expandedHealth[connector.name]
                     const alerts = connector.alerts ?? []
                     const successCount = connector.success_count ?? 0
@@ -7992,549 +8110,557 @@ export function ConnectorsPage() {
                       connector.name.startsWith('powerstore') ||
                       connector.name.startsWith('dell_datadomain')
                     const haLabel = haConfigured === false ? 'HA not configured' : `HA ${haStatus}`
-                  return (
-                    <div key={connector.name} className="rounded-md border border-[#1f365a] bg-[#0b1524] p-3">
-                      <button
-                        type="button"
-                        className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
-                        onClick={() => toggleHealthExpanded(connector.name)}
-                        aria-expanded={isExpanded}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`h-2 w-2 rounded-full ${statusColor(connector.status)}`} />
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-50">
-                              <span>{connector.name}</span>
-                              {showHaStatus ? (
-                                <span className={`rounded px-2 py-0.5 text-[11px] ${haBadgeClass(haStatus, haConfigured)}`}>
-                                  {haLabel}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="text-xs text-slate-300">{connector.status ?? 'unknown'}</div>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-                          <span>
-                            Last run: <span className="font-mono">{connector.last_run ?? '-'}</span>
-                          </span>
-                          <span>Signals: {alerts.length}</span>
-                          <span className="text-slate-200">{isExpanded ? 'Hide details' : 'View details'}</span>
-                        </div>
-                      </button>
-                      {!isExpanded && connector.name.startsWith('powerstore') ? (
-                        <div className="mt-2 grid gap-2 text-xs text-slate-200 sm:grid-cols-2">
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Replication groups</div>
-                            {replicationGroupItems.length ? (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {replicationGroupItems.slice(0, 4).map((group, index) => {
-                                  const groupLabel =
-                                    group.name?.trim() || group.id?.trim() || `group-${index + 1}`
-                                  const groupStatus = group.status ?? 'unknown'
-                                  const groupVolumes = group.volumes ?? []
-                                  const groupModeLabel = replicationGroupModeLabel(group)
-                                  const label =
-                                    groupVolumes.length > 0
-                                      ? `${groupLabel} (${groupVolumes.length})`
-                                      : groupLabel
-                                  const summary = groupModeLabel
-                                    ? `${label}: ${groupModeLabel} (${groupStatus})`
-                                    : `${label}: ${groupStatus}`
-                                  return (
-                                    <span
-                                      key={`${connector.name}-repgroup-compact-${label}-${index}`}
-                                      title={summary}
-                                      className={`rounded px-2 py-0.5 text-[11px] ${replicationBadgeClass(
-                                        groupStatus,
-                                      )}`}
-                                    >
-                                      {summary}
-                                    </span>
-                                  )
-                                })}
-                                {replicationGroupItems.length > 4 ? (
-                                  <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
-                                    +{replicationGroupItems.length - 4} more
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <span className="mt-1 inline-block text-xs text-slate-300">
-                                No replication groups reported
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Remote systems</div>
-                            {remoteSystems.length ? (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {remoteSystems.slice(0, 3).map((system, index) => {
-                                  const label =
-                                    system.name?.trim() || system.id?.trim() || `remote-${index + 1}`
-                                  const modes = system.replication_modes ?? []
-                                  const modeText = modes.length ? modes.join('/') : 'unknown'
-                                  const status = system.status ?? 'unknown'
-                                  return (
-                                    <span
-                                      key={`${connector.name}-remote-compact-${label}-${index}`}
-                                      title={label}
-                                      className={`rounded px-2 py-0.5 text-[11px] ${remoteSystemBadgeClass(
-                                        modes[0],
-                                      )}`}
-                                    >
-                                      {label}: {modeText} ({status})
-                                    </span>
-                                  )
-                                })}
-                                {remoteSystems.length > 3 ? (
-                                  <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
-                                    +{remoteSystems.length - 3} more
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <span className="mt-1 inline-block text-xs text-slate-300">
-                                No remote systems reported
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-                      {isExpanded ? (
-                        <div className="mt-3 grid gap-3 text-xs text-slate-200 sm:grid-cols-2 lg:grid-cols-3">
-                          {showHaStatus ? (
+                    return (
+                      <div key={connector.name} className="rounded-md border border-[#1f365a] bg-[#0b1524] p-3">
+                        <button
+                          type="button"
+                          className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+                          onClick={() => toggleHealthExpanded(connector.name)}
+                          aria-expanded={isExpanded}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`h-2 w-2 rounded-full ${statusColor(connector.status)}`} />
                             <div>
-                              <div className="text-[11px] uppercase text-slate-400">HA status</div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2">
-                                <span className={`rounded px-2 py-0.5 text-[11px] ${haBadgeClass(haStatus, haConfigured)}`}>
-                                  {haLabel}
-                                </span>
-                                <span className="text-slate-300">
-                                  configured: {haConfigured === undefined ? 'unknown' : haConfigured ? 'yes' : 'no'}
-                                </span>
+                              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-50">
+                                <span>{connector.name}</span>
+                                {showHaStatus ? (
+                                  <span className={`rounded px-2 py-0.5 text-[11px] ${haBadgeClass(haStatus, haConfigured)}`}>
+                                    {haLabel}
+                                  </span>
+                                ) : null}
                               </div>
-                            </div>
-                          ) : null}
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">SLA overall</div>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(slaOverallOk)}`}>
-                                overall {slaOverallOk === undefined ? 'unknown' : slaOverallOk ? 'ok' : 'check'}
-                              </span>
-                              <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(freshnessOk)}`}>
-                                freshness {freshnessOk === undefined ? 'unknown' : freshnessOk ? 'ok' : 'stale'}
-                              </span>
-                              <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(provenanceOk)}`}>
-                                provenance {provenanceOk === undefined ? 'unknown' : provenanceOk ? 'ok' : 'missing'}
-                              </span>
+                              <div className="text-xs text-slate-300">{connector.status ?? 'unknown'}</div>
                             </div>
                           </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Freshness</div>
-                            <div className="mt-1">
-                              age {ageHours === null ? 'n/a' : `${ageHours}h`}
-                              {freshnessHours === null ? '' : ` / target ${freshnessHours}h`}
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+                            <span>
+                              {t('Last run:', 'Last run:')} <span className="font-mono">{connector.last_run ?? '-'}</span>
+                            </span>
+                            <span>{t('Signals:', 'Signals:')} {alerts.length}</span>
+                            <span className="text-slate-200">{isExpanded ? 'Hide details' : 'View details'}</span>
+                          </div>
+                        </button>
+                        {!isExpanded && connector.name.startsWith('powerstore') ? (
+                          <div className="mt-2 grid gap-2 text-xs text-slate-200 sm:grid-cols-2">
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Replication groups', 'Replication groups')}</div>
+                              {replicationGroupItems.length ? (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {replicationGroupItems.slice(0, 4).map((group, index) => {
+                                    const groupLabel =
+                                      group.name?.trim() || group.id?.trim() || `group-${index + 1}`
+                                    const groupStatus = group.status ?? 'unknown'
+                                    const groupVolumes = group.volumes ?? []
+                                    const groupModeLabel = replicationGroupModeLabel(group)
+                                    const label =
+                                      groupVolumes.length > 0
+                                        ? `${groupLabel} (${groupVolumes.length})`
+                                        : groupLabel
+                                    const summary = groupModeLabel
+                                      ? `${label}: ${groupModeLabel} (${groupStatus})`
+                                      : `${label}: ${groupStatus}`
+                                    return (
+                                      <span
+                                        key={`${connector.name}-repgroup-compact-${label}-${index}`}
+                                        title={summary}
+                                        className={`rounded px-2 py-0.5 text-[11px] ${replicationBadgeClass(
+                                          groupStatus,
+                                        )}`}
+                                      >
+                                        {summary}
+                                      </span>
+                                    )
+                                  })}
+                                  {replicationGroupItems.length > 4 ? (
+                                    <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
+                                      +{replicationGroupItems.length - 4} more
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="mt-1 inline-block text-xs text-slate-300">
+                                  {t('No replication groups reported', 'No replication groups reported')}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Remote systems', 'Remote systems')}</div>
+                              {remoteSystems.length ? (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {remoteSystems.slice(0, 3).map((system, index) => {
+                                    const label =
+                                      system.name?.trim() || system.id?.trim() || `remote-${index + 1}`
+                                    const modes = system.replication_modes ?? []
+                                    const modeText = modes.length ? modes.join('/') : 'unknown'
+                                    const status = system.status ?? 'unknown'
+                                    return (
+                                      <span
+                                        key={`${connector.name}-remote-compact-${label}-${index}`}
+                                        title={label}
+                                        className={`rounded px-2 py-0.5 text-[11px] ${remoteSystemBadgeClass(
+                                          modes[0],
+                                        )}`}
+                                      >
+                                        {label}: {modeText} ({status})
+                                      </span>
+                                    )
+                                  })}
+                                  {remoteSystems.length > 3 ? (
+                                    <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
+                                      +{remoteSystems.length - 3} more
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="mt-1 inline-block text-xs text-slate-300">
+                                  {t('No remote systems reported', 'No remote systems reported')}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Provenance hashes</div>
-                            <div className="mt-1">{healthCountLabel(provenanceHashes)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Success / Fail</div>
-                            <div className="mt-1">
-                              {successCount}/{failureCount}
-                              {connector.partial_failure_count ? ` / partial ${connector.partial_failure_count}` : ''}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Validation issues</div>
-                            <div className="mt-1">{connector.validation_issue_count ?? validationIssues.length}</div>
-                            {connector.last_validation ? (
-                              <div className="mt-1 font-mono text-[11px] text-slate-400">
-                                {connector.last_validation}
+                        ) : null}
+                        {isExpanded ? (
+                          <div className="mt-3 grid gap-3 text-xs text-slate-200 sm:grid-cols-2 lg:grid-cols-3">
+                            {showHaStatus ? (
+                              <div>
+                                <div className="text-[11px] uppercase text-slate-400">{t('HA status', 'HA status')}</div>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <span className={`rounded px-2 py-0.5 text-[11px] ${haBadgeClass(haStatus, haConfigured)}`}>
+                                    {haLabel}
+                                  </span>
+                                  <span className="text-slate-300">
+                                    {t('configured:', 'configured:')} {haConfigured === undefined ? 'unknown' : haConfigured ? 'yes' : 'no'}
+                                  </span>
+                                </div>
                               </div>
                             ) : null}
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Last run</div>
-                            <div className="mt-1 font-mono">{healthTimeLabel(connector.last_run)}</div>
-                            <div className="mt-1 text-slate-400">
-                              duration {healthDurationLabel(connector.last_duration_seconds)}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Last success</div>
-                            <div className="mt-1 font-mono">{healthTimeLabel(connector.last_success)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase text-slate-400">Last provenance</div>
-                            <div className="mt-1 font-mono">{healthTimeLabel(connector.last_provenance)}</div>
-                          </div>
-                          {lastErrorText ? (
-                            <div className="sm:col-span-2 lg:col-span-3">
-                              <div className="text-[11px] uppercase text-slate-400">Last error</div>
-                              <div className="mt-1 rounded border border-rose-500/30 bg-rose-500/10 p-2 text-rose-100">
-                                {lastErrorText}
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('SLA overall', 'SLA overall')}</div>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(slaOverallOk)}`}>
+                                  overall {slaOverallOk === undefined ? 'unknown' : slaOverallOk ? 'ok' : 'check'}
+                                </span>
+                                <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(freshnessOk)}`}>
+                                  freshness {freshnessOk === undefined ? 'unknown' : freshnessOk ? 'ok' : 'stale'}
+                                </span>
+                                <span className={`rounded px-2 py-0.5 text-[11px] ${healthStateClass(provenanceOk)}`}>
+                                  provenance {provenanceOk === undefined ? 'unknown' : provenanceOk ? 'ok' : 'missing'}
+                                </span>
                               </div>
                             </div>
-                          ) : null}
-                          {validationIssues.length ? (
-                            <div className="sm:col-span-2 lg:col-span-3">
-                              <div className="text-[11px] uppercase text-slate-400">Validation details</div>
-                              <div className="mt-1 space-y-1">
-                                {validationIssues.slice(0, 5).map((issue, index) => (
-                                  <div
-                                    key={`${connector.name}-validation-${index}`}
-                                    className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100"
-                                  >
-                                    {healthIssueText(issue)}
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Freshness', 'Freshness')}</div>
+                              <div className="mt-1">
+                                age {ageHours === null ? 'n/a' : `${ageHours}h`}
+                                {freshnessHours === null ? '' : ` / target ${freshnessHours}h`}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Provenance hashes', 'Provenance hashes')}</div>
+                              <div className="mt-1">{healthCountLabel(provenanceHashes)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Success / Fail', 'Success / Fail')}</div>
+                              <div className="mt-1">
+                                {successCount}/{failureCount}
+                                {connector.partial_failure_count ? ` / partial ${connector.partial_failure_count}` : ''}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Validation issues', 'Validation issues')}</div>
+                              <div className="mt-1">{connector.validation_issue_count ?? validationIssues.length}</div>
+                              {connector.last_validation ? (
+                                <div className="mt-1 font-mono text-[11px] text-slate-400">
+                                  {connector.last_validation}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Last run', 'Last run')}</div>
+                              <div className="mt-1 font-mono">{healthTimeLabel(connector.last_run)}</div>
+                              <div className="mt-1 text-slate-400">
+                                duration {healthDurationLabel(connector.last_duration_seconds)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Last success', 'Last success')}</div>
+                              <div className="mt-1 font-mono">{healthTimeLabel(connector.last_success)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase text-slate-400">{t('Last provenance', 'Last provenance')}</div>
+                              <div className="mt-1 font-mono">{healthTimeLabel(connector.last_provenance)}</div>
+                            </div>
+                            {lastErrorText ? (
+                              <div className="sm:col-span-2 lg:col-span-3">
+                                <div className="text-[11px] uppercase text-slate-400">{t('Last error', 'Last error')}</div>
+                                <div className="mt-1 rounded border border-rose-500/30 bg-rose-500/10 p-2 text-rose-100">
+                                  {lastErrorText}
+                                </div>
+                              </div>
+                            ) : null}
+                            {validationIssues.length ? (
+                              <div className="sm:col-span-2 lg:col-span-3">
+                                <div className="text-[11px] uppercase text-slate-400">{t('Validation details', 'Validation details')}</div>
+                                <div className="mt-1 space-y-1">
+                                  {validationIssues.slice(0, 5).map((issue, index) => (
+                                    <div
+                                      key={`${connector.name}-validation-${index}`}
+                                      className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100"
+                                    >
+                                      {healthIssueText(issue)}
+                                    </div>
+                                  ))}
+                                  {validationIssues.length > 5 ? (
+                                    <span className="text-[11px] text-slate-400">
+                                      +{validationIssues.length - 5} more
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
+                            {partialFailures.length ? (
+                              <div className="sm:col-span-2 lg:col-span-3">
+                                <div className="text-[11px] uppercase text-slate-400">{t('Partial failures', 'Partial failures')}</div>
+                                <div className="mt-1 space-y-1">
+                                  {partialFailures.slice(0, 5).map((failure, index) => (
+                                    <div
+                                      key={`${connector.name}-partial-${index}`}
+                                      className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100"
+                                    >
+                                      {healthIssueText(failure)}
+                                    </div>
+                                  ))}
+                                  {partialFailures.length > 5 ? (
+                                    <span className="text-[11px] text-slate-400">
+                                      +{partialFailures.length - 5} more
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
+                            {connector.change_detected ? (
+                              <div className="sm:col-span-2 lg:col-span-3">
+                                <div className="text-[11px] uppercase text-slate-400">{t('Source changes', 'Source changes')}</div>
+                                <div className="mt-1 text-slate-200">
+                                  {connector.last_change_count ?? connector.last_change_keys?.length ?? 0} change(s)
+                                  {connector.last_change_at ? ` at ${connector.last_change_at}` : ''}
+                                </div>
+                                {connector.last_change_keys?.length ? (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {connector.last_change_keys.slice(0, 8).map((key) => (
+                                      <span key={`${connector.name}-change-${key}`} className="rounded bg-slate-500/20 px-2 py-0.5 text-[11px] text-slate-200">
+                                        {key}
+                                      </span>
+                                    ))}
                                   </div>
-                                ))}
-                                {validationIssues.length > 5 ? (
-                                  <span className="text-[11px] text-slate-400">
-                                    +{validationIssues.length - 5} more
-                                  </span>
                                 ) : null}
                               </div>
-                            </div>
-                          ) : null}
-                          {partialFailures.length ? (
+                            ) : null}
                             <div className="sm:col-span-2 lg:col-span-3">
-                              <div className="text-[11px] uppercase text-slate-400">Partial failures</div>
-                              <div className="mt-1 space-y-1">
-                                {partialFailures.slice(0, 5).map((failure, index) => (
-                                  <div
-                                    key={`${connector.name}-partial-${index}`}
-                                    className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100"
-                                  >
-                                    {healthIssueText(failure)}
-                                  </div>
-                                ))}
-                                {partialFailures.length > 5 ? (
-                                  <span className="text-[11px] text-slate-400">
-                                    +{partialFailures.length - 5} more
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          ) : null}
-                          {connector.change_detected ? (
-                            <div className="sm:col-span-2 lg:col-span-3">
-                              <div className="text-[11px] uppercase text-slate-400">Source changes</div>
-                              <div className="mt-1 text-slate-200">
-                                {connector.last_change_count ?? connector.last_change_keys?.length ?? 0} change(s)
-                                {connector.last_change_at ? ` at ${connector.last_change_at}` : ''}
-                              </div>
-                              {connector.last_change_keys?.length ? (
+                              <div className="text-[11px] uppercase text-slate-400">{t('Signals', 'Signals')}</div>
+                              {alerts.length ? (
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                  {connector.last_change_keys.slice(0, 8).map((key) => (
-                                    <span key={`${connector.name}-change-${key}`} className="rounded bg-slate-500/20 px-2 py-0.5 text-[11px] text-slate-200">
-                                      {key}
+                                  {alerts.map((alert, index) => (
+                                    <span
+                                      key={`${connector.name}-${alert.key}-${index}`}
+                                      title={alert.message}
+                                      className={`rounded px-2 py-0.5 text-[11px] ${alertBadgeClass(alert.level)}`}
+                                    >
+                                      {alert.key}
                                     </span>
                                   ))}
                                 </div>
-                              ) : null}
+                              ) : (
+                                <span className="mt-1 inline-block text-xs text-slate-300">ok</span>
+                              )}
                             </div>
-                          ) : null}
-                          <div className="sm:col-span-2 lg:col-span-3">
-                            <div className="text-[11px] uppercase text-slate-400">Signals</div>
-                            {alerts.length ? (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {alerts.map((alert, index) => (
-                                  <span
-                                    key={`${connector.name}-${alert.key}-${index}`}
-                                    title={alert.message}
-                                    className={`rounded px-2 py-0.5 text-[11px] ${alertBadgeClass(alert.level)}`}
-                                  >
-                                    {alert.key}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="mt-1 inline-block text-xs text-slate-300">ok</span>
-                            )}
-                          </div>
-                            {connector.name.startsWith('veeam_enterprise_manager') ? (
-                              <div className="sm:col-span-2 lg:col-span-3">
-                                <div className="text-[11px] uppercase text-slate-400">
-                                  VM last successful backups
-                                </div>
-                                {vmLastBackups.length ? (
-                                  <div className="mt-2 space-y-2">
-                                    {vmBackupGroups.weeks.map((group, groupIndex) => {
-                                      const weekKey = `${connector.name}-vmbackup-week-${group.week}`
-                                      const weekExpanded =
-                                        expandedBackupWeeks[weekKey] ?? groupIndex === 0
-                                      return (
-                                        <div key={weekKey} className="rounded border border-[#1f365a] bg-[#0b1626] p-2">
-                                          <button
-                                            type="button"
-                                            className="flex w-full items-center justify-between text-left text-[11px] uppercase tracking-wide text-slate-300"
-                                            onClick={() => toggleBackupWeek(weekKey)}
-                                            aria-expanded={weekExpanded}
-                                          >
-                                            <span>{group.week}</span>
-                                            <span className="text-[10px] text-slate-400">
-                                              {group.count} backups
-                                            </span>
-                                          </button>
-                                          {weekExpanded ? (
-                                            <div className="mt-2 space-y-2">
-                                              {group.dates.map((dateGroup, dateIndex) => {
-                                                const dateKey = `${weekKey}-${dateGroup.date}`
-                                                const dateExpanded =
-                                                  expandedBackupDates[dateKey] ?? dateIndex === 0
-                                                return (
-                                                  <div key={dateKey}>
-                                                    <button
-                                                      type="button"
-                                                      className="flex w-full items-center justify-between text-left text-[10px] text-slate-400"
-                                                      onClick={() => toggleBackupDate(dateKey)}
-                                                      aria-expanded={dateExpanded}
-                                                    >
-                                                      <span className="uppercase">{dateGroup.date}</span>
-                                                      <span>{dateGroup.items.length}</span>
-                                                    </button>
-                                                    {dateExpanded ? (
-                                                      <div className="mt-1 flex flex-wrap gap-1">
-                                                        {dateGroup.items.map((entry, index) => {
-                                                          const label =
-                                                            entry.name?.trim() || `vm-${index + 1}`
-                                                          const status = entry.status ?? 'unknown'
-                                                          const plan = entry.job_name?.trim() || 'n/a'
-                                                          const lastBackup = entry.last_success?.trim() || 'n/a'
-                                                          const lastRecovery = entry.last_recovery?.trim() || 'n/a'
-                                                          return (
-                                                            <span
-                                                              key={`${dateKey}-${label}-${index}`}
-                                                              className={`rounded px-2 py-0.5 text-[11px] ${replicationBadgeClass(
-                                                                status,
-                                                              )}`}
-                                                              title={`${label} | Plan: ${plan} | Last backup: ${lastBackup} | Last recovery: ${lastRecovery}`}
-                                                            >
-                                                              {label}
-                                                            </span>
-                                                          )
-                                                        })}
-                                                      </div>
-                                                    ) : null}
-                                                  </div>
-                                                )
-                                              })}
-                                            </div>
-                                          ) : null}
-                                        </div>
-                                      )
-                                    })}
-                                    {vmBackupGroups.remaining > 0 ? (
-                                      <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
-                                        +{vmBackupGroups.remaining} more
-                                      </span>
-                                    ) : null}
+                              {connector.name.startsWith('veeam_enterprise_manager') ? (
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <div className="text-[11px] uppercase text-slate-400">
+                                    {t('VM last successful backups', 'VM last successful backups')}
                                   </div>
-                                ) : (
-                                  <span className="mt-1 inline-block text-xs text-slate-300">
-                                    No VM backup history reported
-                                  </span>
-                                )}
-                              </div>
-                            ) : null}
-                            {connector.name.startsWith('powerstore') ? (
-                              <div className="sm:col-span-2 lg:col-span-3">
-                                <div className="text-[11px] uppercase text-slate-400">Replication groups</div>
-                                {replicationGroupItems.length ? (
-                                  <div className="mt-2 space-y-2">
-                                    {replicationGroupItems.map((group, groupIndex) => {
-                                      const groupKey =
-                                        group.id?.trim() || group.name?.trim() || `group-${groupIndex + 1}`
-                                      const isGroupExpanded =
-                                        !!expandedReplicationGroups[connector.name]?.[groupKey]
-                                      const groupLabel =
-                                        group.name?.trim() || group.id?.trim() || `group-${groupIndex + 1}`
-                                      const groupStatus = group.status ?? 'unknown'
-                                      const groupVolumes = group.volumes ?? []
-                                      const groupModeLabel = replicationGroupModeLabel(group)
-                                      const groupMode = (group.replication_mode ?? '').toLowerCase()
-                                      return (
-                                        <div
-                                          key={`${connector.name}-repgroup-${groupKey}`}
-                                          className="rounded border border-[#1f365a] bg-[#0b1626] p-2"
-                                        >
-                                          <button
-                                            type="button"
-                                            className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
-                                            onClick={() => toggleReplicationGroup(connector.name, groupKey)}
-                                            aria-expanded={isGroupExpanded}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <span
-                                                className={`rounded px-2 py-0.5 text-[11px] ${replicationBadgeClass(
-                                                  groupStatus,
-                                                )}`}
-                                              >
-                                                {groupStatus}
+                                  {vmLastBackups.length ? (
+                                    <div className="mt-2 space-y-2">
+                                      {vmBackupGroups.weeks.map((group, groupIndex) => {
+                                        const weekKey = `${connector.name}-vmbackup-week-${group.week}`
+                                        const weekExpanded =
+                                          expandedBackupWeeks[weekKey] ?? groupIndex === 0
+                                        return (
+                                          <div key={weekKey} className="rounded border border-[#1f365a] bg-[#0b1626] p-2">
+                                            <button
+                                              type="button"
+                                              className="flex w-full items-center justify-between text-left text-[11px] uppercase tracking-wide text-slate-300"
+                                              onClick={() => toggleBackupWeek(weekKey)}
+                                              aria-expanded={weekExpanded}
+                                            >
+                                              <span>{group.week}</span>
+                                              <span className="text-[10px] text-slate-400">
+                                                {group.count} backups
                                               </span>
-                                              {groupModeLabel ? (
+                                            </button>
+                                            {weekExpanded ? (
+                                              <div className="mt-2 space-y-2">
+                                                {group.dates.map((dateGroup, dateIndex) => {
+                                                  const dateKey = `${weekKey}-${dateGroup.date}`
+                                                  const dateExpanded =
+                                                    expandedBackupDates[dateKey] ?? dateIndex === 0
+                                                  return (
+                                                    <div key={dateKey}>
+                                                      <button
+                                                        type="button"
+                                                        className="flex w-full items-center justify-between text-left text-[10px] text-slate-400"
+                                                        onClick={() => toggleBackupDate(dateKey)}
+                                                        aria-expanded={dateExpanded}
+                                                      >
+                                                        <span className="uppercase">{dateGroup.date}</span>
+                                                        <span>{dateGroup.items.length}</span>
+                                                      </button>
+                                                      {dateExpanded ? (
+                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                          {dateGroup.items.map((entry, index) => {
+                                                            const label =
+                                                              entry.name?.trim() || `vm-${index + 1}`
+                                                            const status = entry.status ?? 'unknown'
+                                                            const plan = entry.job_name?.trim() || 'n/a'
+                                                            const lastBackup = entry.last_success?.trim() || 'n/a'
+                                                            const lastRecovery = entry.last_recovery?.trim() || 'n/a'
+                                                            return (
+                                                              <span
+                                                                key={`${dateKey}-${label}-${index}`}
+                                                                className={`rounded px-2 py-0.5 text-[11px] ${replicationBadgeClass(
+                                                                  status,
+                                                                )}`}
+                                                                title={`${label} | Plan: ${plan} | Last backup: ${lastBackup} | Last recovery: ${lastRecovery}`}
+                                                              >
+                                                                {label}
+                                                              </span>
+                                                            )
+                                                          })}
+                                                        </div>
+                                                      ) : null}
+                                                    </div>
+                                                  )
+                                                })}
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        )
+                                      })}
+                                      {vmBackupGroups.remaining > 0 ? (
+                                        <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
+                                          +{vmBackupGroups.remaining} more
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    <span className="mt-1 inline-block text-xs text-slate-300">
+                                      {t('No VM backup history reported', 'No VM backup history reported')}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : null}
+                              {connector.name.startsWith('powerstore') ? (
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <div className="text-[11px] uppercase text-slate-400">{t('Replication groups', 'Replication groups')}</div>
+                                  {replicationGroupItems.length ? (
+                                    <div className="mt-2 space-y-2">
+                                      {replicationGroupItems.map((group, groupIndex) => {
+                                        const {
+                                          t
+                                        } = useI18n();
+
+                                        const groupKey =
+                                          group.id?.trim() || group.name?.trim() || `group-${groupIndex + 1}`
+                                        const isGroupExpanded =
+                                          !!expandedReplicationGroups[connector.name]?.[groupKey]
+                                        const groupLabel =
+                                          group.name?.trim() || group.id?.trim() || `group-${groupIndex + 1}`
+                                        const groupStatus = group.status ?? 'unknown'
+                                        const groupVolumes = group.volumes ?? []
+                                        const groupModeLabel = replicationGroupModeLabel(group)
+                                        const groupMode = (group.replication_mode ?? '').toLowerCase()
+                                        return (
+                                          <div
+                                            key={`${connector.name}-repgroup-${groupKey}`}
+                                            className="rounded border border-[#1f365a] bg-[#0b1626] p-2"
+                                          >
+                                            <button
+                                              type="button"
+                                              className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+                                              onClick={() => toggleReplicationGroup(connector.name, groupKey)}
+                                              aria-expanded={isGroupExpanded}
+                                            >
+                                              <div className="flex items-center gap-2">
                                                 <span
-                                                  className={`rounded px-2 py-0.5 text-[11px] ${remoteSystemBadgeClass(
-                                                    groupMode,
+                                                  className={`rounded px-2 py-0.5 text-[11px] ${replicationBadgeClass(
+                                                    groupStatus,
                                                   )}`}
                                                 >
-                                                  {groupModeLabel}
+                                                  {groupStatus}
                                                 </span>
-                                              ) : null}
-                                              <span className="text-xs font-semibold text-slate-100">
-                                                {groupLabel}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                                              <span>{groupVolumes.length} volumes</span>
-                                              <span>{isGroupExpanded ? 'Hide volumes' : 'View volumes'}</span>
-                                            </div>
-                                          </button>
-                                          {isGroupExpanded ? (
-                                            <div className="mt-2">
-                                              {groupVolumes.length ? (
-                                                <div className="flex flex-wrap gap-2">
-                                                  {groupVolumes.slice(0, 20).map((volume, index) => {
-                                                    const label =
-                                                      volume.name?.trim() ||
-                                                      volume.id?.trim() ||
-                                                      `volume-${index + 1}`
-                                                    const status = volume.status ?? 'unknown'
-                                                    const hosts = volume.hosts ?? []
-                                                    const hostCount = hosts.length
-                                                    const hostGroups = volume.host_groups ?? []
-                                                    const hostGroupCount = hostGroups.length
-                                                    const volumeKey = `${connector.name}:${groupKey}:${
-                                                      volume.id ?? label
-                                                    }`
-                                                    const isVolumeExpanded = !!expandedReplicationVolumes[volumeKey]
-                                                    return (
-                                                      <div
-                                                        key={`${connector.name}-repvol-${groupKey}-${label}-${index}`}
-                                                        className="flex flex-col"
-                                                      >
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => toggleReplicationVolume(volumeKey)}
-                                                          aria-expanded={isVolumeExpanded}
-                                                          title={label}
-                                                          className={`rounded px-2 py-0.5 text-left text-[11px] ${replicationBadgeClass(
-                                                            status,
-                                                          )}`}
+                                                {groupModeLabel ? (
+                                                  <span
+                                                    className={`rounded px-2 py-0.5 text-[11px] ${remoteSystemBadgeClass(
+                                                      groupMode,
+                                                    )}`}
+                                                  >
+                                                    {groupModeLabel}
+                                                  </span>
+                                                ) : null}
+                                                <span className="text-xs font-semibold text-slate-100">
+                                                  {groupLabel}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                                                <span>{groupVolumes.length} volumes</span>
+                                                <span>{isGroupExpanded ? 'Hide volumes' : 'View volumes'}</span>
+                                              </div>
+                                            </button>
+                                            {isGroupExpanded ? (
+                                              <div className="mt-2">
+                                                {groupVolumes.length ? (
+                                                  <div className="flex flex-wrap gap-2">
+                                                    {groupVolumes.slice(0, 20).map((volume, index) => {
+                                                      const {
+                                                        t
+                                                      } = useI18n();
+
+                                                      const label =
+                                                        volume.name?.trim() ||
+                                                        volume.id?.trim() ||
+                                                        `volume-${index + 1}`
+                                                      const status = volume.status ?? 'unknown'
+                                                      const hosts = volume.hosts ?? []
+                                                      const hostCount = hosts.length
+                                                      const hostGroups = volume.host_groups ?? []
+                                                      const hostGroupCount = hostGroups.length
+                                                      const volumeKey = `${connector.name}:${groupKey}:${
+                                                        volume.id ?? label
+                                                      }`
+                                                      const isVolumeExpanded = !!expandedReplicationVolumes[volumeKey]
+                                                      return (
+                                                        <div
+                                                          key={`${connector.name}-repvol-${groupKey}-${label}-${index}`}
+                                                          className="flex flex-col"
                                                         >
-                                                          {label}: {status}
-                                                        </button>
-                                                        {isVolumeExpanded ? (
-                                                          <div className="ml-2 mt-1 text-[11px] text-slate-300">
-                                                            {hostCount || hostGroupCount ? (
-                                                              <div className="space-y-1">
-                                                                {hostCount ? (
-                                                                  <div>Hosts: {hosts.join(', ')}</div>
-                                                                ) : null}
-                                                                {hostGroupCount ? (
-                                                                  <div>Host groups: {hostGroups.join(', ')}</div>
-                                                                ) : null}
-                                                              </div>
-                                                            ) : (
-                                                              'No host mappings'
-                                                            )}
-                                                          </div>
-                                                        ) : null}
-                                                      </div>
-                                                    )
-                                                  })}
-                                                  {groupVolumes.length > 20 ? (
-                                                    <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
-                                                      +{groupVolumes.length - 20} more
-                                                    </span>
-                                                  ) : null}
-                                                </div>
-                                              ) : (
-                                                <span className="inline-block text-xs text-slate-300">
-                                                  No volumes reported
-                                                </span>
-                                              )}
-                                            </div>
-                                          ) : null}
-                                        </div>
-                                      )
-                                    })}
-                                  </div>
-                                ) : (
-                                  <span className="mt-1 inline-block text-xs text-slate-300">
-                                    No replication groups reported
-                                  </span>
-                                )}
-                              </div>
-                            ) : null}
-                            {connector.name.startsWith('powerstore') ? (
-                              <div className="sm:col-span-2 lg:col-span-3">
-                                <div className="text-[11px] uppercase text-slate-400">
-                                  Remote systems
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => toggleReplicationVolume(volumeKey)}
+                                                            aria-expanded={isVolumeExpanded}
+                                                            title={label}
+                                                            className={`rounded px-2 py-0.5 text-left text-[11px] ${replicationBadgeClass(
+                                                              status,
+                                                            )}`}
+                                                          >
+                                                            {label}: {status}
+                                                          </button>
+                                                          {isVolumeExpanded ? (
+                                                            <div className="ml-2 mt-1 text-[11px] text-slate-300">
+                                                              {hostCount || hostGroupCount ? (
+                                                                <div className="space-y-1">
+                                                                  {hostCount ? (
+                                                                    <div>{t('Hosts:', 'Hosts:')} {hosts.join(', ')}</div>
+                                                                  ) : null}
+                                                                  {hostGroupCount ? (
+                                                                    <div>{t('Host groups:', 'Host groups:')} {hostGroups.join(', ')}</div>
+                                                                  ) : null}
+                                                                </div>
+                                                              ) : (
+                                                                'No host mappings'
+                                                              )}
+                                                            </div>
+                                                          ) : null}
+                                                        </div>
+                                                      );
+                                                    })}
+                                                    {groupVolumes.length > 20 ? (
+                                                      <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
+                                                        +{groupVolumes.length - 20} more
+                                                      </span>
+                                                    ) : null}
+                                                  </div>
+                                                ) : (
+                                                  <span className="inline-block text-xs text-slate-300">
+                                                    {t('No volumes reported', 'No volumes reported')}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <span className="mt-1 inline-block text-xs text-slate-300">
+                                      {t('No replication groups reported', 'No replication groups reported')}
+                                    </span>
+                                  )}
                                 </div>
-                                {remoteSystems.length ? (
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    {remoteSystems.slice(0, 12).map((system, index) => {
-                                      const label =
-                                        system.name?.trim() || system.id?.trim() || `remote-${index + 1}`
-                                      const modes = system.replication_modes ?? []
-                                      const modeText = modes.length ? modes.join('/') : 'unknown'
-                                      const status = system.status ?? 'unknown'
-                                      return (
-                                        <span
-                                          key={`${connector.name}-remote-${label}-${index}`}
-                                          className={`rounded px-2 py-0.5 text-[11px] ${remoteSystemBadgeClass(
-                                            modes[0],
-                                          )}`}
-                                        >
-                                          {label}: {modeText} ({status})
-                                        </span>
-                                      )
-                                    })}
-                                    {remoteSystems.length > 12 ? (
-                                      <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
-                                        +{remoteSystems.length - 12} more
-                                      </span>
-                                    ) : null}
+                              ) : null}
+                              {connector.name.startsWith('powerstore') ? (
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <div className="text-[11px] uppercase text-slate-400">
+                                    {t('Remote systems', 'Remote systems')}
                                   </div>
-                                ) : (
-                                  <span className="mt-1 inline-block text-xs text-slate-300">
-                                    No remote systems reported
-                                  </span>
-                                )}
-                              </div>
-                            ) : null}
-                            <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-3">
-                              <Button onClick={() => selectConnectorForEdit(connector.name)}>Edit</Button>
-                              {isDeletableConnector(connector.name) ? (
-                                <DangerButton
-                                  onClick={() => {
-                                  void deleteConnectorConfig(connector.name)
-                                }}
-                              >
-                                Delete config
-                              </DangerButton>
-                            ) : null}
+                                  {remoteSystems.length ? (
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {remoteSystems.slice(0, 12).map((system, index) => {
+                                        const label =
+                                          system.name?.trim() || system.id?.trim() || `remote-${index + 1}`
+                                        const modes = system.replication_modes ?? []
+                                        const modeText = modes.length ? modes.join('/') : 'unknown'
+                                        const status = system.status ?? 'unknown'
+                                        return (
+                                          <span
+                                            key={`${connector.name}-remote-${label}-${index}`}
+                                            className={`rounded px-2 py-0.5 text-[11px] ${remoteSystemBadgeClass(
+                                              modes[0],
+                                            )}`}
+                                          >
+                                            {label}: {modeText} ({status})
+                                          </span>
+                                        )
+                                      })}
+                                      {remoteSystems.length > 12 ? (
+                                        <span className="rounded px-2 py-0.5 text-[11px] text-slate-300">
+                                          +{remoteSystems.length - 12} more
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    <span className="mt-1 inline-block text-xs text-slate-300">
+                                      {t('No remote systems reported', 'No remote systems reported')}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : null}
+                              <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-3">
+                                <Button onClick={() => selectConnectorForEdit(connector.name)}>{t('Edit', 'Edit')}</Button>
+                                {isDeletableConnector(connector.name) ? (
+                                  <DangerButton
+                                    onClick={() => {
+                                    void deleteConnectorConfig(connector.name)
+                                  }}
+                                >
+                                    {t('Delete config', 'Delete config')}
+                                  </DangerButton>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  )
-                })}
+                        ) : null}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           ))}
           {!filteredHealth.length ? (
             <div className="rounded-lg border border-[#1f365a] bg-[#0d1a2b]/40 p-4 text-sm text-slate-50">
-              No configured connectors reported.
+              {t('No configured connectors reported.', 'No configured connectors reported.')}
             </div>
           ) : null}
         </div>
       </Card>
     </div>
-  )
+  );
 }

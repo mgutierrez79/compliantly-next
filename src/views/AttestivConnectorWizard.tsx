@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Connector wizard.
 //
 // Four-step flow that lives inside the console: pick connector kind,
@@ -37,6 +36,8 @@ import {
   type ConnectorCatalogEntry,
 } from '../lib/connectorCatalog'
 import { describeAuthField, groupAuthMethods, type AuthMethod } from '../lib/connectorAuthFields'
+
+import { useI18n } from '../lib/i18n';
 
 type CredentialField = {
   key: string
@@ -169,6 +170,10 @@ type TestResult =
   | { state: 'deferred'; details: string }
 
 export function AttestivConnectorWizard() {
+  const {
+    t
+  } = useI18n();
+
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [kind, setKind] = useState<string>('palo_alto_panorama')
@@ -410,11 +415,11 @@ export function AttestivConnectorWizard() {
   return (
     <>
       <Topbar
-        title="New connector"
+        title={t('New connector', 'New connector')}
         right={
           <GhostButton onClick={() => router.push('/connectors')}>
             <i className="ti ti-x" aria-hidden="true" />
-            Cancel
+            {t('Cancel', 'Cancel')}
           </GhostButton>
         }
       />
@@ -474,14 +479,14 @@ export function AttestivConnectorWizard() {
             >
               <GhostButton onClick={back} disabled={step === 0}>
                 <i className="ti ti-arrow-left" aria-hidden="true" />
-                Back
+                {t('Back', 'Back')}
               </GhostButton>
               {step < STEPS.length - 1 ? (
                 <PrimaryButton
                   disabled={!canAdvance(step, { renderedFields, name, endpoint, credentials, testResult })}
                   onClick={next}
                 >
-                  Continue
+                  {t('Continue', 'Continue')}
                   <i className="ti ti-arrow-right" aria-hidden="true" />
                 </PrimaryButton>
               ) : null}
@@ -490,7 +495,7 @@ export function AttestivConnectorWizard() {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function canAdvance(
@@ -522,11 +527,18 @@ function canAdvance(
 }
 
 function PickStep({ kind, onChange }: { kind: string; onChange: (next: string) => void }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
       <SectionHeader
-        title="Choose a source"
-        sub="Eight connector kinds are available in the pilot. Each pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents) into the same signed pipeline."
+        title={t('Choose a source', 'Choose a source')}
+        sub={t(
+          'Eight connector kinds are available in the pilot. Each pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents) into the same signed pipeline.',
+          'Eight connector kinds are available in the pilot. Each pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents) into the same signed pipeline.'
+        )}
       />
       <div
         style={{
@@ -589,7 +601,7 @@ function PickStep({ kind, onChange }: { kind: string; onChange: (next: string) =
         })}
       </div>
     </>
-  )
+  );
 }
 
 function CredentialsStep(props: {
@@ -611,22 +623,32 @@ function CredentialsStep(props: {
   setPollSeconds: (v: number) => void
   setVerifyTLS: (v: boolean) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   const activeMethod = props.authMethods.find((m) => m.key === props.activeAuthMethodKey)
   const showMethodPicker = props.authMethods.length > 1
   return (
     <>
       <SectionHeader
         title={`Configure ${props.connector.label}`}
-        sub="Credentials are encrypted at rest using the platform signing key. The worker uses them on every poll and never logs the cleartext."
+        sub={t(
+          'Credentials are encrypted at rest using the platform signing key. The worker uses them on every poll and never logs the cleartext.',
+          'Credentials are encrypted at rest using the platform signing key. The worker uses them on every poll and never logs the cleartext.'
+        )}
       />
-      <FormField label="Display name" hint="Shown in the connector registry. Defaults to the kind if empty.">
+      <FormField label={t('Display name', 'Display name')} hint={t(
+        'Shown in the connector registry. Defaults to the kind if empty.',
+        'Shown in the connector registry. Defaults to the kind if empty.'
+      )}>
         <TextInput
           value={props.name}
           onChange={(event) => props.setName(event.target.value)}
           placeholder={props.connector.label}
         />
       </FormField>
-      <FormField label="Endpoint" hint={`e.g. ${props.connector.endpointHint}`}>
+      <FormField label={t('Endpoint', 'Endpoint')} hint={`e.g. ${props.connector.endpointHint}`}>
         <TextInput
           value={props.endpoint}
           onChange={(event) => props.setEndpoint(event.target.value)}
@@ -635,8 +657,11 @@ function CredentialsStep(props: {
       </FormField>
       {showMethodPicker ? (
         <FormField
-          label="Authentication method"
-          hint="Pick one. Only the selected method's credentials are sent to the connector."
+          label={t('Authentication method', 'Authentication method')}
+          hint={t(
+            'Pick one. Only the selected method\'s credentials are sent to the connector.',
+            'Pick one. Only the selected method\'s credentials are sent to the connector.'
+          )}
         >
           <AuthMethodPicker
             methods={props.authMethods}
@@ -659,22 +684,28 @@ function CredentialsStep(props: {
           />
         </FormField>
       ))}
-      <FormField label="Poll interval" hint="How often the worker collects evidence. Lower bound is enforced server-side.">
+      <FormField label={t('Poll interval', 'Poll interval')} hint={t(
+        'How often the worker collects evidence. Lower bound is enforced server-side.',
+        'How often the worker collects evidence. Lower bound is enforced server-side.'
+      )}>
         <Select
           value={String(props.pollSeconds)}
           onChange={(event) => props.setPollSeconds(Number(event.target.value))}
         >
-          <option value="300">Every 5 minutes</option>
-          <option value="600">Every 10 minutes</option>
-          <option value="900">Every 15 minutes</option>
-          <option value="1800">Every 30 minutes</option>
-          <option value="3600">Every hour</option>
-          <option value="21600">Every 6 hours</option>
+          <option value="300">{t('Every 5 minutes', 'Every 5 minutes')}</option>
+          <option value="600">{t('Every 10 minutes', 'Every 10 minutes')}</option>
+          <option value="900">{t('Every 15 minutes', 'Every 15 minutes')}</option>
+          <option value="1800">{t('Every 30 minutes', 'Every 30 minutes')}</option>
+          <option value="3600">{t('Every hour', 'Every hour')}</option>
+          <option value="21600">{t('Every 6 hours', 'Every 6 hours')}</option>
         </Select>
       </FormField>
       <FormField
-        label="TLS certificate verification"
-        hint="Leave on unless the target uses a self-signed or internal-CA certificate the platform doesn't trust."
+        label={t('TLS certificate verification', 'TLS certificate verification')}
+        hint={t(
+          'Leave on unless the target uses a self-signed or internal-CA certificate the platform doesn\'t trust.',
+          'Leave on unless the target uses a self-signed or internal-CA certificate the platform doesn\'t trust.'
+        )}
       >
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
           <input
@@ -682,7 +713,10 @@ function CredentialsStep(props: {
             checked={props.verifyTLS}
             onChange={(event) => props.setVerifyTLS(event.target.checked)}
           />
-          <span>Verify TLS certificate (recommended)</span>
+          <span>{t(
+            'Verify TLS certificate (recommended)',
+            'Verify TLS certificate (recommended)'
+          )}</span>
         </label>
         {!props.verifyTLS ? (
           <div
@@ -696,14 +730,15 @@ function CredentialsStep(props: {
               borderRadius: 'var(--border-radius-md)',
             }}
           >
-            <strong>Insecure:</strong> the worker will accept any certificate the endpoint presents.
-            This disables protection against man-in-the-middle attacks for this connector and must
-            be documented as a compensating control in your security policy.
+            <strong>{t('Insecure:', 'Insecure:')}</strong> {t(
+              'the worker will accept any certificate the endpoint presents.\n            This disables protection against man-in-the-middle attacks for this connector and must\n            be documented as a compensating control in your security policy.',
+              'the worker will accept any certificate the endpoint presents.\n            This disables protection against man-in-the-middle attacks for this connector and must\n            be documented as a compensating control in your security policy.'
+            )}
           </div>
         ) : null}
       </FormField>
     </>
-  )
+  );
 }
 
 function TestStep({
@@ -717,42 +752,49 @@ function TestStep({
   onRun: () => void
   onReset: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <>
       <SectionHeader
-        title="Test the connection"
+        title={t('Test the connection', 'Test the connection')}
         sub={`Sends a no-op probe to ${connector.label}. The connector is not saved until you continue past this step.`}
       />
       {result.state === 'idle' ? (
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
           <PrimaryButton onClick={onRun}>
             <i className="ti ti-plug-connected" aria-hidden="true" />
-            Run connection test
+            {t('Run connection test', 'Run connection test')}
           </PrimaryButton>
         </div>
       ) : null}
       {result.state === 'running' ? (
-        <ResultBanner tone="blue" icon="ti-loader-2" title="Running probe..." sub="Reaching out to the configured endpoint." spin />
+        <ResultBanner tone="blue" icon="ti-loader-2" title={t('Running probe...', 'Running probe...')} sub={t(
+          'Reaching out to the configured endpoint.',
+          'Reaching out to the configured endpoint.'
+        )} spin />
       ) : null}
       {result.state === 'pass' ? (
-        <ResultBanner tone="green" icon="ti-circle-check" title="Connection succeeded" sub={result.details} />
+        <ResultBanner tone="green" icon="ti-circle-check" title={t('Connection succeeded', 'Connection succeeded')} sub={result.details} />
       ) : null}
       {result.state === 'fail' ? (
-        <ResultBanner tone="red" icon="ti-alert-triangle" title="Connection failed" sub={result.details} />
+        <ResultBanner tone="red" icon="ti-alert-triangle" title={t('Connection failed', 'Connection failed')} sub={result.details} />
       ) : null}
       {result.state === 'deferred' ? (
-        <ResultBanner tone="amber" icon="ti-clock-pause" title="Test deferred" sub={result.details} />
+        <ResultBanner tone="amber" icon="ti-clock-pause" title={t('Test deferred', 'Test deferred')} sub={result.details} />
       ) : null}
       {result.state === 'fail' || result.state === 'pass' || result.state === 'deferred' ? (
         <div style={{ textAlign: 'center', marginTop: 12 }}>
           <GhostButton onClick={onReset}>
             <i className="ti ti-refresh" aria-hidden="true" />
-            Run again
+            {t('Run again', 'Run again')}
           </GhostButton>
         </div>
       ) : null}
     </>
-  )
+  );
 }
 
 function SaveStep(props: {
@@ -765,6 +807,10 @@ function SaveStep(props: {
   onSave: () => void
   onOpenList: () => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   if (props.saved) {
     return (
       <div style={{ textAlign: 'center', padding: '24px 8px' }}>
@@ -786,24 +832,26 @@ function SaveStep(props: {
             style={{ fontSize: 28, color: 'var(--color-status-green-deep)' }}
           />
         </div>
-        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>Connector saved</div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginBottom: 18 }}>
-          ID <code>{props.saved.id}</code> · queued for first poll.
+        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>{t('Connector saved', 'Connector saved')}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginBottom: 18 }}>ID <code>{props.saved.id}</code> {t('· queued for first poll.', '· queued for first poll.')}
         </div>
         <PrimaryButton onClick={props.onOpenList}>
           <i className="ti ti-list" aria-hidden="true" />
-          Back to connectors
+          {t('Back to connectors', 'Back to connectors')}
         </PrimaryButton>
       </div>
-    )
+    );
   }
   return (
     <>
-      <SectionHeader title="Review and save" sub="The worker will pick up the new connector on its next poll cycle." />
-      <SummaryRow label="Kind" value={props.connector.label} />
-      <SummaryRow label="Display name" value={props.name || props.connector.label} />
-      <SummaryRow label="Endpoint" value={props.endpoint} />
-      <SummaryRow label="Poll interval" value={`${props.pollSeconds}s`} />
+      <SectionHeader title={t('Review and save', 'Review and save')} sub={t(
+        'The worker will pick up the new connector on its next poll cycle.',
+        'The worker will pick up the new connector on its next poll cycle.'
+      )} />
+      <SummaryRow label={t('Kind', 'Kind')} value={props.connector.label} />
+      <SummaryRow label={t('Display name', 'Display name')} value={props.name || props.connector.label} />
+      <SummaryRow label={t('Endpoint', 'Endpoint')} value={props.endpoint} />
+      <SummaryRow label={t('Poll interval', 'Poll interval')} value={`${props.pollSeconds}s`} />
       {props.error ? (
         <div
           style={{
@@ -821,11 +869,11 @@ function SaveStep(props: {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
         <PrimaryButton onClick={props.onSave}>
           <i className="ti ti-device-floppy" aria-hidden="true" />
-          Save connector
+          {t('Save connector', 'Save connector')}
         </PrimaryButton>
       </div>
     </>
-  )
+  );
 }
 
 function ResultBanner({
@@ -913,10 +961,14 @@ function AuthMethodPicker({
   activeKey: string
   onPick: (key: string) => void
 }) {
+  const {
+    t
+  } = useI18n();
+
   return (
     <div
       role="radiogroup"
-      aria-label="Authentication method"
+      aria-label={t('Authentication method', 'Authentication method')}
       style={{
         display: 'flex',
         gap: 6,
@@ -961,5 +1013,5 @@ function AuthMethodPicker({
         )
       })}
     </div>
-  )
+  );
 }

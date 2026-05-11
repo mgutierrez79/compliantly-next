@@ -354,6 +354,10 @@ export function Layout({ children }: { children: ReactNode }) {
     pathname === item.to || pathname.startsWith(`${item.to}/`)
 
   const renderNavItem = (item: NavItem) => {
+    const {
+      t
+    } = useI18n();
+
     const isActive = isNavItemActive(item)
     const showBadge = item.to === '/issues' && issuesCount > 0
     return (
@@ -388,6 +392,10 @@ export function Layout({ children }: { children: ReactNode }) {
   }
 
   const renderNavGroup = (group: GroupKey, label: string, items: NavItem[]) => {
+    const {
+      t
+    } = useI18n();
+
     if (!items.length) return null
     const isExpanded = expandedGroups[group]
     const hasActive = items.some(isNavItemActive)
@@ -424,6 +432,10 @@ export function Layout({ children }: { children: ReactNode }) {
   }
 
   const refreshSnapshot = async () => {
+    const {
+      t
+    } = useI18n();
+
     setSnapshotLoading(true)
     setSnapshotMessage(null)
     try {

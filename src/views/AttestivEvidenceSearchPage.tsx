@@ -1,5 +1,4 @@
-'use client'
-
+'use client';
 // Evidence / Search.
 //
 // Lookup by evidence ID, run ID, framework, or free-text. The Live
@@ -20,6 +19,8 @@ import {
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 
+import { useI18n } from '../lib/i18n';
+
 type EvidenceHit = {
   evidence_id: string
   source?: string
@@ -39,6 +40,10 @@ const STATUS_TONE: Record<NonNullable<EvidenceHit['signature_status']>, 'green' 
 }
 
 export function AttestivEvidenceSearchPage() {
+  const {
+    t
+  } = useI18n();
+
   const [query, setQuery] = useState('')
   const [framework, setFramework] = useState('')
   const [results, setResults] = useState<EvidenceHit[]>([])
@@ -82,27 +87,27 @@ export function AttestivEvidenceSearchPage() {
   return (
     <>
       <Topbar
-        title="Search evidence"
+        title={t('Search evidence', 'Search evidence')}
         right={
           <GhostButton onClick={() => undefined}>
             <i className="ti ti-list" aria-hidden="true" />
-            Live stream
+            {t('Live stream', 'Live stream')}
           </GhostButton>
         }
       />
       <div className="attestiv-content">
         <Card>
-          <CardTitle>Search</CardTitle>
+          <CardTitle>{t('Search', 'Search')}</CardTitle>
           <form onSubmit={search}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 200px auto', gap: 8, alignItems: 'end' }}>
               <div>
                 <label style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>
-                  Evidence ID, run, source, or text
+                  {t('Evidence ID, run, source, or text', 'Evidence ID, run, source, or text')}
                 </label>
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="e.g. ev-2026-05-08-..."
+                  placeholder={t('e.g. ev-2026-05-08-...', 'e.g. ev-2026-05-08-...')}
                   style={{
                     width: '100%',
                     padding: '8px 10px',
@@ -118,12 +123,12 @@ export function AttestivEvidenceSearchPage() {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>
-                  Framework
+                  {t('Framework', 'Framework')}
                 </label>
                 <input
                   value={framework}
                   onChange={(event) => setFramework(event.target.value)}
-                  placeholder="soc2 / iso27001 / ..."
+                  placeholder={t('soc2 / iso27001 / ...', 'soc2 / iso27001 / ...')}
                   style={{
                     width: '100%',
                     padding: '8px 10px',
@@ -141,12 +146,12 @@ export function AttestivEvidenceSearchPage() {
                 {loading ? (
                   <>
                     <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
-                    Searching…
+                    {t('Searching…', 'Searching…')}
                   </>
                 ) : (
                   <>
                     <i className="ti ti-search" aria-hidden="true" />
-                    Search
+                    {t('Search', 'Search')}
                   </>
                 )}
               </PrimaryButton>
@@ -156,7 +161,7 @@ export function AttestivEvidenceSearchPage() {
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{results.length} matches</span>}>
-            Results
+            {t('Results', 'Results')}
           </CardTitle>
           {error ? (
             <div
@@ -174,10 +179,13 @@ export function AttestivEvidenceSearchPage() {
           ) : null}
           {!searched ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              Enter a query to search the evidence log. Filters narrow by framework or run.
+              {t(
+                'Enter a query to search the evidence log. Filters narrow by framework or run.',
+                'Enter a query to search the evidence log. Filters narrow by framework or run.'
+              )}
             </div>
           ) : results.length === 0 && !loading ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No evidence matches.</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No evidence matches.', 'No evidence matches.')}</div>
           ) : (
             <div>
               {results.map((hit) => (
@@ -188,7 +196,7 @@ export function AttestivEvidenceSearchPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 function EvidenceHitRow({ hit }: { hit: EvidenceHit }) {

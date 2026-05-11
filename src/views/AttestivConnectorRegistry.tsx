@@ -295,7 +295,7 @@ export function AttestivConnectorRegistry() {
       />
       <div className="attestiv-content">
         {error ? (
-          <Banner tone="error">Failed to load connectors: {error.message}</Banner>
+          <Banner tone="error">{t('Failed to load connectors:', 'Failed to load connectors:')} {error.message}</Banner>
         ) : null}
         {toggleError ? (
           <Banner tone="error">{toggleError}</Banner>
@@ -334,6 +334,10 @@ export function AttestivConnectorRegistry() {
           }}
         >
           {visibleConnectors.map((connector) => {
+            const {
+              t
+            } = useI18n();
+
             const brandHex = connectorBrandHex(connector.name)
             const state = classifyConnector(connector)
             const isDisabled = (connector.status ?? '').toLowerCase() === 'disabled'
@@ -476,5 +480,5 @@ export function AttestivConnectorRegistry() {
         ) : null}
       </div>
     </>
-  )
+  );
 }
