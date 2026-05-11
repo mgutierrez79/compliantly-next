@@ -312,7 +312,7 @@ export function AttestivDashboardOverview() {
           <MetricCard
             label={t('Evidence collected', 'Evidence collected')}
             value={metricEvidenceCollected}
-            sub={summary?.generated_at ? `as of ${relativeTime(summary.generated_at)}` : null}
+            sub={summary?.generated_at ? `${t('as of', 'as of')} ${relativeTime(summary.generated_at)}` : null}
           />
           <MetricCard
             label={t('Controls passing', 'Controls passing')}
@@ -323,7 +323,7 @@ export function AttestivDashboardOverview() {
           <MetricCard
             label={t('Active connectors', 'Active connectors')}
             value={metricActiveConnectors}
-            sub={metricConnectorWarning ? `${metricConnectorWarning} warning` : 'all healthy'}
+            sub={metricConnectorWarning ? `${metricConnectorWarning} ${t('warning', 'warning')}` : t('all healthy', 'all healthy')}
           />
           <MetricCard
             label={t('DORA tier', 'DORA tier')}
@@ -350,13 +350,13 @@ export function AttestivDashboardOverview() {
           <MetricCard
             label={t('Active exceptions', 'Active exceptions')}
             value={grc.exceptionsActive != null ? String(grc.exceptionsActive) : '—'}
-            sub={grc.exceptionsNearestExpiryDays != null ? `next expiry: ${grc.exceptionsNearestExpiryDays}d` : 'no active'}
+            sub={grc.exceptionsNearestExpiryDays != null ? `${t('next expiry:', 'next expiry:')} ${grc.exceptionsNearestExpiryDays}d` : t('no active', 'no active')}
             valueColor={grc.exceptionsNearestExpiryDays != null && grc.exceptionsNearestExpiryDays <= 7 ? 'var(--color-status-red-mid)' : undefined}
           />
           <MetricCard
             label={t('Overdue NIS2', 'Overdue NIS2')}
             value={grc.overdueNIS2Notifications != null ? String(grc.overdueNIS2Notifications) : '—'}
-            sub={grc.overdueNIS2Notifications && grc.overdueNIS2Notifications > 0 ? 'submit immediately' : 'on track'}
+            sub={grc.overdueNIS2Notifications && grc.overdueNIS2Notifications > 0 ? t('submit immediately', 'submit immediately') : t('on track', 'on track')}
             valueColor={
               grc.overdueNIS2Notifications && grc.overdueNIS2Notifications > 0
                 ? 'var(--color-status-red-mid)'
@@ -366,7 +366,7 @@ export function AttestivDashboardOverview() {
           <MetricCard
             label={t('Policies needing review', 'Policies needing review')}
             value={grc.policiesOverdue != null ? String(grc.policiesOverdue) : '—'}
-            sub={grc.policiesOverdue && grc.policiesOverdue > 0 ? '−10% per linked control' : 'all current'}
+            sub={grc.policiesOverdue && grc.policiesOverdue > 0 ? t('−10% per linked control', '−10% per linked control') : t('all current', 'all current')}
             valueColor={grc.policiesOverdue && grc.policiesOverdue > 0 ? 'var(--color-status-amber-mid)' : undefined}
           />
         </div>
