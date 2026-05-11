@@ -5,14 +5,25 @@ services:
     image: compliantly-next:pilot
     restart: unless-stopped
     ports:
+      # Same external port (3000) regardless of HTTP / HTTPS, so URLs
+      # don't change when you flip TLS on. The container ALWAYS listens
+      # on 3000 internally; https-server.mjs decides whether that
+      # listener is plain HTTP or TLS-terminated based on the cert env
+      # vars below.
       - "${COMPLIANCE_FRONTEND_PORT:-3000}:3000"
     environment:
+      # API proxy mTLS (Next.js -> Go API)
       COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-http://host.docker.internal:8080}
       COMPLIANCE_API_PROXY_CLIENT_CERT_FILE: ${COMPLIANCE_API_PROXY_CLIENT_CERT_FILE:-}
       COMPLIANCE_API_PROXY_CLIENT_KEY_FILE: ${COMPLIANCE_API_PROXY_CLIENT_KEY_FILE:-}
       COMPLIANCE_API_PROXY_CA_FILE: ${COMPLIANCE_API_PROXY_CA_FILE:-}
       COMPLIANCE_API_PROXY_SERVER_NAME: ${COMPLIANCE_API_PROXY_SERVER_NAME:-}
       COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY: ${COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY:-0}
+      # Frontend HTTPS (browser -> Next.js). Leave blank to keep the
+      # frontend on plain HTTP; set both cert + key to terminate TLS.
+      COMPLIANCE_FRONTEND_TLS_CERT_FILE: ${COMPLIANCE_FRONTEND_TLS_CERT_FILE:-}
+      COMPLIANCE_FRONTEND_TLS_KEY_FILE: ${COMPLIANCE_FRONTEND_TLS_KEY_FILE:-}
+      COMPLIANCE_FRONTEND_TLS_CA_FILE: ${COMPLIANCE_FRONTEND_TLS_CA_FILE:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

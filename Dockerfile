@@ -25,8 +25,12 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# https-server.mjs wraps the standalone server.js with optional HTTPS
+# termination. Falls back to plain HTTP when no cert env vars are set,
+# so the image works for both dev and pilot.
+COPY --chown=nextjs:nodejs https-server.mjs ./https-server.mjs
 
 USER nextjs
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "https-server.mjs"]
