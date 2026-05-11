@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
+import { useI18n } from '../lib/i18n'
 import { Badge, Banner, Card, EmptyState, GhostButton, PrimaryButton, Skeleton, Topbar } from '../components/AttestivUi'
 import { ConnectorLogo, connectorBrandHex } from '../components/ConnectorLogo'
 
@@ -132,6 +133,7 @@ function categoryLabel(connector: ConnectorStatus): string {
 
 export function AttestivConnectorRegistry() {
   const router = useRouter()
+  const { t } = useI18n()
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [error, setError] = useState<ApiError | null>(null)
   const [loading, setLoading] = useState(true)
@@ -268,8 +270,13 @@ export function AttestivConnectorRegistry() {
   return (
     <>
       <Topbar
-        title="Connector registry"
-        left={<Badge tone="blue">{activeCount} active · {connectors.length - activeCount} disabled</Badge>}
+        title={t('connectors.title')}
+        left={
+          <Badge tone="blue">
+            {t('connectors.summary_active', { active: activeCount })} ·{' '}
+            {t('connectors.summary_disabled', { disabled: connectors.length - activeCount })}
+          </Badge>
+        }
         right={
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-tertiary)', cursor: 'pointer' }}>
@@ -278,10 +285,10 @@ export function AttestivConnectorRegistry() {
                 checked={showDisabled}
                 onChange={(e) => setShowDisabled(e.target.checked)}
               />
-              Show disabled
+              {t('connectors.show_disabled')}
             </label>
             <PrimaryButton onClick={() => router.push('/connectors/new')}>
-              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 12 }} /> Add connector
+              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 12 }} /> {t('connectors.add_button')}
             </PrimaryButton>
           </div>
         }
@@ -415,7 +422,7 @@ export function AttestivConnectorRegistry() {
                         className={`ti ${isDisabled ? 'ti-toggle-left' : 'ti-toggle-right'}`}
                         aria-hidden="true"
                       />
-                      {isToggling ? '…' : isDisabled ? 'Enable' : 'Disable'}
+                      {isToggling ? '…' : isDisabled ? t('common.enable') : t('common.disable')}
                     </GhostButton>
                   ) : null}
                   <GhostButton
@@ -423,7 +430,7 @@ export function AttestivConnectorRegistry() {
                     disabled={isToggling}
                   >
                     <i className="ti ti-trash" aria-hidden="true" />
-                    Delete
+                    {t('common.delete')}
                   </GhostButton>
                 </div>
               </div>
@@ -449,8 +456,8 @@ export function AttestivConnectorRegistry() {
             }}
           >
             <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 22, marginBottom: 6 }} />
-            <div style={{ fontSize: 12 }}>Add connector</div>
-            <div style={{ fontSize: 10, marginTop: 2 }}>SDK · 8 supported</div>
+            <div style={{ fontSize: 12 }}>{t('connectors.add_card_label')}</div>
+            <div style={{ fontSize: 10, marginTop: 2 }}>{t('connectors.add_card_sub', { count: 8 })}</div>
           </button>
         </div>
         )}
@@ -458,11 +465,11 @@ export function AttestivConnectorRegistry() {
         {!loading && connectors.length === 0 ? (
           <EmptyState
             icon="ti-plug-off"
-            title="No connectors configured"
-            description="Add your first connector to start collecting evidence."
+            title={t('connectors.no_connectors_title')}
+            description={t('connectors.no_connectors_sub')}
             action={
               <PrimaryButton onClick={() => router.push('/connectors/new')}>
-                <i className="ti ti-plus" aria-hidden="true" /> Add connector
+                <i className="ti ti-plus" aria-hidden="true" /> {t('connectors.add_button')}
               </PrimaryButton>
             }
           />
