@@ -24,6 +24,17 @@ import { useI18n } from '../lib/i18n'
 import { loadSettings } from '../lib/settings'
 import { LanguageSwitcher } from './LanguageSwitcher'
 
+// translateNavLabel: small helper that reuses the literal English label
+// as the translation key. So `Overview` becomes `t('Overview',
+// 'Overview')` — looks the key up in the dictionary if present, falls
+// back to the English string otherwise. Keeps the data declaration
+// readable (we can still see all the labels at a glance) without
+// forcing a separate tKey for every nav entry.
+function useNavTranslator() {
+  const { t } = useI18n()
+  return (label: string) => t(label, label)
+}
+
 // Translation keys for the rail tooltips. Kept as a side table rather
 // than added to each RailItem so the rail definition stays a plain
 // data declaration; the renderer pulls the key when it resolves the
@@ -325,6 +336,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
   }, [])
 
   const railLabel = useRailLabel()
+  const navT = useNavTranslator()
   const renderRailButton = (item: RailItem) => {
     const active = item.key === activeSection
     const label = railLabel(item.key, item.label)
@@ -359,7 +371,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
         className={`attestiv-nav-item${active ? ' active' : ''}`}
       >
         <i className={`ti ${item.icon}`} aria-hidden="true" />
-        <span style={{ flex: 1 }}>{item.label}</span>
+        <span style={{ flex: 1 }}>{navT(item.label)}</span>
         {showBadge ? (
           <span
             className="attestiv-nav-badge"
@@ -386,10 +398,10 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
       <aside className="attestiv-sidebar">
         <div className="attestiv-sidebar-header">
           <div className="attestiv-sidebar-title">Attestiv</div>
-          <div className="attestiv-sidebar-sub">{section.navLabel}</div>
+          <div className="attestiv-sidebar-sub">{navT(section.navLabel)}</div>
         </div>
         <div className="attestiv-nav-group">
-          <div className="attestiv-nav-label">{section.navLabel}</div>
+          <div className="attestiv-nav-label">{navT(section.navLabel)}</div>
           {section.items.map(renderNavItem)}
         </div>
         <div className="attestiv-sidebar-footer">
@@ -397,9 +409,9 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
           <div className="attestiv-tenant-pill">
             <div className="attestiv-tenant-dot" />
             <div>
-              <div style={{ fontSize: 11, fontWeight: 500 }}>{tenantId || 'No tenant'}</div>
+              <div style={{ fontSize: 11, fontWeight: 500 }}>{tenantId || navT('No tenant')}</div>
               <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                {subject || 'unauthenticated'}
+                {subject || navT('unauthenticated')}
               </div>
             </div>
           </div>

@@ -14,6 +14,7 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
 } from 'react'
+import { useI18n } from '../lib/i18n'
 
 type Tone =
   | 'green'
@@ -401,6 +402,13 @@ export function PipelineStep({
 
 // Topbar: the per-page header strip. Title left, slot for badge, slot
 // for actions on the right.
+//
+// When `title` is a plain string, the component looks it up in the i18n
+// dictionary using the English string itself as the key (with the same
+// string as the default fallback). This means every page that does
+// <Topbar title="Dashboard" /> automatically gets translated when the
+// dictionary has an entry — no per-page edits needed. ReactNode titles
+// (badges, icons) pass through untouched.
 export function Topbar({
   title,
   left,
@@ -410,10 +418,12 @@ export function Topbar({
   left?: ReactNode
   right?: ReactNode
 }) {
+  const { t } = useI18n()
+  const translatedTitle = typeof title === 'string' ? t(title, title) : title
   return (
     <div className="attestiv-topbar">
       <div className="attestiv-topbar-left">
-        <span className="attestiv-topbar-title">{title}</span>
+        <span className="attestiv-topbar-title">{translatedTitle}</span>
         {left}
       </div>
       <div className="attestiv-topbar-right">{right}</div>
@@ -835,6 +845,10 @@ export function Skeleton({
 // instead of an inline `<div style={{color: tertiary}}>No data</div>`
 // — the iconified version reads as "intentional empty state",
 // the inline text reads as "the page is broken".
+// EmptyState: title + optional description + optional action.
+// Both text props go through i18n with the English string as the key,
+// so any page rendering <EmptyState title="No data" /> picks up
+// translations without page-level changes.
 export function EmptyState({
   icon = 'ti-inbox',
   title,
@@ -846,6 +860,7 @@ export function EmptyState({
   description?: string
   action?: ReactNode
 }) {
+  const { t } = useI18n()
   return (
     <div
       style={{
@@ -878,11 +893,11 @@ export function EmptyState({
         />
       </div>
       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 6 }}>
-        {title}
+        {t(title, title)}
       </div>
       {description ? (
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: action ? 12 : 0 }}>
-          {description}
+          {t(description, description)}
         </div>
       ) : null}
       {action ? <div style={{ marginTop: 6 }}>{action}</div> : null}
