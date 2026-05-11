@@ -27,7 +27,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      # Default bind-mount source is the sibling compliantly-go repo's
+      # canonical TLS dir, so both stacks share ONE cert location and
+      # there's no copy step between repos. Override with
+      # COMPLIANCE_FRONTEND_TLS_DIR=/abs/path when the repos live
+      # elsewhere relative to each other.
       - type: bind
-        source: ${COMPLIANCE_FRONTEND_TLS_DIR:-./secrets}
+        source: ${COMPLIANCE_FRONTEND_TLS_DIR:-../compliantly-go/deploy/tls}
         target: /run/secrets/compliantly
         read_only: true
