@@ -26,9 +26,42 @@ import fs from 'node:fs'
 import http from 'node:http'
 import https from 'node:https'
 
-const certFile = process.env.COMPLIANCE_FRONTEND_TLS_CERT_FILE?.trim()
-const keyFile = process.env.COMPLIANCE_FRONTEND_TLS_KEY_FILE?.trim()
-const caFile = process.env.COMPLIANCE_FRONTEND_TLS_CA_FILE?.trim()
+// Default search paths inside the container. The wrapper falls back to
+// these when the COMPLIANCE_FRONTEND_TLS_* env vars are unset, so the
+// "drop the bundle into /run/secrets/compliantly and restart" workflow
+// works zero-config. The first file that exists in each list wins.
+// Multiple names are accepted so the wrapper interoperates with both
+// the new gentls layout (frontend-server.{crt,key}) AND older bundles
+// that used a single multi-SAN backend cert pair.
+const DEFAULT_CERT_CANDIDATES = [
+  '/run/secrets/compliantly/frontend-server.crt',
+  '/run/secrets/compliantly/server.crt',
+  '/run/secrets/compliantly/backend.crt',
+]
+const DEFAULT_KEY_CANDIDATES = [
+  '/run/secrets/compliantly/frontend-server.key',
+  '/run/secrets/compliantly/server.key',
+  '/run/secrets/compliantly/backend.key',
+]
+const DEFAULT_CA_CANDIDATES = ['/run/secrets/compliantly/ca.crt']
+
+function firstExisting(envValue, candidates) {
+  const explicit = envValue?.trim()
+  if (explicit) return explicit
+  for (const path of candidates) {
+    try {
+      fs.accessSync(path, fs.constants.R_OK)
+      return path
+    } catch {
+      // try next
+    }
+  }
+  return undefined
+}
+
+const certFile = firstExisting(process.env.COMPLIANCE_FRONTEND_TLS_CERT_FILE, DEFAULT_CERT_CANDIDATES)
+const keyFile = firstExisting(process.env.COMPLIANCE_FRONTEND_TLS_KEY_FILE, DEFAULT_KEY_CANDIDATES)
+const caFile = firstExisting(process.env.COMPLIANCE_FRONTEND_TLS_CA_FILE, DEFAULT_CA_CANDIDATES)
 
 if (certFile && keyFile) {
   let tlsOptions
