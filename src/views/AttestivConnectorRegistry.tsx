@@ -401,16 +401,23 @@ export function AttestivConnectorRegistry() {
                   </div>
                 ) : null}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
-                  <GhostButton
-                    onClick={() => toggleConnector(connector, isDisabled)}
-                    disabled={isToggling}
-                  >
-                    <i
-                      className={`ti ${isDisabled ? 'ti-toggle-left' : 'ti-toggle-right'}`}
-                      aria-hidden="true"
-                    />
-                    {isToggling ? '…' : isDisabled ? 'Enable' : 'Disable'}
-                  </GhostButton>
+                  {/* Disable / Enable only applies to bare catalog rows.
+                     Instance rows (name = "palo_alto:new-fw-lan") have
+                     no on/off state in the backend - the items[] entry
+                     either exists or it doesn't. Hide the toggle on
+                     instance rows so it can't 404. */}
+                  {!connector.name.includes(':') ? (
+                    <GhostButton
+                      onClick={() => toggleConnector(connector, isDisabled)}
+                      disabled={isToggling}
+                    >
+                      <i
+                        className={`ti ${isDisabled ? 'ti-toggle-left' : 'ti-toggle-right'}`}
+                        aria-hidden="true"
+                      />
+                      {isToggling ? '…' : isDisabled ? 'Enable' : 'Disable'}
+                    </GhostButton>
+                  ) : null}
                   <GhostButton
                     onClick={() => deleteConnector(connector)}
                     disabled={isToggling}
