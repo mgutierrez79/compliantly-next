@@ -191,6 +191,70 @@ export function AttestivConnectorRegistry() {
     }
   }
 
+  // deleteConnector removes a row from the registry permanently.
+  //
+  // Two shapes handled here:
+  //   - Bare catalog rows (name = "palo_alto")          -> DELETE the
+  //     entire connector config (credentials + items + telemetry).
+  //   - Instance rows (name = "palo_alto:new-fw-lan")   -> PUT the
+  //     parent's config back with the offending entry stripped from
+  //     items[]. The backend's PutConnectorConfig hook prunes the
+  //     instance's telemetry as a side effect.
+  //
+  // Confirms via browser dialog because there's no undo: deleting an
+  // instance loses its evidence trail and the operator has to
+  // reconfigure to bring it back.
+  async function deleteConnector(connector: ConnectorStatus) {
+    const colonIdx = connector.name.indexOf(':')
+    const parent = colonIdx > 0 ? connector.name.slice(0, colonIdx) : connector.name
+    const instance = colonIdx > 0 ? connector.name.slice(colonIdx + 1) : ''
+    const what = instance ? `instance "${instance}" of ${parent}` : `connector "${parent}" and ALL its instances`
+    if (!window.confirm(`Delete ${what}? This cannot be undone.`)) return
+
+    setToggling(connector.name)
+    setToggleError(null)
+    try {
+      if (instance) {
+        // Read-modify-write the parent's items[] config.
+        const current = await apiJson<Record<string, unknown>>(
+          `/config/connectors/${encodeURIComponent(parent)}`,
+        )
+        const items = Array.isArray(current?.items) ? (current.items as Record<string, unknown>[]) : []
+        const filtered = items.filter((item) => {
+          const itemName = typeof item?.name === 'string' ? item.name : ''
+          return itemName !== instance
+        })
+        const next = { ...current, items: filtered }
+        const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(next),
+        })
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}))
+          throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+        }
+      } else {
+        const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
+          method: 'DELETE',
+        })
+        if (!response.ok && response.status !== 404) {
+          const body = await response.json().catch(() => ({}))
+          throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+        }
+      }
+      // Drop the row optimistically so the UI reflects the delete
+      // before the next /v1/connectors poll. The full list refresh
+      // on the next tick re-syncs from server truth.
+      setConnectors((current) => current.filter((c) => c.name !== connector.name))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Delete failed'
+      setToggleError(`${connector.label || connector.name}: ${message}`)
+    } finally {
+      setToggling(null)
+    }
+  }
+
   const activeConnectors = useMemo(
     () => connectors.filter((c) => (c.status ?? '').toLowerCase() !== 'disabled'),
     [connectors],
@@ -336,7 +400,7 @@ export function AttestivConnectorRegistry() {
                     {connector.connector_version}
                   </div>
                 ) : null}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
                   <GhostButton
                     onClick={() => toggleConnector(connector, isDisabled)}
                     disabled={isToggling}
@@ -346,6 +410,13 @@ export function AttestivConnectorRegistry() {
                       aria-hidden="true"
                     />
                     {isToggling ? '…' : isDisabled ? 'Enable' : 'Disable'}
+                  </GhostButton>
+                  <GhostButton
+                    onClick={() => deleteConnector(connector)}
+                    disabled={isToggling}
+                  >
+                    <i className="ti ti-trash" aria-hidden="true" />
+                    Delete
                   </GhostButton>
                 </div>
               </div>
