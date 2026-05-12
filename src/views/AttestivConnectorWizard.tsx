@@ -248,16 +248,15 @@ export function AttestivConnectorWizard() {
 
   const router = useRouter()
   const searchParams = useSearchParams()
-  // Edit mode: ?edit=<row-name> (e.g. "palo_alto" or
-  // "palo_alto:panorama-a"). The wizard fetches the existing
-  // config, pre-populates the form, and skips the Pick-connector
-  // step so the kind stays locked. Save still goes through the
-  // same POST /v1/connectors upsert path — the backend matches by
-  // slugified display name for multi-instance kinds, so re-saving
-  // with the same name updates in place.
+  // Edit mode: ?edit=<row-name> (e.g. "palo_alto_panorama:auxia-prod").
+  // After the flat-instance migration every saved connector is its
+  // own top-level row; the wizard fetches the row directly and the
+  // form pre-populates from a flat config. The kind for catalog
+  // lookup is derived from the base of the row name (before any
+  // colon) so the credential-fields panel still shows the right auth
+  // surface.
   const editRowName = searchParams?.get('edit') ?? ''
   const editKind = editRowName.includes(':') ? editRowName.split(':', 2)[0] : editRowName
-  const editInstance = editRowName.includes(':') ? editRowName.split(':', 2)[1] : ''
   const isEditMode = editRowName !== ''
   const [step, setStep] = useState(isEditMode ? 1 : 0)
   const [kind, setKind] = useState<string>(isEditMode && editKind ? editKind : 'palo_alto_panorama')
@@ -330,7 +329,7 @@ export function AttestivConnectorWizard() {
       Authorization: `Bearer ${settings.apiKey}`,
     }
     if (settings.tenantId) headers['X-Tenant-ID'] = settings.tenantId
-    fetch(`${baseUrl}/v1/config/connectors/${encodeURIComponent(editKind)}`, { headers })
+    fetch(`${baseUrl}/v1/config/connectors/${encodeURIComponent(editRowName)}`, { headers })
       .then(async (response) => {
         if (cancelled) return
         const body = await response.json().catch(() => ({}))
@@ -341,18 +340,10 @@ export function AttestivConnectorWizard() {
               `${response.status} ${response.statusText}`,
           )
         }
-        // Multi-instance: pick the targeted item out of items[].
-        // Single-instance: the body itself is the config.
-        let target: Record<string, unknown> = body && typeof body === 'object' ? body : {}
-        const items = Array.isArray((target as any).items) ? ((target as any).items as Record<string, unknown>[]) : []
-        if (editInstance && items.length > 0) {
-          const found = items.find((item) => slugifyName(stringField(item.name)) === editInstance)
-          if (found) {
-            // Merge parent-level globals (verify_tls, etc.) under
-            // the item so the user sees the effective configuration.
-            target = { ...stripParentGlobals(target), ...found }
-          }
-        }
+        // The row response is the flat config — one row per
+        // connector instance after the migration. No items[]
+        // traversal, no parent-globals juggling.
+        const target: Record<string, unknown> = body && typeof body === 'object' ? body : {}
         // Prefill scalar fields and credentials.
         const displayName = stringField(target.name)
         const verify =
@@ -387,7 +378,7 @@ export function AttestivConnectorWizard() {
     // this effect on kind changes would clobber the user's edits
     // mid-typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode, editKind, editInstance])
+  }, [isEditMode, editKind, editRowName])
 
   const connector = useMemo(() => CONNECTORS.find((entry) => entry.value === kind) ?? CONNECTORS[0], [kind])
 

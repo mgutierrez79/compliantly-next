@@ -195,77 +195,23 @@ export function AttestivConnectorRegistry() {
 
   // deleteConnector removes a row from the registry permanently.
   //
-  // Two shapes handled here:
-  //   - Bare catalog rows (name = "palo_alto")          -> DELETE the
-  //     entire connector config (credentials + items + telemetry).
-  //   - Instance rows (name = "palo_alto:new-fw-lan")   -> PUT the
-  //     parent's config back with the offending entry stripped from
-  //     items[]. The backend's PutConnectorConfig hook prunes the
-  //     instance's telemetry as a side effect.
-  //
-  // Confirms via browser dialog because there's no undo: deleting an
-  // instance loses its evidence trail and the operator has to
-  // reconfigure to bring it back.
+  // After the flat-instance migration, each connector row is its own
+  // top-level entry in connector_settings (named either kind or
+  // kind:slug). One DELETE wipes config + sources + telemetry for
+  // exactly that row — no parent/instance juggling required.
   async function deleteConnector(connector: ConnectorStatus) {
-    const colonIdx = connector.name.indexOf(':')
-    const parent = colonIdx > 0 ? connector.name.slice(0, colonIdx) : connector.name
-    const instance = colonIdx > 0 ? connector.name.slice(colonIdx + 1) : ''
-    const what = instance ? `instance "${instance}" of ${parent}` : `connector "${parent}" and ALL its instances`
-    if (!window.confirm(`Delete ${what}? This cannot be undone.`)) return
+    const label = connector.label || connector.name
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return
 
     setToggling(connector.name)
     setToggleError(null)
     try {
-      if (instance) {
-        // Read-modify-write the parent's items[] config.
-        const current = await apiJson<Record<string, unknown>>(
-          `/config/connectors/${encodeURIComponent(parent)}`,
-        )
-        const items = Array.isArray(current?.items) ? (current.items as Record<string, unknown>[]) : []
-        const filtered = items.filter((item) => {
-          const itemName = typeof item?.name === 'string' ? item.name : ''
-          return itemName !== instance
-        })
-        if (filtered.length === 0) {
-          // Deleting the last instance leaves the parent with items=[]
-          // but still in connector_sources, so the poll loop keeps
-          // discovering it and the row reappears on the next refresh.
-          // When the user removes the last instance they mean "remove
-          // this connector entirely" — promote the operation to a full
-          // DELETE on the parent so connector_settings + connector_sources
-          // both get wiped.
-          const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
-            method: 'DELETE',
-          })
-          if (!response.ok && response.status !== 404) {
-            const body = await response.json().catch(() => ({}))
-            throw new Error(body?.detail || `${response.status} ${response.statusText}`)
-          }
-          // Drop any sibling rows (the parent catalog row and the
-          // disappearing instance row) so the registry doesn't flash
-          // a stale parent between the optimistic update below and
-          // the next /v1/connectors poll.
-          setConnectors((rows) => rows.filter((c) => c.name !== parent && c.name !== connector.name))
-        } else {
-          const next = { ...current, items: filtered }
-          const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(next),
-          })
-          if (!response.ok) {
-            const body = await response.json().catch(() => ({}))
-            throw new Error(body?.detail || `${response.status} ${response.statusText}`)
-          }
-        }
-      } else {
-        const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
-          method: 'DELETE',
-        })
-        if (!response.ok && response.status !== 404) {
-          const body = await response.json().catch(() => ({}))
-          throw new Error(body?.detail || `${response.status} ${response.statusText}`)
-        }
+      const response = await apiFetch(`/config/connectors/${encodeURIComponent(connector.name)}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok && response.status !== 404) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body?.detail || `${response.status} ${response.statusText}`)
       }
       // Drop the row optimistically so the UI reflects the delete
       // before the next /v1/connectors poll. The full list refresh
