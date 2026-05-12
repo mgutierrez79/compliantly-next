@@ -359,7 +359,16 @@ export function AttestivConnectorWizard() {
       }
       const body = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(body?.error || `${response.status} ${response.statusText}`)
+        // The Go API returns errors as { "detail": "..." } via its
+        // writeError helper. Some legacy endpoints used { "error": "..." }
+        // — accept both before falling back to the bare status text so
+        // we never lose the real upstream message (TLS failure, auth
+        // rejection, unreachable host) in a generic "502 Bad Gateway".
+        const message =
+          (typeof body?.detail === 'string' && body.detail) ||
+          (typeof body?.error === 'string' && body.error) ||
+          `${response.status} ${response.statusText}`
+        throw new Error(message)
       }
       setTestResult({
         state: 'pass',
@@ -401,7 +410,14 @@ export function AttestivConnectorWizard() {
       })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(body?.error || `${response.status} ${response.statusText}`)
+        // Mirror the test-step parser: detail is the Go API's
+        // convention, error is the legacy form. Either way, surface
+        // the real upstream message rather than a generic status.
+        const message =
+          (typeof body?.detail === 'string' && body.detail) ||
+          (typeof body?.error === 'string' && body.error) ||
+          `${response.status} ${response.statusText}`
+        throw new Error(message)
       }
       setSaved({
         id: typeof body?.id === 'string' ? body.id : 'pending',
