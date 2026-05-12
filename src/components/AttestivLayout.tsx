@@ -255,11 +255,12 @@ const sections: Record<SectionKey, Section> = {
     key: 'settings',
     navLabel: 'Settings',
     items: [
-      { to: '/settings',            label: 'Tenant',       icon: 'ti-building' },
-      { to: '/settings/users',      label: 'Users & RBAC', icon: 'ti-users' },
-      { to: '/settings/keys',       label: 'API keys',     icon: 'ti-key' },
-      { to: '/settings/frameworks', label: 'Frameworks',   icon: 'ti-layout-list' },
-      { to: '/settings/support',    label: 'Support bundle', icon: 'ti-file-zip' },
+      { to: '/settings',             label: 'Tenant',         icon: 'ti-building' },
+      { to: '/settings/users',       label: 'Users & RBAC',   icon: 'ti-users' },
+      { to: '/settings/keys',        label: 'API keys',       icon: 'ti-key' },
+      { to: '/settings/frameworks',  label: 'Frameworks',     icon: 'ti-layout-list' },
+      { to: '/settings/trust-store', label: 'Trust store',    icon: 'ti-certificate' },
+      { to: '/settings/support',     label: 'Support bundle', icon: 'ti-file-zip' },
     ],
   },
 }
