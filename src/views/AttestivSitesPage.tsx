@@ -127,7 +127,7 @@ export function AttestivSitesPage() {
     <>
       <Topbar
         title={t('Sites', 'Sites')}
-        left={<Badge tone="navy">{sites.length} registered</Badge>}
+        left={<Badge tone="navy">{t('{count} registered', '{count} registered', { count: sites.length })}</Badge>}
         right={
           <FilterBar value={filter} onChange={setFilter} regions={regions} types={types} />
         }
@@ -135,7 +135,14 @@ export function AttestivSitesPage() {
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
         {exceedingThreshold > 0 ? (
-          <Banner tone="warning" title={`${exceedingThreshold} site${exceedingThreshold === 1 ? '' : 's'} exceeding DORA Art.29 concentration threshold`}>
+          <Banner
+            tone="warning"
+            title={t(
+              '{count} site(s) exceeding DORA Art.29 concentration threshold',
+              '{count} site(s) exceeding DORA Art.29 concentration threshold',
+              { count: exceedingThreshold },
+            )}
+          >
             {t(
               'A site holding too high a share of tier-1 apps becomes a single point of failure. Move workloads or document compensating controls.',
               'A site holding too high a share of tier-1 apps becomes a single point of failure. Move workloads or document compensating controls.'
@@ -144,7 +151,7 @@ export function AttestivSitesPage() {
         ) : null}
 
         <Card>
-          <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{filtered.length} shown</span>}>
+          <CardTitle right={<span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{t('{count} shown', '{count} shown', { count: filtered.length })}</span>}>
             {t('Site registry', 'Site registry')}
           </CardTitle>
           {loading ? (
