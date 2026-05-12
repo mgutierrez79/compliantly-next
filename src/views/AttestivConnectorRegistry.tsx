@@ -429,6 +429,17 @@ export function AttestivConnectorRegistry() {
                       {isToggling ? '…' : isDisabled ? t('common.enable') : t('common.disable')}
                     </GhostButton>
                   ) : null}
+                  {/* Edit jumps into the wizard pre-populated with
+                      the existing config. The same wizard handles
+                      create + edit; the `edit=<row-name>` query
+                      param toggles edit mode. */}
+                  <GhostButton
+                    onClick={() => router.push(`/connectors/new?edit=${encodeURIComponent(connector.name)}`)}
+                    disabled={isToggling}
+                  >
+                    <i className="ti ti-edit" aria-hidden="true" />
+                    {t('Edit', 'Edit')}
+                  </GhostButton>
                   <GhostButton
                     onClick={() => deleteConnector(connector)}
                     disabled={isToggling}

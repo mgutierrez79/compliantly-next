@@ -15,7 +15,7 @@
 // of the form rerendering.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import {
   Badge,
@@ -169,14 +169,98 @@ type TestResult =
   | { state: 'fail'; details: string }
   | { state: 'deferred'; details: string }
 
+// META_KEYS lists config keys that describe the connector instance
+// itself rather than its authentication. The edit-mode prefill
+// projects everything else into the credentials state map so the
+// user sees the fields the catalog declared for this kind. Any
+// addition here MUST also be excluded from the save body so we
+// don't echo it back as a "credential" — the wizard's save
+// flow already pulls these from explicit state (endpoint, name,
+// pollSeconds, verifyTLS) so dropping them from `credentials` is
+// what we want.
+const META_KEYS = new Set<string>([
+  'name',
+  'endpoint',
+  'base_url',
+  'url',
+  'host',
+  'items',
+  'poll_interval_seconds',
+  'verify_tls',
+])
+
+// stringField is a tiny helper used by the edit-mode prefill to
+// turn `unknown` (the JSON parse result) into a string with empty
+// fallback. Numbers and booleans coerce to strings; null/undefined
+// become "" so the form inputs stay controlled.
+function stringField(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
+
+// numberField turns `unknown` into a non-negative integer. Returns
+// 0 when the value is missing or unparseable so the wizard's
+// `if (poll > 0) setPollSeconds(...)` guard can decide whether to
+// override the kind's default.
+function numberField(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.floor(value)
+  if (typeof value === 'string') {
+    const n = parseInt(value, 10)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return 0
+}
+
+// slugifyName mirrors the backend's connectorInstanceSlug rule so
+// the wizard can pick the right items[] entry when editing a
+// multi-instance row. Same character class as
+// internal/httpapi/connectors_routes.go:connectorInstanceSlug.
+function slugifyName(value: string): string {
+  const lowered = value.trim().toLowerCase()
+  let out = ''
+  for (const ch of lowered) {
+    if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) out += ch
+    else out += '-'
+  }
+  return out.replace(/^-+|-+$/g, '')
+}
+
+// stripParentGlobals copies the parent-level keys that shouldn't
+// override per-item fields when we merge a multi-instance edit. We
+// keep verify_tls (parent global) and poll_interval_seconds so the
+// form reflects effective behaviour, but drop items[] (we're
+// flattening one item) and anything else item-specific. This is
+// intentionally lenient — the items[]-specific overrides win.
+function stripParentGlobals(parent: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(parent)) {
+    if (k === 'items') continue
+    out[k] = v
+  }
+  return out
+}
+
 export function AttestivConnectorWizard() {
   const {
     t
   } = useI18n();
 
   const router = useRouter()
-  const [step, setStep] = useState(0)
-  const [kind, setKind] = useState<string>('palo_alto_panorama')
+  const searchParams = useSearchParams()
+  // Edit mode: ?edit=<row-name> (e.g. "palo_alto" or
+  // "palo_alto:panorama-a"). The wizard fetches the existing
+  // config, pre-populates the form, and skips the Pick-connector
+  // step so the kind stays locked. Save still goes through the
+  // same POST /v1/connectors upsert path — the backend matches by
+  // slugified display name for multi-instance kinds, so re-saving
+  // with the same name updates in place.
+  const editRowName = searchParams?.get('edit') ?? ''
+  const editKind = editRowName.includes(':') ? editRowName.split(':', 2)[0] : editRowName
+  const editInstance = editRowName.includes(':') ? editRowName.split(':', 2)[1] : ''
+  const isEditMode = editRowName !== ''
+  const [step, setStep] = useState(isEditMode ? 1 : 0)
+  const [kind, setKind] = useState<string>(isEditMode && editKind ? editKind : 'palo_alto_panorama')
   const [name, setName] = useState('')
   const [endpoint, setEndpoint] = useState('')
   const [credentials, setCredentials] = useState<Record<string, string>>({})
@@ -189,6 +273,12 @@ export function AttestivConnectorWizard() {
   const [savingError, setSavingError] = useState<string | null>(null)
   const [saved, setSaved] = useState<{ id: string; created_at: string } | null>(null)
   const [catalog, setCatalog] = useState<ConnectorCatalogEntry[]>([])
+  // editLoadError is shown above the form when we can't reach the
+  // backend to fetch the existing config — without this the wizard
+  // would silently render blank fields and a save would create a
+  // new row instead of updating the one the user clicked Edit on.
+  const [editLoadError, setEditLoadError] = useState<string | null>(null)
+  const [editLoading, setEditLoading] = useState<boolean>(isEditMode)
 
   // Fetch the catalog once at mount. The wizard renders before the
   // fetch resolves; in that window the credential step shows only
@@ -211,6 +301,93 @@ export function AttestivConnectorWizard() {
       cancelled = true
     }
   }, [])
+
+  // Edit-mode prefill. Runs once at mount when ?edit= is present.
+  // The handler:
+  //   1. GET /v1/config/connectors/<base-kind> via apiFetch (which
+  //      attaches X-Tenant-ID and Bearer) — secrets come back
+  //      masked as "********" but the backend's MergeMaskedSecrets
+  //      restores them on save, so the user can leave them alone
+  //      to keep current creds or type new ones to rotate.
+  //   2. For multi-instance kinds (editing palo_alto:panorama-a),
+  //      walk items[] and pick the entry whose slugified name
+  //      matches the URL's instance slug.
+  //   3. Project the loaded values into form state — kind is
+  //      already locked via the initial useState above, the rest
+  //      (name, endpoint, credentials, pollSeconds, verifyTLS) get
+  //      hydrated here.
+  useEffect(() => {
+    if (!isEditMode || !editKind) return
+    let cancelled = false
+    const settings = loadSettings()
+    const baseUrl = settings.apiBaseUrl?.trim()?.replace(/\/+$/, '')
+    if (!baseUrl || !settings.apiKey) {
+      setEditLoadError('Set the API base URL and API key in Login first.')
+      setEditLoading(false)
+      return
+    }
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${settings.apiKey}`,
+    }
+    if (settings.tenantId) headers['X-Tenant-ID'] = settings.tenantId
+    fetch(`${baseUrl}/v1/config/connectors/${encodeURIComponent(editKind)}`, { headers })
+      .then(async (response) => {
+        if (cancelled) return
+        const body = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(
+            (typeof body?.detail === 'string' && body.detail) ||
+              (typeof body?.error === 'string' && body.error) ||
+              `${response.status} ${response.statusText}`,
+          )
+        }
+        // Multi-instance: pick the targeted item out of items[].
+        // Single-instance: the body itself is the config.
+        let target: Record<string, unknown> = body && typeof body === 'object' ? body : {}
+        const items = Array.isArray((target as any).items) ? ((target as any).items as Record<string, unknown>[]) : []
+        if (editInstance && items.length > 0) {
+          const found = items.find((item) => slugifyName(stringField(item.name)) === editInstance)
+          if (found) {
+            // Merge parent-level globals (verify_tls, etc.) under
+            // the item so the user sees the effective configuration.
+            target = { ...stripParentGlobals(target), ...found }
+          }
+        }
+        // Prefill scalar fields and credentials.
+        const displayName = stringField(target.name)
+        const verify =
+          target.verify_tls === undefined ? true : !(target.verify_tls === false || target.verify_tls === 'false')
+        const ep = stringField(target.base_url) || stringField(target.endpoint) || stringField(target.url) || stringField(target.host)
+        const poll = numberField(target.poll_interval_seconds)
+        const creds: Record<string, string> = {}
+        for (const [k, v] of Object.entries(target)) {
+          if (META_KEYS.has(k)) continue
+          if (typeof v === 'string') creds[k] = v
+          else if (typeof v === 'number' || typeof v === 'boolean') creds[k] = String(v)
+        }
+        setName(displayName)
+        setEndpoint(ep)
+        setCredentials(creds)
+        setVerifyTLS(verify)
+        if (poll > 0) setPollSeconds(poll)
+        setEditLoadError(null)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setEditLoadError(err instanceof Error ? err.message : 'Failed to load existing config')
+      })
+      .finally(() => {
+        if (!cancelled) setEditLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // The dependency list deliberately does NOT include `kind` —
+    // edit mode locks the kind to the URL value, and re-running
+    // this effect on kind changes would clobber the user's edits
+    // mid-typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, editKind, editInstance])
 
   const connector = useMemo(() => CONNECTORS.find((entry) => entry.value === kind) ?? CONNECTORS[0], [kind])
 
@@ -458,7 +635,7 @@ export function AttestivConnectorWizard() {
   return (
     <>
       <Topbar
-        title={t('New connector', 'New connector')}
+        title={isEditMode ? t('Edit connector', 'Edit connector') : t('New connector', 'New connector')}
         right={
           <GhostButton onClick={() => router.push('/connectors')}>
             <i className="ti ti-x" aria-hidden="true" />
@@ -468,13 +645,35 @@ export function AttestivConnectorWizard() {
       />
       <div className="attestiv-content">
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          {editLoadError ? (
+            <Card style={{ padding: '12px 16px', background: 'var(--color-status-red-soft, #fee2e2)', borderColor: 'var(--color-status-red-mid, #fca5a5)' }}>
+              <strong>{t('Could not load existing connector:', 'Could not load existing connector:')}</strong>{' '}
+              {editLoadError}
+            </Card>
+          ) : null}
+          {editLoading ? (
+            <Card style={{ padding: '12px 16px' }}>
+              {t('Loading current configuration…', 'Loading current configuration…')}
+            </Card>
+          ) : null}
           <Card>
             <Stepper steps={STEPS} current={step} />
           </Card>
 
           <Card style={{ padding: '20px 22px' }}>
-            {step === 0 ? (
+            {step === 0 && !isEditMode ? (
               <PickStep kind={kind} onChange={selectKind} />
+            ) : null}
+            {step === 0 && isEditMode ? (
+              <div style={{ padding: '12px 0' }}>
+                <Badge tone="navy">{t('Editing existing connector', 'Editing existing connector')}</Badge>
+                <p style={{ marginTop: 12 }}>
+                  {t(
+                    'Kind is locked when editing. To change it, delete this connector and create a new one.',
+                    'Kind is locked when editing. To change it, delete this connector and create a new one.',
+                  )}
+                </p>
+              </div>
             ) : null}
             {step === 1 ? (
               <CredentialsStep
