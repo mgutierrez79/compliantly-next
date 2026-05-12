@@ -101,10 +101,17 @@ function readDictionaryKeys() {
     }
     const block = source.slice(open.index + open[0].length, i - 1)
     const keys = new Set()
-    // Quoted-key entries: 'Key with space': 'value',
-    const quotedKeyRe = /(?<![A-Za-z0-9_])'((?:[^'\\]|\\.)+)'\s*:/g
-    for (const m of block.matchAll(quotedKeyRe)) {
+    // Quoted-key entries: 'Key with space': 'value', OR "Key with apostrophe's": 'value',
+    // We match both single- and double-quoted keys so dictionary entries that
+    // wrap apostrophe-containing English (the natural double-quote form) are
+    // counted, not silently flagged missing.
+    const singleQuotedKeyRe = /(?<![A-Za-z0-9_])'((?:[^'\\]|\\.)+)'\s*:/g
+    for (const m of block.matchAll(singleQuotedKeyRe)) {
       keys.add(m[1].replace(/\\'/g, "'"))
+    }
+    const doubleQuotedKeyRe = /(?<![A-Za-z0-9_])"((?:[^"\\]|\\.)+)"\s*:/g
+    for (const m of block.matchAll(doubleQuotedKeyRe)) {
+      keys.add(m[1].replace(/\\"/g, '"'))
     }
     // Bare identifier entries: BareKey: 'value', — match identifier
     // at start of line (after whitespace), followed by colon.
