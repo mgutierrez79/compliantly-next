@@ -30,6 +30,7 @@ import {
   TextInput,
   Topbar,
 } from '../components/AttestivUi'
+import { isDemoMode } from '../lib/demoMode'
 import { loadSettings } from '../lib/settings'
 
 import { useI18n } from '../lib/i18n';
@@ -99,13 +100,26 @@ export function AttestivUsersAndRbacPage() {
 
   useEffect(() => {
     let cancelled = false
+    // FALLBACK_USERS are screenshot-friendly placeholder rows. They
+    // belong only on demo tenants — pilot and production must show
+    // an honest empty state when the users API is unreachable or
+    // returns no rows, otherwise an operator screenshotting the
+    // pilot dashboard ends up with fictitious admins.
+    const allowDemo = isDemoMode()
     async function load() {
       const settings = loadSettings()
       const baseUrl = settings.apiBaseUrl?.trim()?.replace(/\/+$/, '')
       if (!baseUrl || !settings.apiKey) {
-        setUsers(FALLBACK_USERS)
-        setUsingFallback(true)
-        setLoading(false)
+        if (!cancelled) {
+          if (allowDemo) {
+            setUsers(FALLBACK_USERS)
+            setUsingFallback(true)
+          } else {
+            setUsers([])
+            setUsingFallback(false)
+          }
+          setLoading(false)
+        }
         return
       }
       try {
@@ -116,8 +130,15 @@ export function AttestivUsersAndRbacPage() {
           },
         })
         if (response.status === 404) {
-          setUsers(FALLBACK_USERS)
-          setUsingFallback(true)
+          if (!cancelled) {
+            if (allowDemo) {
+              setUsers(FALLBACK_USERS)
+              setUsingFallback(true)
+            } else {
+              setUsers([])
+              setUsingFallback(false)
+            }
+          }
           return
         }
         if (!response.ok) {
@@ -126,13 +147,26 @@ export function AttestivUsersAndRbacPage() {
         const body = await response.json().catch(() => ({}))
         const items: User[] = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : []
         if (!cancelled) {
-          setUsers(items.length > 0 ? items : FALLBACK_USERS)
-          setUsingFallback(items.length === 0)
+          if (items.length > 0) {
+            setUsers(items)
+            setUsingFallback(false)
+          } else if (allowDemo) {
+            setUsers(FALLBACK_USERS)
+            setUsingFallback(true)
+          } else {
+            setUsers([])
+            setUsingFallback(false)
+          }
         }
       } catch (err: any) {
         if (!cancelled) {
-          setUsers(FALLBACK_USERS)
-          setUsingFallback(true)
+          if (allowDemo) {
+            setUsers(FALLBACK_USERS)
+            setUsingFallback(true)
+          } else {
+            setUsers([])
+            setUsingFallback(false)
+          }
           setError(err?.message ?? 'Failed to load users')
         }
       } finally {
