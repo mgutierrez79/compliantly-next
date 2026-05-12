@@ -352,12 +352,22 @@ export function AttestivConnectorWizard() {
         ...credentials,
         verify_tls: verifyTLS ? 'true' : 'false',
       }
+      // X-Tenant-ID must match the tenant the user uploaded any
+      // trusted root CAs under — otherwise the backend probe loads
+      // PEMBundle("") (the empty _global bucket) and verify_tls=true
+      // hits x509 even after the operator uploaded the right root.
+      // The trust-store UI already attaches this header via apiFetch;
+      // mirror it here so probe and upload resolve to the same bucket.
+      const probeHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.apiKey}`,
+      }
+      if (settings.tenantId) {
+        probeHeaders['X-Tenant-ID'] = settings.tenantId
+      }
       const response = await fetch(`${baseUrl}/v1/connectors/test`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.apiKey}`,
-        },
+        headers: probeHeaders,
         body: JSON.stringify({ kind, endpoint, credentials: probeCredentials }),
       })
       if (response.status === 404 || response.status === 405) {
@@ -401,12 +411,19 @@ export function AttestivConnectorWizard() {
       return
     }
     try {
+      // Same tenant header rationale as runTest above — the save
+      // must land in the same tenant bucket the probe used so the
+      // worker poll path inherits the right trust pool.
+      const saveHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.apiKey}`,
+      }
+      if (settings.tenantId) {
+        saveHeaders['X-Tenant-ID'] = settings.tenantId
+      }
       const response = await fetch(`${baseUrl}/v1/connectors`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.apiKey}`,
-        },
+        headers: saveHeaders,
         body: JSON.stringify({
           name: name.trim() || kind,
           kind,
