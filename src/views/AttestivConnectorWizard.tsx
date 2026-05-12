@@ -70,7 +70,7 @@ const CONNECTORS: ConnectorKind[] = [
     value: 'palo_alto_panorama',
     label: 'Palo Alto Panorama',
     category: 'Network',
-    endpointHint: 'panorama.acme.internal',
+    endpointHint: 'https://panorama.acme.internal',
     fields: [],
     pollDefault: 600,
   },
@@ -78,7 +78,7 @@ const CONNECTORS: ConnectorKind[] = [
     value: 'palo_alto_firewall',
     label: 'Palo Alto firewall (PAN-OS)',
     category: 'Network',
-    endpointHint: 'fw01.acme.internal',
+    endpointHint: 'https://fw01.acme.internal',
     fields: [
       { key: 'serial', label: 'Serial number', hint: 'Used for HA-aware scoping.' },
     ],
@@ -88,7 +88,7 @@ const CONNECTORS: ConnectorKind[] = [
     value: 'dell_datadomain',
     label: 'Dell DataDomain',
     category: 'Storage',
-    endpointHint: 'dd-prod.acme.internal',
+    endpointHint: 'https://dd-prod.acme.internal',
     fields: [
       { key: 'username', label: 'Username', required: true },
       { key: 'password', label: 'Password', type: 'password', required: true },
@@ -99,7 +99,7 @@ const CONNECTORS: ConnectorKind[] = [
     value: 'dell_powerstore',
     label: 'Dell PowerStore',
     category: 'Storage',
-    endpointHint: 'powerstore.acme.internal',
+    endpointHint: 'https://powerstore.acme.internal',
     fields: [
       { key: 'username', label: 'Username', required: true },
       { key: 'password', label: 'Password', type: 'password', required: true },
@@ -110,7 +110,7 @@ const CONNECTORS: ConnectorKind[] = [
     value: 'vmware_vcenter',
     label: 'VMware vCenter',
     category: 'Virtualization',
-    endpointHint: 'vcenter.acme.internal',
+    endpointHint: 'https://vcenter.acme.internal',
     fields: [
       { key: 'username', label: 'SSO username', required: true, hint: 'Service account, e.g. attestiv@vsphere.local.' },
       { key: 'password', label: 'SSO password', type: 'password', required: true },
@@ -121,7 +121,7 @@ const CONNECTORS: ConnectorKind[] = [
     value: 'veeam_em',
     label: 'Veeam Backup Enterprise Manager',
     category: 'Backup',
-    endpointHint: 'veeam-em.acme.internal',
+    endpointHint: 'https://veeam-em.acme.internal',
     fields: [
       { key: 'client_id', label: 'OAuth client id', required: true },
       { key: 'client_secret', label: 'OAuth client secret', type: 'password', required: true },
