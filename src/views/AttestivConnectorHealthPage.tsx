@@ -34,6 +34,14 @@ type ConnectorHealth = {
   error_rate_pct?: number
   events_per_min?: number
   poll_interval_s?: number
+  // Items collected on the last poll, keyed by ingestion section
+  // ("assets", "security_events", "vulnerabilities", ...). Tells the
+  // operator the connector is producing the kind of data they expect,
+  // not just polling successfully. Missing or empty => the row falls
+  // back to "—" so we don't imply the connector is broken when it's
+  // simply not reporting per-section counts (older telemetry).
+  last_items_collected?: Record<string, number>
+  last_items_at?: string
 }
 
 const DEMO: ConnectorHealth[] = [
@@ -145,6 +153,15 @@ export function AttestivConnectorHealthPage() {
               error_rate_pct: typeof row?.error_rate_pct === 'number' ? row.error_rate_pct : undefined,
               events_per_min: typeof row?.events_per_min === 'number' ? row.events_per_min : undefined,
               poll_interval_s: typeof row?.poll_interval_s === 'number' ? row.poll_interval_s : undefined,
+              last_items_collected:
+                row?.last_items_collected && typeof row.last_items_collected === 'object'
+                  ? Object.fromEntries(
+                      Object.entries(row.last_items_collected as Record<string, unknown>)
+                        .filter(([, v]) => typeof v === 'number' && (v as number) > 0)
+                        .map(([k, v]) => [k, v as number]),
+                    )
+                  : undefined,
+              last_items_at: typeof row?.last_items_at === 'string' ? row.last_items_at : undefined,
             } as ConnectorHealth & { raw_status: string }
           })
           .filter((item) => item.name && item.raw_status !== 'disabled')
@@ -214,9 +231,9 @@ export function AttestivConnectorHealthPage() {
                   <th style={{ padding: '6px 10px 6px 0' }}>{t('Connector', 'Connector')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Status', 'Status')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Last success', 'Last success')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Items (last poll)', 'Items (last poll)')}</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('p95 latency', 'p95 latency')}</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('Error rate', 'Error rate')}</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>Events/min</th>
                   <th style={{ padding: '6px 0 6px 10px' }}>{t('Last error', 'Last error')}</th>
                 </tr>
               </thead>
@@ -233,14 +250,14 @@ export function AttestivConnectorHealthPage() {
                     <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
                       {item.last_success ? formatRelative(item.last_success) : '—'}
                     </td>
+                    <td style={{ padding: '10px' }}>
+                      <ItemsCell counts={item.last_items_collected} />
+                    </td>
                     <td style={{ padding: '10px', textAlign: 'right', color: tonedNumber(item.p95_latency_ms, 1000, 3000) }}>
                       {item.p95_latency_ms !== undefined ? `${item.p95_latency_ms} ms` : '—'}
                     </td>
                     <td style={{ padding: '10px', textAlign: 'right', color: tonedNumber(item.error_rate_pct, 1, 5) }}>
                       {item.error_rate_pct !== undefined ? `${item.error_rate_pct.toFixed(1)}%` : '—'}
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
-                      {item.events_per_min !== undefined ? item.events_per_min.toFixed(1) : '—'}
                     </td>
                     <td style={{ padding: '10px 0 10px 10px', color: 'var(--color-text-tertiary)' }}>
                       {item.last_error ? (
@@ -267,6 +284,46 @@ function tonedNumber(value: number | undefined, warnAt: number, errorAt: number)
   if (value >= errorAt) return 'var(--color-status-red-deep)'
   if (value >= warnAt) return 'var(--color-status-amber-text)'
   return 'var(--color-text-secondary)'
+}
+
+// ItemsCell renders per-section item counts as compact chips. Shows
+// the top three sections by count plus a "+N more" tail when there
+// are more, with a hover-tooltip listing everything. Empty / missing
+// counts fall back to "—" so we don't imply the connector failed
+// when it simply hasn't been polled yet under the new telemetry.
+function ItemsCell({ counts }: { counts?: Record<string, number> }) {
+  if (!counts) return <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1])
+  if (entries.length === 0) return <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+  const top = entries.slice(0, 3)
+  const rest = entries.slice(3)
+  const tooltip = entries.map(([k, v]) => `${k}: ${v}`).join('\n')
+  return (
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }} title={tooltip}>
+      {top.map(([section, count]) => (
+        <span
+          key={section}
+          style={{
+            display: 'inline-flex',
+            gap: 4,
+            padding: '2px 6px',
+            background: 'var(--color-background-secondary)',
+            borderRadius: 'var(--border-radius-sm)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+          }}
+        >
+          <span style={{ color: 'var(--color-text-tertiary)' }}>{section}</span>
+          <span style={{ fontWeight: 500 }}>{count}</span>
+        </span>
+      ))}
+      {rest.length > 0 ? (
+        <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+          +{rest.length} more
+        </span>
+      ) : null}
+    </span>
+  )
 }
 
 function formatRelative(iso: string): string {
