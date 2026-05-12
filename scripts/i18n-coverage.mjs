@@ -105,11 +105,16 @@ function readDictionaryKeys() {
     // We match both single- and double-quoted keys so dictionary entries that
     // wrap apostrophe-containing English (the natural double-quote form) are
     // counted, not silently flagged missing.
-    const singleQuotedKeyRe = /(?<![A-Za-z0-9_])'((?:[^'\\]|\\.)+)'\s*:/g
+    //
+    // Anchor on line start (^[ \t]+) so the regex cannot drift across an
+    // inline comment between entries — without the anchor, the engine would
+    // start at the closing apostrophe of the previous value and "eat" the
+    // comment text up to the next `':`, missing the key entirely.
+    const singleQuotedKeyRe = /^[ \t]+'((?:[^'\\]|\\.)+)'\s*:/gm
     for (const m of block.matchAll(singleQuotedKeyRe)) {
       keys.add(m[1].replace(/\\'/g, "'"))
     }
-    const doubleQuotedKeyRe = /(?<![A-Za-z0-9_])"((?:[^"\\]|\\.)+)"\s*:/g
+    const doubleQuotedKeyRe = /^[ \t]+"((?:[^"\\]|\\.)+)"\s*:/gm
     for (const m of block.matchAll(doubleQuotedKeyRe)) {
       keys.add(m[1].replace(/\\"/g, '"'))
     }
