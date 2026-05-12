@@ -79,6 +79,42 @@ const NEVER_VISIBLE_ATTRS = new Set([
   'method', 'action', 'target', 'rel', 'data-testid',
 ])
 
+// Tighter false-positive rejection. These regex tests catch strings
+// that pass the "looks like English" heuristic but are actually
+// placeholder/technical data we never want a translator to touch —
+// emails, file names, tokens, JSON literals, control IDs, etc.
+// Applied to BOTH the extractor (so future runs won't wrap them) and
+// the coverage report (so honest % numbers exclude them).
+function looksLikePlaceholderOrTechnical(s) {
+  const t = s.trim()
+  // Email-like placeholders: foo@bar.tld
+  if (/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(t)) return true
+  // Filenames with a known extension
+  if (/^[\w./-]+\.(crt|csr|key|pem|json|jsonl|yaml|yml|md|txt|sh|ts|tsx|js|mjs|zip|csv|pdf|png|jpg|svg|html|env|toml|conf|xml)$/i.test(t)) return true
+  // Paths or URL fragments starting with / or ?
+  if (/^[/?][\w./?=&%:#-]+$/.test(t)) return true
+  if (t.includes('://')) return true
+  // Looks like a JSON literal
+  if (/^[{[].*[}\]]$/.test(t)) return true
+  // Common API token/secret prefixes
+  if (/^(ghp_|gho_|github_pat_|glpat-|AKIA|ASIA|sk_|pk_|xoxb-|xoxp-)/.test(t)) return true
+  // Control-ID-like patterns: A.5.8 / A.9.2.5 / Article 21(2)
+  if (/^[A-Z]\.\d+(\.\d+)*(,? Article \d+(\(\d+\))?)?$/.test(t)) return true
+  // Comma-separated technical tag examples: cmdb_ci, cmdb_ci_server, ...
+  if (/^[a-z_]+(_[a-z_]+)*(,\s*[a-z_]+(_[a-z_]+)*)+$/.test(t)) return true
+  // Looks like a hostname/identifier (no spaces, mostly lowercase + dots/hyphens)
+  if (/^[a-z][a-z0-9.-]+(\.[a-z]{2,})+$/.test(t)) return true
+  // Sample personal/company names from the seeded demo data
+  if (/^(Acme [A-Z][a-z]+|Marina Singh|alice@example\.com)$/.test(t)) return true
+  // The brand name itself never translates
+  if (t === 'Attestiv') return true
+  // Hex / digits / colour swatch with leading "#"
+  if (/^#[0-9a-f]{3,8}$/i.test(t)) return true
+  // sk-/AKIA-style + ellipsis sample tokens
+  if (/^[A-Za-z0-9_-]+\.\.\.$/.test(t)) return true
+  return false
+}
+
 function isUserVisibleString(s) {
   const trimmed = s.trim()
   if (trimmed.length < 2) return false
@@ -95,6 +131,8 @@ function isUserVisibleString(s) {
   if (/^[a-z]+\.(crt|key|pem|json|yaml|yml|md|sh|ts|tsx|js|mjs)$/i.test(trimmed)) return false
   if (/^[\w-]+\/[\w/-]+$/.test(trimmed)) return false         // paths
   if (trimmed.startsWith('var(')) return false                // CSS vars
+  // Stricter pass: reject sample / technical strings explicitly.
+  if (looksLikePlaceholderOrTechnical(trimmed)) return false
 
   // Accept: has space, OR has sentence punctuation, OR is title-cased.
   if (trimmed.includes(' ')) return true
@@ -103,6 +141,8 @@ function isUserVisibleString(s) {
 
   return false
 }
+
+export { looksLikePlaceholderOrTechnical }
 
 // Wrap a string literal in t('value', 'value'), creating a JSX
 // expression container suitable for embedding back where the original
@@ -471,7 +511,13 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+// Only run main() when this file is executed directly (e.g.
+// `node scripts/i18n-extract.mjs`). When imported as a module by
+// the coverage script for shared filter logic, do nothing.
+const invokedDirectly =
+  import.meta.url === `file://${process.argv[1]}` ||
+  import.meta.url.endsWith(process.argv[1]?.replace(/\\/g, '/') ?? '')
+if (invokedDirectly) main().catch((err) => {
   console.error(err)
   process.exit(1)
 })

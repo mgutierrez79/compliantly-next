@@ -25,6 +25,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from '@babel/parser'
 import traverseDefault from '@babel/traverse'
+import { looksLikePlaceholderOrTechnical } from './i18n-extract.mjs'
 
 const traverse = traverseDefault.default ?? traverseDefault
 
@@ -127,6 +128,17 @@ function main() {
   const usageCounts = collectTranslationKeys()
   const dictKeys = readDictionaryKeys()
 
+  // Filter out the false-positive wraps (sample data, URLs, file
+  // names, control IDs, etc.) so the coverage % reflects real
+  // translatable UI strings, not codemod noise.
+  const skipped = []
+  for (const key of [...usageCounts.keys()]) {
+    if (looksLikePlaceholderOrTechnical(key)) {
+      skipped.push(key)
+      usageCounts.delete(key)
+    }
+  }
+
   const totalKeys = usageCounts.size
   const report = {}
   for (const lang of NON_ENGLISH_LANGS) {
@@ -139,11 +151,11 @@ function main() {
   }
 
   if (jsonOut) {
-    console.log(JSON.stringify({ totalKeys, report }, null, 2))
+    console.log(JSON.stringify({ totalKeys, skippedCount: skipped.length, report }, null, 2))
     return
   }
 
-  console.log(`i18n-coverage: ${totalKeys} unique t() keys across views + components\n`)
+  console.log(`i18n-coverage: ${totalKeys} translatable t() keys (${skipped.length} sample/technical keys excluded)\n`)
   if (focusLang) {
     if (!report[focusLang]) {
       console.error(`Unknown language: ${focusLang}`)
