@@ -110,13 +110,27 @@ function readDictionaryKeys() {
     // inline comment between entries — without the anchor, the engine would
     // start at the closing apostrophe of the previous value and "eat" the
     // comment text up to the next `':`, missing the key entirely.
+    //
+    // Decode JS string escapes (\n, \t, \\, \'...) so the captured key matches
+    // what the AST codemod produces. Without this, multi-line keys with
+    // literal \n in source compare unequal to the codemod's real-newline keys.
+    const unescape = (s) =>
+      s.replace(/\\(.)/g, (_, c) => {
+        if (c === 'n') return '\n'
+        if (c === 't') return '\t'
+        if (c === 'r') return '\r'
+        if (c === 'b') return '\b'
+        if (c === 'f') return '\f'
+        if (c === '0') return '\0'
+        return c
+      })
     const singleQuotedKeyRe = /^[ \t]+'((?:[^'\\]|\\.)+)'\s*:/gm
     for (const m of block.matchAll(singleQuotedKeyRe)) {
-      keys.add(m[1].replace(/\\'/g, "'"))
+      keys.add(unescape(m[1]))
     }
     const doubleQuotedKeyRe = /^[ \t]+"((?:[^"\\]|\\.)+)"\s*:/gm
     for (const m of block.matchAll(doubleQuotedKeyRe)) {
-      keys.add(m[1].replace(/\\"/g, '"'))
+      keys.add(unescape(m[1]))
     }
     // Bare identifier entries: BareKey: 'value', — match identifier
     // at start of line (after whitespace), followed by colon.
