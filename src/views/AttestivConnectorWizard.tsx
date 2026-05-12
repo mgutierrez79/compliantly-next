@@ -342,13 +342,23 @@ export function AttestivConnectorWizard() {
       return
     }
     try {
+      // The verify_tls toggle has to travel with the probe body the
+      // same way it travels with the save body — otherwise the backend
+      // probe always uses default TLS verification and the user gets a
+      // x509 error even after un-checking "Verify TLS". Mirror the
+      // save() flow exactly: stash verify_tls inside credentials so
+      // the connector's boolConfig(config["verify_tls"], ...) reads it.
+      const probeCredentials = {
+        ...credentials,
+        verify_tls: verifyTLS ? 'true' : 'false',
+      }
       const response = await fetch(`${baseUrl}/v1/connectors/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${settings.apiKey}`,
         },
-        body: JSON.stringify({ kind, endpoint, credentials }),
+        body: JSON.stringify({ kind, endpoint, credentials: probeCredentials }),
       })
       if (response.status === 404 || response.status === 405) {
         setTestResult({
