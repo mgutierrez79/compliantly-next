@@ -108,27 +108,46 @@ export function AttestivConnectorHealthPage() {
         const response = await apiFetch('/connectors')
         if (!response.ok) throw new Error(`${response.status}`)
         const body = await response.json().catch(() => ({}))
-        const sources: any[] = Array.isArray(body?.sources) ? body.sources : Array.isArray(body?.items) ? body.items : []
-        const mapped = sources
-          .map((source) => {
-            const status = String(source?.status ?? 'ok').toLowerCase()
-            const knownStatus: ConnectorHealth['status'] = ['live', 'ok', 'retrying', 'stale', 'error'].includes(status)
-              ? (status as ConnectorHealth['status'])
-              : 'ok'
+        // Backend returns `{ connectors: [...] }` (same key as the
+        // registry page). Rows include catalog fields + telemetry
+        // fields (last_run/last_success/last_error/...). A connector
+        // that is enabled but has never been polled comes back with
+        // status="configured" and no last_success — surface those as
+        // "stale" so the operator sees them in the health table.
+        const rows: any[] = Array.isArray(body?.connectors)
+          ? body.connectors
+          : Array.isArray(body?.sources)
+            ? body.sources
+            : Array.isArray(body?.items)
+              ? body.items
+              : []
+        const mapped = rows
+          .map((row) => {
+            const rawStatus = String(row?.status ?? '').toLowerCase()
+            const lastSuccess = row?.last_success ?? row?.last_event_at
+            let status: ConnectorHealth['status']
+            if (['live', 'ok', 'retrying', 'stale', 'error'].includes(rawStatus)) {
+              status = rawStatus as ConnectorHealth['status']
+            } else if (rawStatus === 'configured') {
+              status = lastSuccess ? 'ok' : 'stale'
+            } else {
+              status = 'ok'
+            }
             return {
-              name: String(source?.name ?? source?.id ?? ''),
-              kind: String(source?.kind ?? source?.type ?? ''),
-              status: knownStatus,
-              last_success: source?.last_success ?? source?.last_event_at,
-              last_error: source?.last_error,
-              last_error_at: source?.last_error_at,
-              p95_latency_ms: typeof source?.p95_latency_ms === 'number' ? source.p95_latency_ms : undefined,
-              error_rate_pct: typeof source?.error_rate_pct === 'number' ? source.error_rate_pct : undefined,
-              events_per_min: typeof source?.events_per_min === 'number' ? source.events_per_min : undefined,
-              poll_interval_s: typeof source?.poll_interval_s === 'number' ? source.poll_interval_s : undefined,
-            } as ConnectorHealth
+              name: String(row?.name ?? row?.id ?? ''),
+              kind: String(row?.kind ?? row?.type ?? row?.collector_type ?? ''),
+              status,
+              raw_status: rawStatus,
+              last_success: lastSuccess,
+              last_error: row?.last_error,
+              last_error_at: row?.last_error_at,
+              p95_latency_ms: typeof row?.p95_latency_ms === 'number' ? row.p95_latency_ms : undefined,
+              error_rate_pct: typeof row?.error_rate_pct === 'number' ? row.error_rate_pct : undefined,
+              events_per_min: typeof row?.events_per_min === 'number' ? row.events_per_min : undefined,
+              poll_interval_s: typeof row?.poll_interval_s === 'number' ? row.poll_interval_s : undefined,
+            } as ConnectorHealth & { raw_status: string }
           })
-          .filter((item) => item.name)
+          .filter((item) => item.name && item.raw_status !== 'disabled')
         if (!cancelled) {
           if (mapped.length > 0) {
             setItems(mapped)
