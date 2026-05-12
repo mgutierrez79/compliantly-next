@@ -133,6 +133,42 @@ type GRCMetrics = {
   policiesOverdue: number | null
 }
 
+type AuditEntry = {
+  timestamp?: string
+  action?: string
+  subject?: string
+  tenant_id?: string
+  details?: Record<string, unknown>
+}
+type AuditLogResponse = { items?: AuditEntry[] }
+
+// humanizeAuditAction maps the backend's snake_case action strings to
+// a one-line title for the Recent activity feed. Anything unmapped
+// renders the raw action with underscores swapped for spaces — better
+// than dropping the row.
+function humanizeAuditAction(action: string): { title: string; desc: string } {
+  const map: Record<string, { title: string; desc: string }> = {
+    admin_system_config_updated:        { title: 'System config updated',     desc: 'Admin saved a new system_config payload' },
+    connector_poll_interval_updated:    { title: 'Connector poll retuned',    desc: 'New cadence applies on the next iteration' },
+    trust_store_ca_uploaded:            { title: 'Trusted root CA uploaded',  desc: 'Connector probes will trust this CA' },
+    trust_store_ca_deleted:             { title: 'Trusted root CA removed',   desc: 'Connectors relying on it will fail TLS' },
+    admin_record_upserted:              { title: 'Admin record upserted',     desc: 'Tenants / users / keys collection write' },
+    admin_record_updated:               { title: 'Admin record patched',      desc: 'Tenants / users / keys partial update' },
+    admin_record_deleted:               { title: 'Admin record deleted',      desc: 'Tenants / users / keys hard delete' },
+    admin_api_key_created:              { title: 'API key created',           desc: 'New API key issued' },
+    admin_api_key_rotated:              { title: 'API key rotated',           desc: 'Old key invalidated' },
+    admin_tenant_deactivated:           { title: 'Tenant deactivated',        desc: 'Tenant marked inactive' },
+    admin_tenant_secret_upserted:       { title: 'Tenant secret upserted',    desc: 'Tenant secret written' },
+    admin_tenant_secret_deleted:        { title: 'Tenant secret removed',     desc: 'Tenant secret revoked' },
+    admin_group_member_added:           { title: 'Group member added',        desc: 'RBAC group membership change' },
+    admin_tenant_policy_updated:        { title: 'Tenant policy updated',     desc: 'Retention / scoring policy change' },
+    admin_tenant_policy_retention_applied: { title: 'Retention applied',       desc: 'Tenant retention policy executed' },
+  }
+  const hit = map[action]
+  if (hit) return hit
+  return { title: action.replace(/_/g, ' '), desc: '' }
+}
+
 const EMPTY_GRC: GRCMetrics = {
   risksOpenCriticalAndHigh: null,
   exceptionsActive: null,
@@ -149,15 +185,17 @@ export function AttestivDashboardOverview() {
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [grc, setGRC] = useState<GRCMetrics>(EMPTY_GRC)
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [error, setError] = useState<ApiError | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const [connectorsResponse, summaryResponse] = await Promise.allSettled([
+        const [connectorsResponse, summaryResponse, auditResponse] = await Promise.allSettled([
           apiJson<ConnectorsResponse>('/connectors'),
           apiJson<DashboardSummary>('/dashboard/summary'),
+          apiJson<AuditLogResponse>('/audit/log?limit=4'),
         ])
         if (cancelled) return
         if (connectorsResponse.status === 'fulfilled') {
@@ -165,6 +203,9 @@ export function AttestivDashboardOverview() {
         }
         if (summaryResponse.status === 'fulfilled') {
           setSummary(summaryResponse.value)
+        }
+        if (auditResponse.status === 'fulfilled') {
+          setAuditEntries(auditResponse.value.items || [])
         }
         // Surface only critical-path errors. A summary failure is
         // tolerable (the page degrades gracefully); a connectors
@@ -230,12 +271,10 @@ export function AttestivDashboardOverview() {
     const scores = summary?.framework_scores || {}
     const entries = Object.entries(scores)
     if (!entries.length) {
-      // No live data yet — render the eight target frameworks at 0%
-      // so the panel doesn't look broken. The framework engine
-      // populates them once a run completes.
-      return Object.keys(FRAMEWORK_LABELS).slice(0, 6).map((key) => (
-        <FrameworkBar key={key} name={FRAMEWORK_LABELS[key]} percent={0} tone="red" />
-      ))
+      // No scoring run has produced framework results yet. Showing
+      // every framework at 0% in red implied a failure state — be
+      // honest: there's no data, not bad data.
+      return null
     }
     return entries
       .sort(([a], [b]) => a.localeCompare(b))
@@ -275,6 +314,31 @@ export function AttestivDashboardOverview() {
   const metricConnectorWarning = (summary?.connector_health?.warn ?? 0) +
     (summary?.connector_health?.error ?? 0)
   const lastEvidence = relativeTime(summary?.generated_at)
+
+  // Top framework derived from real scores. The mockup hard-coded
+  // "DORA tier: High" but that's misleading on a multi-framework
+  // tenant (and outright wrong when nothing is scored yet). Pick the
+  // highest-scoring framework instead; fall back to "—" with the
+  // count of subscribed frameworks when no scores are in.
+  const topFramework = (() => {
+    const scores = summary?.framework_scores || {}
+    const entries = Object.entries(scores)
+    if (entries.length === 0) {
+      return { label: '—', value: '—', sub: t('No scoring run yet', 'No scoring run yet') }
+    }
+    const ranked = entries
+      .map(([key, score]) => ({
+        key,
+        percent: Math.max(0, Math.min(100, Math.round((score?.score ?? score?.controls_score ?? 0) * 100) / 100)),
+      }))
+      .sort((a, b) => b.percent - a.percent)
+    const winner = ranked[0]
+    return {
+      label: FRAMEWORK_LABELS[winner.key] || winner.key.toUpperCase(),
+      value: `${winner.percent}%`,
+      sub: `${entries.length} ${t('frameworks scored', 'frameworks scored')}`,
+    }
+  })()
 
   return (
     <>
@@ -326,10 +390,10 @@ export function AttestivDashboardOverview() {
             sub={metricConnectorWarning ? `${metricConnectorWarning} ${t('warning', 'warning')}` : t('all healthy', 'all healthy')}
           />
           <MetricCard
-            label={t('DORA tier', 'DORA tier')}
-            value="High"
-            sub={t('Towards elite', 'Towards elite')}
-            valueColor="var(--color-brand-blue)"
+            label={t('Top framework', 'Top framework')}
+            value={topFramework.value}
+            sub={topFramework.label !== '—' ? `${topFramework.label} · ${topFramework.sub}` : topFramework.sub}
+            valueColor={topFramework.value !== '—' ? 'var(--color-brand-blue)' : undefined}
           />
         </div>
 
@@ -391,38 +455,41 @@ export function AttestivDashboardOverview() {
           </Card>
           <Card>
             <CardTitle>{t('Framework posture', 'Framework posture')}</CardTitle>
-            {frameworkRows}
+            {frameworkRows ?? (
+              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                {t(
+                  'No scoring run has produced framework results yet. Frameworks will appear here after the first /scoring/evaluate.',
+                  'No scoring run has produced framework results yet. Frameworks will appear here after the first /scoring/evaluate.',
+                )}
+              </div>
+            )}
           </Card>
         </div>
 
         <Card>
-          <CardTitle>{t('Recent pipeline activity', 'Recent pipeline activity')}</CardTitle>
-          <PipelineStep
-            dotColor="var(--color-status-green-mid)"
-            name="Evidence processor — 4 subscribers active"
-            desc="DORA · scoring · policy · contract signer · all goroutines running"
-            time="now"
-          />
-          <PipelineStep
-            dotColor="var(--color-status-green-mid)"
-            name="DORA calculator — last batch complete"
-            desc="Operational metrics computed from signed evidence"
-            time="2m ago"
-          />
-          <PipelineStep
-            dotColor={metricConnectorWarning ? 'var(--color-status-amber-mid)' : 'var(--color-status-green-mid)'}
-            name={metricConnectorWarning ? `Connector warnings: ${metricConnectorWarning}` : 'Connectors healthy'}
-            desc={metricConnectorWarning
-              ? 'See Issues page for details'
-              : 'All declared sources reported within their poll cadence'}
-            time="4m ago"
-          />
-          <PipelineStep
-            dotColor="var(--color-brand-blue-mid)"
-            name="DR test schedule"
-            desc="Next scheduled run will appear here once a schedule is configured (Phase C)"
-            time="—"
-          />
+          <CardTitle>{t('Recent platform activity', 'Recent platform activity')}</CardTitle>
+          {auditEntries.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+              {t(
+                'No platform activity recorded yet. Admin actions (config changes, key rotations, CA uploads) will appear here.',
+                'No platform activity recorded yet. Admin actions (config changes, key rotations, CA uploads) will appear here.',
+              )}
+            </div>
+          ) : (
+            auditEntries.map((entry, idx) => {
+              const action = String(entry.action ?? '')
+              const human = humanizeAuditAction(action)
+              return (
+                <PipelineStep
+                  key={`${entry.timestamp ?? idx}-${action}`}
+                  dotColor="var(--color-status-green-mid)"
+                  name={human.title}
+                  desc={entry.subject ? `${human.desc}${human.desc ? ' · ' : ''}by ${entry.subject}` : human.desc}
+                  time={relativeTime(entry.timestamp)}
+                />
+              )
+            })
+          )}
         </Card>
       </div>
     </>
