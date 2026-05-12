@@ -226,15 +226,37 @@ export function AttestivConnectorRegistry() {
           const itemName = typeof item?.name === 'string' ? item.name : ''
           return itemName !== instance
         })
-        const next = { ...current, items: filtered }
-        const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(next),
-        })
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}))
-          throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+        if (filtered.length === 0) {
+          // Deleting the last instance leaves the parent with items=[]
+          // but still in connector_sources, so the poll loop keeps
+          // discovering it and the row reappears on the next refresh.
+          // When the user removes the last instance they mean "remove
+          // this connector entirely" — promote the operation to a full
+          // DELETE on the parent so connector_settings + connector_sources
+          // both get wiped.
+          const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
+            method: 'DELETE',
+          })
+          if (!response.ok && response.status !== 404) {
+            const body = await response.json().catch(() => ({}))
+            throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+          }
+          // Drop any sibling rows (the parent catalog row and the
+          // disappearing instance row) so the registry doesn't flash
+          // a stale parent between the optimistic update below and
+          // the next /v1/connectors poll.
+          setConnectors((rows) => rows.filter((c) => c.name !== parent && c.name !== connector.name))
+        } else {
+          const next = { ...current, items: filtered }
+          const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(next),
+          })
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}))
+            throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+          }
         }
       } else {
         const response = await apiFetch(`/config/connectors/${encodeURIComponent(parent)}`, {
