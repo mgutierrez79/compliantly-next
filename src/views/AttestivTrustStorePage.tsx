@@ -14,7 +14,7 @@
 //   GET    /v1/settings/trust-store/cas/{id}
 //   DELETE /v1/settings/trust-store/cas/{id}
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import {
@@ -59,6 +59,16 @@ export function AttestivTrustStorePage() {
   const [info, setInfo] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
   const [pemInput, setPemInput] = useState('')
+  // Track which file the user actually picked so the drop zone can
+  // show "Selected: auxia-root-ca.pem (2.4 KB)" feedback instead of
+  // leaving the operator wondering whether their click did anything.
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [selectedFileSize, setSelectedFileSize] = useState<number | null>(null)
+  // Visual highlight on the drop zone while a file is being dragged
+  // over it. Without this state the zone looks identical whether
+  // the dragged file will be accepted or not.
+  const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const refresh = useCallback(async () => {
     setError(null)
@@ -86,9 +96,9 @@ export function AttestivTrustStorePage() {
   // anything beyond the chosen file, and the binary preview stays
   // client-side — the upload still flows through our normal
   // apiFetch + auth headers.
-  function onFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
+  function ingestFile(file: File) {
+    setSelectedFileName(file.name)
+    setSelectedFileSize(file.size)
     const reader = new FileReader()
     reader.onload = () => {
       const text = typeof reader.result === 'string' ? reader.result : ''
@@ -101,6 +111,53 @@ export function AttestivTrustStorePage() {
       }
     }
     reader.readAsText(file)
+  }
+
+  function onFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (file) ingestFile(file)
+  }
+
+  // Drop-zone event handlers. We keep these simple — the
+  // "dragActive" boolean controls the highlight, dropEffect signals
+  // to the OS that we'll accept the drop, and ingestFile takes the
+  // first File in the transfer. Multiple files are deliberately
+  // ignored: each bundle row in the trust store is one CA.
+  function onDragOver(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = 'copy'
+    setDragActive(true)
+  }
+  function onDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragActive(false)
+  }
+  function onDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragActive(false)
+    const file = event.dataTransfer.files?.[0]
+    if (file) ingestFile(file)
+  }
+
+  function clearSelectedFile() {
+    setSelectedFileName(null)
+    setSelectedFileSize(null)
+    setPemInput('')
+    // The hidden <input> needs its value reset so picking the same
+    // file twice in a row still fires onChange.
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Human-readable byte size for the "(2.4 KB)" suffix next to the
+  // selected filename. Capped at MB because no real CA bundle is
+  // larger than that, and the server enforces a 64 KiB limit anyway.
+  function formatBytes(n: number): string {
+    if (n < 1024) return `${n} B`
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+    return `${(n / 1024 / 1024).toFixed(1)} MB`
   }
 
   async function upload() {
@@ -123,6 +180,9 @@ export function AttestivTrustStorePage() {
       }
       setLabelInput('')
       setPemInput('')
+      setSelectedFileName(null)
+      setSelectedFileSize(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       setInfo(t('Root CA uploaded.', 'Root CA uploaded.'))
       await refresh()
     } catch (err: unknown) {
@@ -194,9 +254,13 @@ export function AttestivTrustStorePage() {
 
         <Card>
           <CardTitle>{t('Upload a root CA', 'Upload a root CA')}</CardTitle>
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {/* Step 1: Label. Numbered so the user follows a sequence
+                instead of guessing which field to fill first. */}
             <label style={{ display: 'block' }}>
-              <div className="attestiv-label">{t('Label', 'Label')}</div>
+              <div className="attestiv-label">
+                <strong>1.</strong> {t('Label', 'Label')}
+              </div>
               <input
                 type="text"
                 value={labelInput}
@@ -204,26 +268,177 @@ export function AttestivTrustStorePage() {
                 placeholder={t('Auxia Internal Root 2024', 'Auxia Internal Root 2024')}
                 className="attestiv-input"
               />
+              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+                {t('Display name shown in the list below. Free text.', 'Display name shown in the list below. Free text.')}
+              </div>
             </label>
-            <label style={{ display: 'block' }}>
-              <div className="attestiv-label">{t('PEM file (.pem / .crt)', 'PEM file (.pem / .crt)')}</div>
-              <input type="file" accept=".pem,.crt,.cer,application/x-pem-file,text/plain" onChange={onFileSelected} />
-            </label>
-            <label style={{ display: 'block' }}>
-              <div className="attestiv-label">{t('Or paste PEM directly', 'Or paste PEM directly')}</div>
+
+            {/* Step 2: PEM source. The drop zone is a clickable div
+                that triggers a hidden <input type="file"> via a ref.
+                The bare <input type="file"> from before gave no visual
+                affordance — operators asked "where do I click?".
+                Drag-and-drop lands on this same zone, and an OR-pasted
+                PEM below is treated as equivalent. */}
+            <div>
+              <div className="attestiv-label">
+                <strong>2.</strong> {t('Select your PEM-encoded certificate', 'Select your PEM-encoded certificate')}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pem,.crt,.cer,application/x-pem-file,text/plain"
+                onChange={onFileSelected}
+                style={{ display: 'none' }}
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    fileInputRef.current?.click()
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '24px 16px',
+                  borderRadius: 8,
+                  border: dragActive
+                    ? '2px dashed var(--color-accent, #2563eb)'
+                    : selectedFileName
+                      ? '2px solid var(--color-accent, #2563eb)'
+                      : '2px dashed var(--color-border, #cbd5e1)',
+                  background: dragActive
+                    ? 'rgba(37, 99, 235, 0.08)'
+                    : selectedFileName
+                      ? 'rgba(37, 99, 235, 0.04)'
+                      : 'var(--color-surface-muted, #f8fafc)',
+                  cursor: 'pointer',
+                  transition: 'border-color 120ms ease, background 120ms ease',
+                  textAlign: 'center',
+                }}
+              >
+                {selectedFileName ? (
+                  <>
+                    <i
+                      className="ti ti-file-check"
+                      aria-hidden="true"
+                      style={{ fontSize: 32, color: 'var(--color-accent, #2563eb)' }}
+                    />
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{selectedFileName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                      {selectedFileSize !== null ? formatBytes(selectedFileSize) : ''}{' '}
+                      · {t('PEM ready to upload', 'PEM ready to upload')}
+                    </div>
+                    {/* Absorbing wrapper so a click on the inner
+                        buttons doesn't bubble up to the outer drop
+                        zone (which would re-open the file dialog on
+                        every "Clear" press). */}
+                    <div
+                      style={{ display: 'flex', gap: 8, marginTop: 4 }}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <GhostButton onClick={() => fileInputRef.current?.click()}>
+                        <i className="ti ti-replace" aria-hidden="true" /> {t('Choose a different file', 'Choose a different file')}
+                      </GhostButton>
+                      <GhostButton onClick={() => clearSelectedFile()}>
+                        <i className="ti ti-x" aria-hidden="true" /> {t('Clear', 'Clear')}
+                      </GhostButton>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <i
+                      className="ti ti-cloud-upload"
+                      aria-hidden="true"
+                      style={{ fontSize: 32, color: 'var(--color-text-tertiary, #64748b)' }}
+                    />
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
+                      {t('Click to choose a file', 'Click to choose a file')}{' '}
+                      <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 400 }}>
+                        {t('or drag it here', 'or drag it here')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                      {t('Accepted: .pem, .crt, .cer (max 64 KB)', 'Accepted: .pem, .crt, .cer (max 64 KB)')}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Separator between the two equivalent input paths.
+                  Without this, users were confused whether the file
+                  picker and the textarea were redundant or both
+                  required. Now it's clearly an OR. */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  margin: '16px 0',
+                  color: 'var(--color-text-tertiary, #64748b)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                <div style={{ flex: 1, height: 1, background: 'var(--color-border, #e2e8f0)' }} />
+                {t('or paste it below', 'or paste it below')}
+                <div style={{ flex: 1, height: 1, background: 'var(--color-border, #e2e8f0)' }} />
+              </div>
+
               <textarea
                 rows={8}
                 value={pemInput}
-                onChange={(event) => setPemInput(event.target.value)}
+                onChange={(event) => {
+                  setPemInput(event.target.value)
+                  // If the user pastes after picking a file, the
+                  // file label is stale — clear it so the UI tells
+                  // the truth about what's actually queued.
+                  if (selectedFileName) {
+                    setSelectedFileName(null)
+                    setSelectedFileSize(null)
+                  }
+                }}
                 placeholder={'-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----'}
                 className="attestiv-input"
-                style={{ fontFamily: 'monospace', fontSize: 12 }}
+                style={{ fontFamily: 'monospace', fontSize: 12, width: '100%' }}
               />
-            </label>
-            <div>
+            </div>
+
+            {/* Step 3: Upload. The disabled-state hint makes it
+                explicit what's missing — users were clicking the
+                grey button and getting no feedback. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <PrimaryButton onClick={upload} disabled={busy || !labelInput.trim() || !pemInput.trim()}>
-                <i className="ti ti-upload" aria-hidden="true" /> {t('Upload', 'Upload')}
+                {busy ? (
+                  <>
+                    <i className="ti ti-loader-2" aria-hidden="true" /> {t('Uploading…', 'Uploading…')}
+                  </>
+                ) : (
+                  <>
+                    <i className="ti ti-upload" aria-hidden="true" /> {t('Upload root CA', 'Upload root CA')}
+                  </>
+                )}
               </PrimaryButton>
+              {!labelInput.trim() || !pemInput.trim() ? (
+                <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                  {!labelInput.trim()
+                    ? t('Enter a label first.', 'Enter a label first.')
+                    : t('Select a PEM file or paste one above.', 'Select a PEM file or paste one above.')}
+                </span>
+              ) : null}
             </div>
           </div>
         </Card>
