@@ -26,6 +26,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -85,6 +86,10 @@ export function AttestivAuditTrailPage() {
 
   useEffect(() => {
     let cancelled = false
+    // Demo-mode fixtures are off-limits in pilot/production. The
+    // gate is checked once at mount because flipping the tenant
+    // environment mid-session would be an unusual flow.
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/audit/log?limit=200')
@@ -95,15 +100,17 @@ export function AttestivAuditTrailPage() {
         const items: AuditEntry[] = Array.isArray(body?.items) ? body.items : []
         if (!cancelled) {
           setEntries(items)
-          setUsingDemo(items.length === 0)
-          if (items.length === 0) {
+          if (items.length === 0 && allowDemo) {
             setEntries(demoEntries())
+            setUsingDemo(true)
           }
         }
       } catch (err: any) {
         if (!cancelled) {
-          setEntries(demoEntries())
-          setUsingDemo(true)
+          if (allowDemo) {
+            setEntries(demoEntries())
+            setUsingDemo(true)
+          }
           setError(err?.message ?? 'Failed to load audit trail')
         }
       } finally {
@@ -117,7 +124,14 @@ export function AttestivAuditTrailPage() {
   }, [])
 
   useEffect(() => {
-    setManifest(DEMO_MANIFEST)
+    // The signed-manifest summary card is decorative when there's no
+    // real run yet — only show the DEMO_MANIFEST in demo mode so
+    // pilots don't see a fabricated kid + signature in their audit
+    // header (operators have asked us to reproduce them and gotten
+    // confused when nothing matched the real run history).
+    if (isDemoMode()) {
+      setManifest(DEMO_MANIFEST)
+    }
   }, [])
 
   const filtered = filter.trim()

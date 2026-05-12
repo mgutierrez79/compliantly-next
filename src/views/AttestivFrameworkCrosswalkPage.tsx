@@ -21,6 +21,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -82,6 +83,7 @@ export function AttestivFrameworkCrosswalkPage() {
 
   useEffect(() => {
     let cancelled = false
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/config/control-crosswalks')
@@ -107,15 +109,23 @@ export function AttestivFrameworkCrosswalkPage() {
           if (mapped.length > 0) {
             setEntries(mapped)
             setUsingDemo(false)
-          } else {
+          } else if (allowDemo) {
             setEntries(DEMO)
             setUsingDemo(true)
+          } else {
+            setEntries([])
+            setUsingDemo(false)
           }
         }
       } catch {
         if (!cancelled) {
-          setEntries(DEMO)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setEntries(DEMO)
+            setUsingDemo(true)
+          } else {
+            setEntries([])
+            setUsingDemo(false)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)

@@ -27,6 +27,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -108,6 +109,7 @@ export function AttestivFrameworksPage() {
 
   useEffect(() => {
     let cancelled = false
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/config/frameworks')
@@ -116,17 +118,27 @@ export function AttestivFrameworksPage() {
         }
         const body = await response.json().catch(() => ({}))
         const enabledIds: string[] = Array.isArray(body?.enabled) ? body.enabled : []
-        const posture = enabledIds.length > 0
-          ? deriveFromEnabledList(enabledIds)
-          : DEMO_POSTURE
         if (!cancelled) {
-          setFrameworks(posture)
-          setUsingDemo(enabledIds.length === 0)
+          if (enabledIds.length > 0) {
+            setFrameworks(deriveFromEnabledList(enabledIds))
+            setUsingDemo(false)
+          } else if (allowDemo) {
+            setFrameworks(DEMO_POSTURE)
+            setUsingDemo(true)
+          } else {
+            setFrameworks([])
+            setUsingDemo(false)
+          }
         }
       } catch (err: any) {
         if (!cancelled) {
-          setFrameworks(DEMO_POSTURE)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setFrameworks(DEMO_POSTURE)
+            setUsingDemo(true)
+          } else {
+            setFrameworks([])
+            setUsingDemo(false)
+          }
           setError(err?.message ?? 'Failed to load frameworks')
         }
       } finally {

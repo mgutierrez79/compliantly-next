@@ -33,7 +33,11 @@ import { useI18n } from '../lib/i18n';
 type TenantProfile = {
   tenant_id: string
   display_name: string
-  environment: 'pilot' | 'production'
+  // `demo` unlocks the sample-data fallbacks across the console
+  // (DLQ inbox, audit trail, framework posture, etc.). `pilot` and
+  // `production` keep those views truthful — empty rows render as
+  // real "no data" states instead of fabricated fixtures.
+  environment: 'demo' | 'pilot' | 'production'
   residency: string
   industry: string
   rto_minutes: number
@@ -93,7 +97,12 @@ export function AttestivTenantSettingsPage() {
             ...current,
             tenant_id: typeof body?.tenant_id === 'string' ? body.tenant_id : current.tenant_id,
             display_name: typeof remote.display_name === 'string' ? remote.display_name : current.display_name,
-            environment: remote.environment === 'production' ? 'production' : 'pilot',
+            environment:
+              remote.environment === 'production'
+                ? 'production'
+                : remote.environment === 'demo'
+                  ? 'demo'
+                  : 'pilot',
             residency: typeof remote.residency === 'string' && remote.residency ? remote.residency : current.residency,
             industry: typeof remote.industry === 'string' && remote.industry ? remote.industry : current.industry,
             rto_minutes: typeof remote.rto_minutes === 'number' ? remote.rto_minutes : current.rto_minutes,
@@ -209,11 +218,24 @@ export function AttestivTenantSettingsPage() {
                 placeholder={t('Acme Corp', 'Acme Corp')}
               />
             </FormField>
-            <FormField label={t('Environment', 'Environment')}>
+            <FormField
+              label={t('Environment', 'Environment')}
+              hint={t(
+                'Demo unlocks placeholder data when the API is empty (useful for screenshots). Pilot and Production never fabricate rows.',
+                'Demo unlocks placeholder data when the API is empty (useful for screenshots). Pilot and Production never fabricate rows.',
+              )}
+            >
               <Select
                 value={profile.environment}
-                onChange={(event) => update('environment', event.target.value === 'production' ? 'production' : 'pilot')}
+                onChange={(event) => {
+                  const next = event.target.value
+                  update(
+                    'environment',
+                    next === 'demo' ? 'demo' : next === 'production' ? 'production' : 'pilot',
+                  )
+                }}
               >
+                <option value="demo">{t('Demo', 'Demo')}</option>
                 <option value="pilot">{t('Pilot', 'Pilot')}</option>
                 <option value="production">{t('Production', 'Production')}</option>
               </Select>

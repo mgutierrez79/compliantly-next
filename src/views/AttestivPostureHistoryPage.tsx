@@ -21,6 +21,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -82,6 +83,7 @@ export function AttestivPostureHistoryPage() {
 
   useEffect(() => {
     let cancelled = false
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch(`/scores/history?days=${window}`)
@@ -93,15 +95,23 @@ export function AttestivPostureHistoryPage() {
           if (grouped.length > 0) {
             setSeries(grouped)
             setUsingDemo(false)
-          } else {
+          } else if (allowDemo) {
             setSeries(DEMO_SERIES)
             setUsingDemo(true)
+          } else {
+            setSeries([])
+            setUsingDemo(false)
           }
         }
       } catch {
         if (!cancelled) {
-          setSeries(DEMO_SERIES)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setSeries(DEMO_SERIES)
+            setUsingDemo(true)
+          } else {
+            setSeries([])
+            setUsingDemo(false)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)

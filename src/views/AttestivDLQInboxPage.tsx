@@ -26,6 +26,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -82,6 +83,10 @@ export function AttestivDLQInboxPage() {
 
   useEffect(() => {
     let cancelled = false
+    // Demo-mode gate: only fabricate DEMO_DLQ rows when the tenant
+    // profile is explicitly 'demo'. Pilot + production show a real
+    // empty state instead of fake "dead-letter" entries.
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/ingest?status=dead_letter&limit=200')
@@ -104,15 +109,23 @@ export function AttestivDLQInboxPage() {
           if (mapped.length > 0) {
             setEntries(mapped)
             setUsingDemo(false)
-          } else {
+          } else if (allowDemo) {
             setEntries(DEMO_DLQ)
             setUsingDemo(true)
+          } else {
+            setEntries([])
+            setUsingDemo(false)
           }
         }
       } catch {
         if (!cancelled) {
-          setEntries(DEMO_DLQ)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setEntries(DEMO_DLQ)
+            setUsingDemo(true)
+          } else {
+            setEntries([])
+            setUsingDemo(false)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)

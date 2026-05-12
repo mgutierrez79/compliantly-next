@@ -23,6 +23,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -81,6 +82,7 @@ export function AttestivFrameworkControlsPage() {
 
   useEffect(() => {
     let cancelled = false
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/config/control-mappings')
@@ -102,15 +104,23 @@ export function AttestivFrameworkControlsPage() {
           if (mapped.length > 0) {
             setControls(mapped)
             setUsingDemo(false)
-          } else {
+          } else if (allowDemo) {
             setControls(DEMO)
             setUsingDemo(true)
+          } else {
+            setControls([])
+            setUsingDemo(false)
           }
         }
       } catch {
         if (!cancelled) {
-          setControls(DEMO)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setControls(DEMO)
+            setUsingDemo(true)
+          } else {
+            setControls([])
+            setUsingDemo(false)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)

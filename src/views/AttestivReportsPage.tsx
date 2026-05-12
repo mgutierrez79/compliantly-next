@@ -19,6 +19,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 import { loadSettings } from '../lib/settings'
 
 import { useI18n } from '../lib/i18n';
@@ -136,6 +137,7 @@ export function AttestivReportsPage() {
 
   useEffect(() => {
     let cancelled = false
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/runs?limit=50')
@@ -157,15 +159,23 @@ export function AttestivReportsPage() {
           if (mapped.length > 0) {
             setReports(mapped)
             setUsingDemo(false)
-          } else {
+          } else if (allowDemo) {
             setReports(DEMO_REPORTS)
             setUsingDemo(true)
+          } else {
+            setReports([])
+            setUsingDemo(false)
           }
         }
       } catch {
         if (!cancelled) {
-          setReports(DEMO_REPORTS)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setReports(DEMO_REPORTS)
+            setUsingDemo(true)
+          } else {
+            setReports([])
+            setUsingDemo(false)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)

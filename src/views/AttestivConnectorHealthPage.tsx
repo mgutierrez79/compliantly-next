@@ -19,6 +19,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { isDemoMode } from '../lib/demoMode'
 
 import { useI18n } from '../lib/i18n';
 
@@ -101,6 +102,7 @@ export function AttestivConnectorHealthPage() {
 
   useEffect(() => {
     let cancelled = false
+    const allowDemo = isDemoMode()
     async function load() {
       try {
         const response = await apiFetch('/connectors')
@@ -131,15 +133,23 @@ export function AttestivConnectorHealthPage() {
           if (mapped.length > 0) {
             setItems(mapped)
             setUsingDemo(false)
-          } else {
+          } else if (allowDemo) {
             setItems(DEMO)
             setUsingDemo(true)
+          } else {
+            setItems([])
+            setUsingDemo(false)
           }
         }
       } catch {
         if (!cancelled) {
-          setItems(DEMO)
-          setUsingDemo(true)
+          if (allowDemo) {
+            setItems(DEMO)
+            setUsingDemo(true)
+          } else {
+            setItems([])
+            setUsingDemo(false)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)
