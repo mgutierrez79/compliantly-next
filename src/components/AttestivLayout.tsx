@@ -260,6 +260,7 @@ const sections: Record<SectionKey, Section> = {
       { to: '/settings/keys',        label: 'API keys',       icon: 'ti-key' },
       { to: '/settings/frameworks',  label: 'Frameworks',     icon: 'ti-layout-list' },
       { to: '/settings/trust-store', label: 'Trust store',    icon: 'ti-certificate' },
+      { to: '/settings/connectors',  label: 'Connector poll', icon: 'ti-refresh' },
       { to: '/settings/support',     label: 'Support bundle', icon: 'ti-file-zip' },
     ],
   },
