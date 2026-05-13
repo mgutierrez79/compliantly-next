@@ -138,34 +138,113 @@ export function InventoryPage() {
     }
   }, [])
 
+  // assignSite is the per-row site assignment handler. For
+  // cluster/host rows it offers a cascade-to-descendants confirm so
+  // an operator doesn't have to click through dozens of VMs after
+  // assigning the parent. The cascade only fills empty
+  // datacenter_id slots on descendants — explicit per-asset
+  // assignments are never overwritten (handled server-side).
   async function assignSite(asset: InventoryAsset, siteID: string) {
     if (assigningAssetId) return
-    setAssigningAssetId(asset.asset_id)
     setError(null)
+
+    let cascade = false
+    const assetType = String(asset.asset_type ?? '').toLowerCase()
+    if (siteID && (assetType === 'cluster' || assetType === 'host')) {
+      const descendants = countCascadeDescendants(asset, assetType, assets)
+      if (descendants.total > 0) {
+        const siteLabel = sites.find((s) => s.site_id === siteID)?.display_name ?? siteID
+        const what =
+          assetType === 'cluster'
+            ? t(
+                'Apply "{site}" to {hosts} host(s) and {vms} VM(s) in this cluster that have no site set?',
+                'Apply "{site}" to {hosts} host(s) and {vms} VM(s) in this cluster that have no site set?',
+                { site: siteLabel, hosts: descendants.hosts, vms: descendants.vms },
+              )
+            : t(
+                'Apply "{site}" to {vms} VM(s) on this host that have no site set?',
+                'Apply "{site}" to {vms} VM(s) on this host that have no site set?',
+                { site: siteLabel, vms: descendants.vms },
+              )
+        cascade = window.confirm(what)
+      }
+    }
+
+    setAssigningAssetId(asset.asset_id)
     try {
+      const body: Record<string, unknown> = { datacenter_id: siteID }
+      if (cascade) body.cascade = 'descendants'
       const response = await apiFetch(`/inventory/assets/${encodeURIComponent(asset.asset_id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ datacenter_id: siteID }),
+        body: JSON.stringify(body),
       })
-      const body = await response.json().catch(() => ({}))
+      const responseBody = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(body?.detail || body?.error || `${response.status} ${response.statusText}`)
+        throw new Error(responseBody?.detail || responseBody?.error || `${response.status} ${response.statusText}`)
       }
+      const cascadeUpdated: string[] = Array.isArray(responseBody?.descendants_updated)
+        ? responseBody.descendants_updated
+        : []
       // Optimistic local update: avoid waiting for the full /assets
-      // reload. The PATCH response IS the updated asset, but field
-      // shapes vary across stores; merge what we sent with the
-      // existing row to keep the UI consistent regardless.
+      // reload. Update the parent row immediately + every cascaded
+      // descendant the server reported.
       setAssets((current) =>
-        current.map((a) =>
-          a.asset_id === asset.asset_id ? { ...a, datacenter_id: siteID || null } : a,
-        ),
+        current.map((a) => {
+          if (a.asset_id === asset.asset_id) return { ...a, datacenter_id: siteID || null }
+          if (cascadeUpdated.includes(a.asset_id)) return { ...a, datacenter_id: siteID || null }
+          return a
+        }),
       )
+      if (cascadeUpdated.length > 0) {
+        setInfo(
+          t(
+            'Cascaded site assignment to {count} descendant asset(s).',
+            'Cascaded site assignment to {count} descendant asset(s).',
+            { count: cascadeUpdated.length },
+          ),
+        )
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to assign site')
     } finally {
       setAssigningAssetId(null)
     }
+  }
+
+  // countCascadeDescendants walks the in-memory asset list and tallies
+  // how many hosts + VMs would be touched by a cascade from the given
+  // cluster or host. Counts ONLY descendants that don't already have
+  // a datacenter_id set, matching the server-side rule. The
+  // operator's confirm dialog uses these counts to make the impact
+  // of the action visible up front.
+  function countCascadeDescendants(
+    parent: InventoryAsset,
+    parentType: string,
+    allAssets: InventoryAsset[],
+  ): { hosts: number; vms: number; total: number } {
+    const parentClusterID = (parent.metadata?.['vcenter_cluster'] as string | undefined)?.trim() || parent.asset_id
+    const parentHostID =
+      (parent.metadata?.['host_id'] as string | undefined)?.trim() ||
+      (parent.metadata?.['host'] as string | undefined)?.trim() ||
+      parent.asset_id
+    let hosts = 0
+    let vms = 0
+    for (const candidate of allAssets) {
+      if (candidate.asset_id === parent.asset_id) continue
+      if (String(candidate.datacenter_id ?? '').trim()) continue
+      const childType = String(candidate.asset_type ?? '').toLowerCase()
+      const childCluster = String(candidate.metadata?.['vcenter_cluster'] ?? '').trim()
+      const childHost =
+        String(candidate.metadata?.['host_id'] ?? '').trim() || String(candidate.metadata?.['host'] ?? '').trim()
+      if (parentType === 'cluster') {
+        if (childType === 'host' && childCluster === parentClusterID) hosts++
+        else if (childType === 'vm' && childCluster === parentClusterID) vms++
+      } else if (parentType === 'host') {
+        if (childType === 'vm' && childHost === parentHostID) vms++
+      }
+    }
+    return { hosts, vms, total: hosts + vms }
   }
 
   async function refreshFromConnectors() {
