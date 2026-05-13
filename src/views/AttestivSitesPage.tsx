@@ -124,6 +124,35 @@ export function AttestivSitesPage() {
     return count
   }, [concentration])
 
+  // deleteSite issues a DELETE on the backend. YAML-defined sites
+  // are rejected with a 409 — the error banner relays the server
+  // message so the operator knows to remove the YAML file instead
+  // of pestering this UI.
+  async function deleteSite(siteID: string, displayName?: string) {
+    const label = displayName || siteID
+    const confirmation = t(
+      'Delete "{label}"? This removes the runtime-overlay definition; YAML-defined sites can\'t be deleted here.',
+      'Delete "{label}"? This removes the runtime-overlay definition; YAML-defined sites can\'t be deleted here.',
+      { label },
+    )
+    if (!window.confirm(confirmation)) return
+    setError(null)
+    try {
+      const response = await apiFetch(`/sites/${encodeURIComponent(siteID)}`, {
+        method: 'DELETE',
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(body?.detail || body?.error || `${response.status} ${response.statusText}`)
+      }
+      // Optimistic local update so the row disappears immediately; the
+      // next /sites poll re-syncs from server truth either way.
+      setSites((current) => current.filter((s) => s.site_id !== siteID))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete site')
+    }
+  }
+
   return (
     <>
       <Topbar
@@ -243,29 +272,51 @@ export function AttestivSitesPage() {
                         )}
                       </td>
                       <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            // Row click navigates to the detail view;
-                            // the Edit button must stop propagation so
-                            // we don't trigger both.
-                            e.stopPropagation()
-                            router.push(`/sites/new?edit=${encodeURIComponent(site.site_id)}`)
-                          }}
-                          style={{
-                            fontSize: 11,
-                            padding: '4px 8px',
-                            border: '0.5px solid var(--color-border-secondary)',
-                            borderRadius: 'var(--border-radius-sm)',
-                            background: 'var(--color-background-primary)',
-                            color: 'var(--color-text-primary)',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                          }}
-                          title={t('Edit site', 'Edit site')}
-                        >
-                          <i className="ti ti-edit" aria-hidden="true" /> {t('Edit', 'Edit')}
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: 4 }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              // Row click navigates to the detail view;
+                              // action buttons must stop propagation so
+                              // we don't trigger both.
+                              e.stopPropagation()
+                              router.push(`/sites/new?edit=${encodeURIComponent(site.site_id)}`)
+                            }}
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 8px',
+                              border: '0.5px solid var(--color-border-secondary)',
+                              borderRadius: 'var(--border-radius-sm)',
+                              background: 'var(--color-background-primary)',
+                              color: 'var(--color-text-primary)',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                            title={t('Edit site', 'Edit site')}
+                          >
+                            <i className="ti ti-edit" aria-hidden="true" /> {t('Edit', 'Edit')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void deleteSite(site.site_id, site.display_name)
+                            }}
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 8px',
+                              border: '0.5px solid var(--color-border-secondary)',
+                              borderRadius: 'var(--border-radius-sm)',
+                              background: 'var(--color-background-primary)',
+                              color: 'var(--color-status-red-deep)',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                            title={t('Delete site', 'Delete site')}
+                          >
+                            <i className="ti ti-trash" aria-hidden="true" /> {t('Delete', 'Delete')}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
