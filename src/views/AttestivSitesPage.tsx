@@ -189,7 +189,8 @@ export function AttestivSitesPage() {
                   <th style={{ padding: '6px 10px' }}>{t('Region', 'Region')}</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>CIs</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('WAN links', 'WAN links')}</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Concentration', 'Concentration')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Concentration', 'Concentration')}</th>
+                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -228,7 +229,7 @@ export function AttestivSitesPage() {
                       <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
                         {site.wan_link_count ?? '—'}
                       </td>
-                      <td style={{ padding: '10px 0 10px 10px' }}>
+                      <td style={{ padding: '10px' }}>
                         {conc?.exceeds_threshold ? (
                           <Badge tone="red" icon="ti-alert-triangle">
                             {conc.concentration_pct?.toFixed(0)}{t('% of tier-1', '% of tier-1')}
@@ -240,6 +241,31 @@ export function AttestivSitesPage() {
                         ) : (
                           <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>—</span>
                         )}
+                      </td>
+                      <td style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            // Row click navigates to the detail view;
+                            // the Edit button must stop propagation so
+                            // we don't trigger both.
+                            e.stopPropagation()
+                            router.push(`/sites/new?edit=${encodeURIComponent(site.site_id)}`)
+                          }}
+                          style={{
+                            fontSize: 11,
+                            padding: '4px 8px',
+                            border: '0.5px solid var(--color-border-secondary)',
+                            borderRadius: 'var(--border-radius-sm)',
+                            background: 'var(--color-background-primary)',
+                            color: 'var(--color-text-primary)',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                          title={t('Edit site', 'Edit site')}
+                        >
+                          <i className="ti ti-edit" aria-hidden="true" /> {t('Edit', 'Edit')}
+                        </button>
                       </td>
                     </tr>
                   );
