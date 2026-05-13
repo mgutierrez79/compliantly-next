@@ -56,6 +56,8 @@ type InventoryAsset = {
   metadata?: Record<string, unknown>
 }
 
+type SiteOption = { site_id: string; display_name?: string }
+
 const CRITICALITY_TONE: Record<string, 'red' | 'amber' | 'green' | 'gray'> = {
   critical: 'red',
   high: 'amber',
@@ -69,10 +71,14 @@ export function InventoryPage() {
   const searchParams = useSearchParams()
 
   const [assets, setAssets] = useState<InventoryAsset[]>([])
+  const [sites, setSites] = useState<SiteOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  // assetId currently mid-patch; suppresses concurrent edits to the
+  // same row and shows a small busy state on the dropdown.
+  const [assigningAssetId, setAssigningAssetId] = useState<string | null>(null)
 
   // URL drives the filter so a sidebar link like
   // /inventory?asset_type=firewall lands on the right slice without
@@ -105,6 +111,62 @@ export function InventoryPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Populate the per-row "Site" dropdown options from /v1/sites.
+  // Failure is silent — the dropdown just stays empty and the
+  // assignment column shows a chip with the current datacenter_id.
+  useEffect(() => {
+    let cancelled = false
+    apiFetch('/sites')
+      .then((response) => response.json())
+      .then((body) => {
+        if (cancelled) return
+        const items = Array.isArray(body?.items) ? body.items : []
+        setSites(
+          items.map((s: any) => ({
+            site_id: String(s.site_id ?? ''),
+            display_name: typeof s.display_name === 'string' ? s.display_name : undefined,
+          })),
+        )
+      })
+      .catch(() => {
+        // No-op: assignment column degrades to read-only when sites
+        // can't be loaded.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function assignSite(asset: InventoryAsset, siteID: string) {
+    if (assigningAssetId) return
+    setAssigningAssetId(asset.asset_id)
+    setError(null)
+    try {
+      const response = await apiFetch(`/inventory/assets/${encodeURIComponent(asset.asset_id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datacenter_id: siteID }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(body?.detail || body?.error || `${response.status} ${response.statusText}`)
+      }
+      // Optimistic local update: avoid waiting for the full /assets
+      // reload. The PATCH response IS the updated asset, but field
+      // shapes vary across stores; merge what we sent with the
+      // existing row to keep the UI consistent regardless.
+      setAssets((current) =>
+        current.map((a) =>
+          a.asset_id === asset.asset_id ? { ...a, datacenter_id: siteID || null } : a,
+        ),
+      )
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to assign site')
+    } finally {
+      setAssigningAssetId(null)
+    }
+  }
 
   async function refreshFromConnectors() {
     setImporting(true)
@@ -323,13 +385,19 @@ export function InventoryPage() {
                   <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Criticality', 'Criticality')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Source', 'Source')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Datacenter', 'Datacenter')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Site', 'Site')}</th>
                   <th style={{ padding: '6px 0 6px 10px' }}>{t('Tags', 'Tags')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((asset) => (
-                  <AssetRow key={asset.asset_id} asset={asset} />
+                  <AssetRow
+                    key={asset.asset_id}
+                    asset={asset}
+                    sites={sites}
+                    busy={assigningAssetId === asset.asset_id}
+                    onAssign={(siteID) => void assignSite(asset, siteID)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -340,12 +408,23 @@ export function InventoryPage() {
   )
 }
 
-function AssetRow({ asset }: { asset: InventoryAsset }) {
+function AssetRow({
+  asset,
+  sites,
+  busy,
+  onAssign,
+}: {
+  asset: InventoryAsset
+  sites: SiteOption[]
+  busy: boolean
+  onAssign: (siteID: string) => void
+}) {
   const displayName = (asset.name && asset.name.trim()) || asset.asset_id
   const assetType = String(asset.asset_type ?? '').toLowerCase()
   const criticality = String(asset.criticality ?? '').toLowerCase()
   const sources = (asset.external_refs ?? []).map((ref) => ref.source).filter(Boolean)
   const tags = asset.tags ?? []
+  const currentSite = String(asset.datacenter_id ?? '').trim()
   return (
     <tr style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
       <td style={{ padding: '10px 10px 10px 0' }}>
@@ -390,8 +469,37 @@ function AssetRow({ asset }: { asset: InventoryAsset }) {
           </span>
         )}
       </td>
-      <td style={{ padding: '10px', color: 'var(--color-text-secondary)', fontSize: 11 }}>
-        {asset.datacenter_id || <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}
+      <td style={{ padding: '10px' }}>
+        <select
+          value={currentSite}
+          onChange={(e) => onAssign(e.target.value)}
+          disabled={busy || sites.length === 0}
+          style={{
+            fontSize: 11,
+            padding: '4px 6px',
+            border: '0.5px solid var(--color-border-secondary)',
+            borderRadius: 'var(--border-radius-sm)',
+            background: 'var(--color-background-primary)',
+            color: currentSite ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+            fontFamily: 'inherit',
+            minWidth: 120,
+            cursor: busy ? 'wait' : 'pointer',
+          }}
+        >
+          <option value="">— —</option>
+          {/* Surface the current value even if it isn't in the
+              loaded sites list (e.g. a legacy datacenter_id that no
+              longer maps to a registered site). Operator can still
+              pick a real site to fix it. */}
+          {currentSite && !sites.some((s) => s.site_id === currentSite) ? (
+            <option value={currentSite}>{currentSite} (not registered)</option>
+          ) : null}
+          {sites.map((s) => (
+            <option key={s.site_id} value={s.site_id}>
+              {s.display_name ? `${s.display_name} (${s.site_id})` : s.site_id}
+            </option>
+          ))}
+        </select>
       </td>
       <td style={{ padding: '10px 0 10px 10px' }}>
         {tags.length === 0 ? (
