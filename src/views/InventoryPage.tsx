@@ -138,34 +138,29 @@ export function InventoryPage() {
     }
   }, [])
 
-  // assignSite is the per-row site assignment handler. For
-  // cluster/host rows it offers a cascade-to-descendants confirm so
-  // an operator doesn't have to click through dozens of VMs after
-  // assigning the parent. The cascade only fills empty
-  // datacenter_id slots on descendants — explicit per-asset
-  // assignments are never overwritten (handled server-side).
+  // assignSite is the per-row site assignment handler. For cluster
+  // rows it offers a cascade-to-hosts confirm so the operator
+  // doesn't have to click each host one at a time; VMs inherit
+  // their site from their current host on the next poll (or
+  // immediately after a host PATCH), so a direct cluster→VM
+  // cascade isn't needed and would be wrong in stretched-cluster
+  // topologies. Host rows don't trigger a cascade — the backend
+  // derives VM sites automatically when a host's site changes.
   async function assignSite(asset: InventoryAsset, siteID: string) {
     if (assigningAssetId) return
     setError(null)
 
     let cascade = false
     const assetType = String(asset.asset_type ?? '').toLowerCase()
-    if (siteID && (assetType === 'cluster' || assetType === 'host')) {
+    if (siteID && assetType === 'cluster') {
       const descendants = countCascadeDescendants(asset, assetType, assets)
-      if (descendants.total > 0) {
+      if (descendants.hosts > 0) {
         const siteLabel = sites.find((s) => s.site_id === siteID)?.display_name ?? siteID
-        const what =
-          assetType === 'cluster'
-            ? t(
-                'Apply "{site}" to {hosts} host(s) and {vms} VM(s) in this cluster that have no site set?',
-                'Apply "{site}" to {hosts} host(s) and {vms} VM(s) in this cluster that have no site set?',
-                { site: siteLabel, hosts: descendants.hosts, vms: descendants.vms },
-              )
-            : t(
-                'Apply "{site}" to {vms} VM(s) on this host that have no site set?',
-                'Apply "{site}" to {vms} VM(s) on this host that have no site set?',
-                { site: siteLabel, vms: descendants.vms },
-              )
+        const what = t(
+          'Apply "{site}" to {hosts} host(s) in this cluster that have no site set? (VMs will inherit from their host.)',
+          'Apply "{site}" to {hosts} host(s) in this cluster that have no site set? (VMs will inherit from their host.)',
+          { site: siteLabel, hosts: descendants.hosts },
+        )
         cascade = window.confirm(what)
       }
     }
@@ -213,38 +208,30 @@ export function InventoryPage() {
   }
 
   // countCascadeDescendants walks the in-memory asset list and tallies
-  // how many hosts + VMs would be touched by a cascade from the given
-  // cluster or host. Counts ONLY descendants that don't already have
-  // a datacenter_id set, matching the server-side rule. The
-  // operator's confirm dialog uses these counts to make the impact
-  // of the action visible up front.
+  // how many hosts would be touched by a cluster cascade. Counts
+  // ONLY hosts that don't already have a datacenter_id set, matching
+  // the server-side rule. The operator's confirm dialog uses this
+  // count to make the impact of the action visible up front. VMs
+  // are no longer counted because they inherit from their host
+  // automatically — the post-PATCH derivation step (or the next
+  // poll) handles VM site updates.
   function countCascadeDescendants(
     parent: InventoryAsset,
     parentType: string,
     allAssets: InventoryAsset[],
   ): { hosts: number; vms: number; total: number } {
     const parentClusterID = (parent.metadata?.['vcenter_cluster'] as string | undefined)?.trim() || parent.asset_id
-    const parentHostID =
-      (parent.metadata?.['host_id'] as string | undefined)?.trim() ||
-      (parent.metadata?.['host'] as string | undefined)?.trim() ||
-      parent.asset_id
     let hosts = 0
-    let vms = 0
-    for (const candidate of allAssets) {
-      if (candidate.asset_id === parent.asset_id) continue
-      if (String(candidate.datacenter_id ?? '').trim()) continue
-      const childType = String(candidate.asset_type ?? '').toLowerCase()
-      const childCluster = String(candidate.metadata?.['vcenter_cluster'] ?? '').trim()
-      const childHost =
-        String(candidate.metadata?.['host_id'] ?? '').trim() || String(candidate.metadata?.['host'] ?? '').trim()
-      if (parentType === 'cluster') {
+    if (parentType === 'cluster') {
+      for (const candidate of allAssets) {
+        if (candidate.asset_id === parent.asset_id) continue
+        if (String(candidate.datacenter_id ?? '').trim()) continue
+        const childType = String(candidate.asset_type ?? '').toLowerCase()
+        const childCluster = String(candidate.metadata?.['vcenter_cluster'] ?? '').trim()
         if (childType === 'host' && childCluster === parentClusterID) hosts++
-        else if (childType === 'vm' && childCluster === parentClusterID) vms++
-      } else if (parentType === 'host') {
-        if (childType === 'vm' && childHost === parentHostID) vms++
       }
     }
-    return { hosts, vms, total: hosts + vms }
+    return { hosts, vms: 0, total: hosts }
   }
 
   async function refreshFromConnectors() {
@@ -505,6 +492,25 @@ function AssetRow({
   const sources = (asset.external_refs ?? []).map((ref) => ref.source).filter(Boolean)
   const tags = asset.tags ?? []
   const currentSite = String(asset.datacenter_id ?? '').trim()
+  const [overrideVMSite, setOverrideVMSite] = useState(false)
+  // VMs inherit their site from the host they're currently running
+  // on (vMotion-safe). Show the site as a derived chip with the
+  // host context unless the operator explicitly opted to override
+  // — operators who manually pick a VM site take responsibility for
+  // the assertion going stale after the next vMotion.
+  const siteOrigin = String(asset.metadata?.['site_origin'] ?? '').toLowerCase()
+  const isVM = assetType === 'vm'
+  const isDerivedVMSite = isVM && siteOrigin !== 'explicit'
+  const derivedFromHost = String(asset.metadata?.['derived_from_host'] ?? '').trim()
+  // Cluster: surface multi-site (stretched) topology via metadata
+  // the backend recomputes after every poll. effective_sites holds
+  // the union of member-host sites; stretched is true when that
+  // union has 2+ entries.
+  const isCluster = assetType === 'cluster'
+  const effectiveSites = Array.isArray(asset.metadata?.['effective_sites'])
+    ? (asset.metadata?.['effective_sites'] as unknown[]).map((v) => String(v))
+    : []
+  const isStretched = Boolean(asset.metadata?.['stretched']) || effectiveSites.length > 1
   // Criticality enum is fixed; translate via i18n. Unknown values
   // (a connector emitting something off-vocabulary) fall back to
   // the raw value via t()'s default-literal mechanism.
@@ -556,36 +562,106 @@ function AssetRow({
         )}
       </td>
       <td style={{ padding: '10px' }}>
-        <select
-          value={currentSite}
-          onChange={(e) => onAssign(e.target.value)}
-          disabled={busy || sites.length === 0}
-          style={{
-            fontSize: 11,
-            padding: '4px 6px',
-            border: '0.5px solid var(--color-border-secondary)',
-            borderRadius: 'var(--border-radius-sm)',
-            background: 'var(--color-background-primary)',
-            color: currentSite ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-            fontFamily: 'inherit',
-            minWidth: 120,
-            cursor: busy ? 'wait' : 'pointer',
-          }}
-        >
-          <option value="">— —</option>
-          {/* Surface the current value even if it isn't in the
-              loaded sites list (e.g. a legacy datacenter_id that no
-              longer maps to a registered site). Operator can still
-              pick a real site to fix it. */}
-          {currentSite && !sites.some((s) => s.site_id === currentSite) ? (
-            <option value={currentSite}>{currentSite} (not registered)</option>
-          ) : null}
-          {sites.map((s) => (
-            <option key={s.site_id} value={s.site_id}>
-              {s.display_name ? `${s.display_name} (${s.site_id})` : s.site_id}
-            </option>
-          ))}
-        </select>
+        {isCluster && isStretched ? (
+          // Stretched cluster: multiple member-host sites. The
+          // cluster has no single canonical site; the badge lists
+          // every site the cluster spans plus a "stretched" flag.
+          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Badge tone="amber" icon="ti-arrows-shuffle">
+              {t('Stretched', 'Stretched')}
+            </Badge>
+            {effectiveSites.map((siteID) => {
+              const label = sites.find((s) => s.site_id === siteID)?.display_name ?? siteID
+              return (
+                <span
+                  key={siteID}
+                  style={{
+                    fontSize: 10,
+                    padding: '2px 6px',
+                    background: 'var(--color-background-secondary)',
+                    borderRadius: 'var(--border-radius-sm)',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                  title={siteID}
+                >
+                  {label}
+                </span>
+              )
+            })}
+          </span>
+        ) : isDerivedVMSite && !overrideVMSite ? (
+          // VM with derived site (the default): show the inherited
+          // site + the host it came from, no editable dropdown.
+          // The "Override" link expands to a writable dropdown for
+          // the rare case the operator wants to track something
+          // outside the host hierarchy.
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
+            {currentSite ? (
+              <span style={{ color: 'var(--color-text-primary)' }}>{currentSite}</span>
+            ) : (
+              <span style={{ color: 'var(--color-text-tertiary)' }}>
+                {t('— (host has no site)', '— (host has no site)')}
+              </span>
+            )}
+            {derivedFromHost ? (
+              <span
+                style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}
+                title={t('Derived from host {host}', 'Derived from host {host}', { host: derivedFromHost })}
+              >
+                ↳ {derivedFromHost.length > 16 ? derivedFromHost.slice(0, 14) + '…' : derivedFromHost}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setOverrideVMSite(true)}
+              style={{
+                fontSize: 10,
+                color: 'var(--color-text-tertiary)',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+              title={t(
+                'Override the derived site. The next vMotion may invalidate this.',
+                'Override the derived site. The next vMotion may invalidate this.',
+              )}
+            >
+              {t('Override', 'Override')}
+            </button>
+          </span>
+        ) : (
+          <select
+            value={currentSite}
+            onChange={(e) => onAssign(e.target.value)}
+            disabled={busy || sites.length === 0}
+            style={{
+              fontSize: 11,
+              padding: '4px 6px',
+              border: '0.5px solid var(--color-border-secondary)',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--color-background-primary)',
+              color: currentSite ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+              fontFamily: 'inherit',
+              minWidth: 120,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            <option value="">— —</option>
+            {/* Surface the current value even if it isn't in the
+                loaded sites list (e.g. a legacy datacenter_id that
+                no longer maps to a registered site). */}
+            {currentSite && !sites.some((s) => s.site_id === currentSite) ? (
+              <option value={currentSite}>{currentSite} (not registered)</option>
+            ) : null}
+            {sites.map((s) => (
+              <option key={s.site_id} value={s.site_id}>
+                {s.display_name ? `${s.display_name} (${s.site_id})` : s.site_id}
+              </option>
+            ))}
+          </select>
+        )}
       </td>
       <td style={{ padding: '10px 0 10px 10px' }}>
         {tags.length === 0 ? (
