@@ -4089,6 +4089,13 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Cloud region': 'Région cloud',
     'Colocation': 'Colocation',
     'Branch office': 'Bureau distant',
+    // Inventory VM location column — French ('Location' already
+    // exists upstream in this fr block; only the new VM-cluster
+    // strings live here)
+    'Stretched': 'Étendu',
+    'Override': 'Forcer',
+    'Override with a manual site. Stretched-cluster VMs vMotion between sites; a pinned value will go stale.':
+      'Forcer un site manuel. Les VMs en cluster étendu migrent entre sites ; une valeur figée se périme.',
     // Asset type enum (inventory dropdown + summary tiles) — French
     'Firewall': 'Pare-feu',
     'Firewall manager': 'Gestionnaire de pare-feu',

@@ -451,7 +451,7 @@ export function InventoryPage() {
                   <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Criticality', 'Criticality')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Source', 'Source')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Site', 'Site')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Location', 'Location')}</th>
                   <th style={{ padding: '6px 0 6px 10px' }}>{t('Tags', 'Tags')}</th>
                 </tr>
               </thead>
@@ -493,19 +493,21 @@ function AssetRow({
   const tags = asset.tags ?? []
   const currentSite = String(asset.datacenter_id ?? '').trim()
   const [overrideVMSite, setOverrideVMSite] = useState(false)
-  // VMs inherit their site from the host they're currently running
-  // on (vMotion-safe). Show the site as a derived chip with the
-  // host context unless the operator explicitly opted to override
-  // — operators who manually pick a VM site take responsibility for
-  // the assertion going stale after the next vMotion.
+  // VM "location" is cluster-first, not site-first. A VM never
+  // leaves its cluster, so cluster is the stable identity. Site
+  // is only an honest claim when the cluster isn't stretched —
+  // stretched clusters span 2+ sites and vMotion moves VMs
+  // between them constantly, so any per-VM site assertion would
+  // be stale within minutes.
   const siteOrigin = String(asset.metadata?.['site_origin'] ?? '').toLowerCase()
   const isVM = assetType === 'vm'
   const isDerivedVMSite = isVM && siteOrigin !== 'explicit'
-  const derivedFromHost = String(asset.metadata?.['derived_from_host'] ?? '').trim()
-  // Cluster: surface multi-site (stretched) topology via metadata
-  // the backend recomputes after every poll. effective_sites holds
-  // the union of member-host sites; stretched is true when that
-  // union has 2+ entries.
+  const vmClusterName =
+    String(asset.metadata?.['cluster_name'] ?? '').trim() ||
+    String(asset.metadata?.['vcenter_cluster'] ?? '').trim()
+  const vmIsStretched = Boolean(asset.metadata?.['is_stretched_cluster'])
+  // Cluster row metadata: effective_sites + stretched flag the
+  // backend recomputes after every poll.
   const isCluster = assetType === 'cluster'
   const effectiveSites = Array.isArray(asset.metadata?.['effective_sites'])
     ? (asset.metadata?.['effective_sites'] as unknown[]).map((v) => String(v))
@@ -590,25 +592,38 @@ function AssetRow({
             })}
           </span>
         ) : isDerivedVMSite && !overrideVMSite ? (
-          // VM with derived site (the default): show the inherited
-          // site + the host it came from, no editable dropdown.
-          // The "Override" link expands to a writable dropdown for
-          // the rare case the operator wants to track something
-          // outside the host hierarchy.
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
-            {currentSite ? (
-              <span style={{ color: 'var(--color-text-primary)' }}>{currentSite}</span>
-            ) : (
-              <span style={{ color: 'var(--color-text-tertiary)' }}>
-                {t('— (host has no site)', '— (host has no site)')}
-              </span>
-            )}
-            {derivedFromHost ? (
+          // VM with derived location: cluster is the primary,
+          // stable identity (VM never leaves its cluster). Site
+          // shown only when the cluster is non-stretched, since
+          // stretched clusters span 2+ sites and per-VM site is
+          // misleading there. Override link lets the operator
+          // pin a manual site if they need one anyway — with a
+          // tooltip warning about vMotion staleness.
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11, flexWrap: 'wrap' }}>
+            {vmClusterName ? (
               <span
-                style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}
-                title={t('Derived from host {host}', 'Derived from host {host}', { host: derivedFromHost })}
+                style={{
+                  fontSize: 11,
+                  padding: '2px 6px',
+                  background: 'var(--color-background-secondary)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--color-text-primary)',
+                }}
+                title={t('Cluster', 'Cluster')}
               >
-                ↳ {derivedFromHost.length > 16 ? derivedFromHost.slice(0, 14) + '…' : derivedFromHost}
+                {vmClusterName}
+              </span>
+            ) : (
+              <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+            )}
+            {vmIsStretched ? (
+              <Badge tone="amber" icon="ti-arrows-shuffle">
+                {t('Stretched', 'Stretched')}
+              </Badge>
+            ) : currentSite ? (
+              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+                ↳ {currentSite}
               </span>
             ) : null}
             <button
@@ -624,8 +639,8 @@ function AssetRow({
                 textDecoration: 'underline',
               }}
               title={t(
-                'Override the derived site. The next vMotion may invalidate this.',
-                'Override the derived site. The next vMotion may invalidate this.',
+                'Override with a manual site. Stretched-cluster VMs vMotion between sites; a pinned value will go stale.',
+                'Override with a manual site. Stretched-cluster VMs vMotion between sites; a pinned value will go stale.',
               )}
             >
               {t('Override', 'Override')}
