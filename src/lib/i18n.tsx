@@ -3937,6 +3937,129 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     "When something on the platform isn't behaving correctly and you need help debugging it, this\n          page produces a signed": "Quand quelque chose sur la plateforme ne fonctionne pas correctement et que vous avez besoin d'aide pour le déboguer, cette page produit un",
     'with a name,\n                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts\n                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.': "avec un nom, règle de cadence, cible RTO et indicateur de fenêtre de maintenance. Le module DR pilote accepte les plannings ad-hoc ; les modèles préfabriqués sont livrés avec le suivi YAML du cadre.",
     "with the last 7 days of audit events, the last month\n          of scoring trend events, current connector status, dead-letter queue summary, and the\n          platform's framework YAML hashes. Email it to support; we use it to reproduce the issue\n          without needing access to your network.": "avec les 7 derniers jours d'événements d'audit, le dernier mois d'événements de tendance d'évaluation, l'état actuel des connecteurs, le résumé de la file dead-letter et les hachages YAML des cadres de la plateforme. Envoyez-le par email au support ; nous l'utilisons pour reproduire le problème sans avoir besoin d'accès à votre réseau.",
+
+    // ─── batch added 2026-05-13: French translations for the new
+    //     pages (Site wizard, Connector poll settings, Inventory,
+    //     Frameworks rewrite, Dashboard overview). Keys are placed
+    //     here at the end of the fr: block rather than alphabetised
+    //     inline so the diff stays reviewable; a follow-up sort pass
+    //     can fold them in if desired.
+    'Add a site': 'Ajouter un site',
+    'Add site': 'Ajouter un site',
+    'Edit site': 'Modifier le site',
+    'Delete site': 'Supprimer le site',
+    'Back to sites': 'Retour aux sites',
+    'site_id is required': 'site_id est requis',
+    'Display name is required': "Le nom d'affichage est requis",
+    'Site type is required': 'Le type de site est requis',
+    'Concentration threshold must be 0–100': 'Le seuil de concentration doit être entre 0 et 100',
+    'Site ID (slug)': 'Identifiant du site (slug)',
+    'Country (2-letter)': 'Pays (2 lettres)',
+    'DR pairing (optional)': 'Appairage PRA (optionnel)',
+    '— none —': '— aucun —',
+    'Set on a primary site to point at its DR partner.':
+      'À définir sur un site principal pour pointer vers son partenaire PRA.',
+    'Primary site': 'Site principal',
+    'Set on a DR site to point back at the primary it covers.':
+      'À définir sur un site PRA pour pointer vers le site principal qu’il couvre.',
+    'Physical resilience (optional)': 'Résilience physique (optionnelle)',
+    "These fields drive the DORA Art.12.7 power-resilience score. Leave blank if you don't want to assert anything yet — scoring treats empty values as \"not asserted,\" not \"failed.\"":
+      'Ces champs alimentent le score de résilience électrique DORA Art.12.7. Laissez vide si vous ne souhaitez encore rien déclarer — le moteur d’évaluation traite les valeurs vides comme « non déclarées », pas comme « non conformes ».',
+    'Tier certification': 'Certification Tier',
+    'Power': 'Alimentation',
+    'Utility feeds': 'Arrivées électriques',
+    'UPS runtime (min)': 'Autonomie onduleur (min)',
+    'Generators': 'Groupes électrogènes',
+    'Fuel runtime (h)': 'Autonomie carburant (h)',
+    'Last generator test': 'Dernier test groupe',
+    'Generator test frequency': 'Fréquence des tests groupe',
+    'Cooling': 'Refroidissement',
+    'Redundancy': 'Redondance',
+    'Monitoring enabled': 'Supervision activée',
+    'Physical security': 'Sécurité physique',
+    'Access control': 'Contrôle d’accès',
+    'CCTV': 'Vidéosurveillance',
+    '24/7 guard': 'Gardiennage 24/7',
+    'Saving…': 'Enregistrement…',
+    'Save changes': 'Enregistrer les modifications',
+    'Create site': 'Créer le site',
+    'What about hosted CIs and WAN links?': 'Et les CI hébergés et liens WAN ?',
+    "This wizard covers the identity tier (id, name, type, location, DR pairing). Hosted CIs, WAN links, physical power/cooling, and DORA Art.28 third-party metadata are richer blocks — they belong in YAML for now, under policies/sites/<site_id>.yaml. The runtime registry overlays whatever you save here on top of those YAML definitions, so it's safe to start with identity and add the deeper config later.":
+      'Cet assistant couvre la couche identité (id, nom, type, localisation, appairage PRA). Les CI hébergés, liens WAN, alimentation/refroidissement physiques et métadonnées DORA Art.28 sont des blocs plus riches — ils restent en YAML pour le moment, dans policies/sites/<site_id>.yaml. Le registre runtime superpose ce que vous enregistrez ici sur ces définitions YAML, donc commencer par l’identité et ajouter le détail plus tard est sans risque.',
+    'City': 'Ville',
+    'Concentration threshold (%)': 'Seuil de concentration (%)',
+
+    // Connector poll settings page
+    'Override cleared. The loop now uses the env default.':
+      'Override effacé. La boucle utilise désormais la valeur par défaut de l’environnement.',
+    'Saved. Next iteration will sleep for the new interval.':
+      'Enregistré. La prochaine itération attendra le nouvel intervalle.',
+    'Interval must be a non-negative integer (0 clears the override).':
+      'L’intervalle doit être un entier non négatif (0 efface l’override).',
+    'Interval must be 0 or at least 60 seconds.':
+      'L’intervalle doit être 0 ou au moins 60 secondes.',
+    'Interval must be at most 86400 seconds (24h).':
+      'L’intervalle doit être au plus de 86400 secondes (24h).',
+    'Connector poll': 'Sondage des connecteurs',
+    'Poll loop is disabled': 'La boucle de sondage est désactivée',
+    'COMPLIANCE_CONNECTOR_POLL_ENABLED is 0 in the environment. Set it to 1 (and COMPLIANCE_CONNECTOR_POLL_IN_PROCESS to 1) and restart the API service for this interval to take effect.':
+      'COMPLIANCE_CONNECTOR_POLL_ENABLED est à 0 dans l’environnement. Passez-le à 1 (ainsi que COMPLIANCE_CONNECTOR_POLL_IN_PROCESS) puis redémarrez le service API pour que cet intervalle prenne effet.',
+    'How often the API process polls every configured connector for telemetry. Lower values give fresher health data but more upstream load. Changes take effect on the next loop iteration — no restart needed.':
+      'Fréquence à laquelle le processus API interroge chaque connecteur configuré pour la télémétrie. Une valeur plus basse donne des données plus fraîches mais augmente la charge amont. Les changements prennent effet à la prochaine itération — aucun redémarrage requis.',
+    'env default': 'défaut env',
+    'seconds': 'secondes',
+    'Clear override': 'Effacer l’override',
+    'Min 60s, max 86400s (24h). Leave blank or set to 0 to use the env default.':
+      'Min 60s, max 86400s (24h). Laissez vide ou mettez 0 pour utiliser le défaut env.',
+    'Current state': 'État actuel',
+    'Effective interval': 'Intervalle effectif',
+    'store override': 'override stocké',
+    'fallback (6h)': 'défaut (6h)',
+    'Env default': 'Défaut env',
+    'Loop enabled': 'Boucle activée',
+    'In-process worker': 'Worker in-process',
+    'yes': 'oui',
+    'no': 'non',
+
+    // Connector health page
+    'Items (last poll)': 'Items (dernier sondage)',
+
+    // Inventory page
+    'Refreshing…': 'Actualisation…',
+    'Refresh from connectors': 'Actualiser depuis les connecteurs',
+    'Total assets': 'Total des actifs',
+    'Asset registry': 'Registre des actifs',
+    'No assets in inventory yet': 'Aucun actif dans l’inventaire pour le moment',
+    'No matches': 'Aucune correspondance',
+    "Assets appear here automatically after each connector poll. Click \"Refresh from connectors\" to pull immediately, or wait for the next 5-minute cycle.":
+      'Les actifs apparaissent ici automatiquement après chaque sondage des connecteurs. Cliquez sur « Actualiser depuis les connecteurs » pour récupérer immédiatement, ou attendez le prochain cycle de 5 minutes.',
+    'No assets match the current filters. Clear them to see the full inventory.':
+      'Aucun actif ne correspond aux filtres actuels. Effacez-les pour voir l’inventaire complet.',
+    'Asset': 'Actif',
+    'Search…': 'Rechercher…',
+    '{count} assets': '{count} actifs',
+
+    // Frameworks page (post-rewrite)
+    'not evaluated': 'non évalué',
+    'Evaluated': 'Évalué',
+    'Framework has no controls loaded.': 'Le référentiel n’a aucun contrôle chargé.',
+    'Passing': 'Conforme',
+    'Review': 'À revoir',
+    'Warn': 'Alerte',
+    'passing': 'conforme',
+    'total controls': 'contrôles au total',
+    'No scoring run yet. Run /v1/scoring/evaluate to compute a real score against your current evidence.':
+      'Aucune évaluation pour le moment. Exécutez /v1/scoring/evaluate pour calculer un score réel sur vos preuves actuelles.',
+    'No scoring run yet': 'Aucune évaluation pour le moment',
+
+    // Dashboard overview
+    'frameworks scored': 'référentiels évalués',
+    'Top framework': 'Référentiel principal',
+    'No scoring run has produced framework results yet. Frameworks will appear here after the first /scoring/evaluate.':
+      'Aucune évaluation n’a encore produit de résultats par référentiel. Les référentiels apparaîtront ici après le premier /scoring/evaluate.',
+    'Recent platform activity': 'Activité récente de la plateforme',
+    'No platform activity recorded yet. Admin actions (config changes, key rotations, CA uploads) will appear here.':
+      'Aucune activité de plateforme enregistrée pour le moment. Les actions admin (changements de configuration, rotations de clés, dépôts de CA) apparaîtront ici.',
   },
   de: {
     'Management Console': 'Verwaltungskonsole',
