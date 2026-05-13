@@ -52,6 +52,7 @@ const RAIL_LABEL_TKEY: Record<SectionKey, string> = {
   frameworks: 'nav.frameworks',
   apps: 'nav.apps',
   sites: 'nav.sites',
+  inventory: 'nav.inventory',
   risks: 'nav.risks',
   policies: 'nav.policies',
   exceptions: 'nav.exceptions',
@@ -70,6 +71,7 @@ type SectionKey =
   | 'frameworks'
   | 'apps'
   | 'sites'
+  | 'inventory'
   | 'risks'
   | 'policies'
   | 'exceptions'
@@ -110,6 +112,7 @@ const railTop: RailItem[] = [
   { key: 'frameworks', label: 'Frameworks', icon: 'ti-shield-check',     prefix: '/frameworks' },
   { key: 'apps',       label: 'Apps',       icon: 'ti-apps',             prefix: '/apps' },
   { key: 'sites',      label: 'Sites',      icon: 'ti-building',         prefix: '/sites' },
+  { key: 'inventory',  label: 'Inventory',  icon: 'ti-database',         prefix: '/inventory' },
   { key: 'risks',      label: 'Risk',       icon: 'ti-alert-octagon',    prefix: '/risks' },
   { key: 'policies',   label: 'Policies',   icon: 'ti-file-text',        prefix: '/policies' },
   { key: 'exceptions', label: 'Exceptions', icon: 'ti-shield-half-filled', prefix: '/exceptions' },
@@ -177,6 +180,15 @@ const sections: Record<SectionKey, Section> = {
     navLabel: 'Sites',
     items: [
       { to: '/sites',         label: 'Registry',         icon: 'ti-building' },
+    ],
+  },
+  inventory: {
+    key: 'inventory',
+    navLabel: 'Inventory',
+    items: [
+      { to: '/inventory',                        label: 'All assets',  icon: 'ti-database' },
+      { to: '/inventory?asset_type=firewall',    label: 'Firewalls',   icon: 'ti-shield-half-filled' },
+      { to: '/inventory?asset_type=server',      label: 'Servers',     icon: 'ti-server' },
     ],
   },
   risks: {
