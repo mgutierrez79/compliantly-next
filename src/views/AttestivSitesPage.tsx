@@ -15,6 +15,7 @@ import {
   Card,
   CardTitle,
   EmptyState,
+  PrimaryButton,
   Skeleton,
   Topbar,
 } from '../components/AttestivUi'
@@ -129,7 +130,13 @@ export function AttestivSitesPage() {
         title={t('Sites', 'Sites')}
         left={<Badge tone="navy">{t('{count} registered', '{count} registered', { count: sites.length })}</Badge>}
         right={
-          <FilterBar value={filter} onChange={setFilter} regions={regions} types={types} />
+          <>
+            <FilterBar value={filter} onChange={setFilter} regions={regions} types={types} />
+            <PrimaryButton onClick={() => router.push('/sites/new')}>
+              <i className="ti ti-plus" aria-hidden="true" />
+              {t('Add site', 'Add site')}
+            </PrimaryButton>
+          </>
         }
       />
       <div className="attestiv-content">
