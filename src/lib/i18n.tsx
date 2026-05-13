@@ -2057,6 +2057,28 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     "When something on the platform isn't behaving correctly and you need help debugging it, this\n          page produces a signed": 'Cuando algo en la plataforma no funciona correctamente y necesitas ayuda para depurarlo, esta página produce un',
     'with a name,\n                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts\n                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.': 'con un nombre, regla de cadencia, objetivo RTO y bandera de ventana de mantenimiento. El módulo DR piloto acepta programaciones ad-hoc; las plantillas predefinidas vienen con el seguimiento del YAML del marco.',
     "with the last 7 days of audit events, the last month\n          of scoring trend events, current connector status, dead-letter queue summary, and the\n          platform's framework YAML hashes. Email it to support; we use it to reproduce the issue\n          without needing access to your network.": "con los últimos 7 días de eventos de auditoría, el último mes de eventos de tendencia de puntuación, estado actual de conectores, resumen de la cola dead-letter y los hashes YAML de los marcos de la plataforma. Envíalo por email a soporte; lo usamos para reproducir el problema sin necesidad de acceso a tu red.",
+
+    // Site type enum (wizard dropdown) — Spanish
+    'Primary datacenter': 'Centro de datos principal',
+    'DR datacenter': 'Centro de datos de DR',
+    'Cloud region': 'Región en la nube',
+    'Colocation': 'Colocación',
+    'Branch office': 'Oficina remota',
+    // Asset type enum (inventory dropdown + summary tiles) — Spanish
+    'Firewall': 'Cortafuegos',
+    'Firewall manager': 'Gestor de cortafuegos',
+    'Virtual machine': 'Máquina virtual',
+    'Storage array': 'Matriz de almacenamiento',
+    'Storage volume': 'Volumen de almacenamiento',
+    'Storage host': 'Anfitrión de almacenamiento',
+    'Backup appliance': 'Appliance de copia',
+    'Repository': 'Repositorio',
+    'Network device': 'Dispositivo de red',
+    'Service': 'Servicio',
+    'Device': 'Dispositivo',
+    'EC2 instance': 'Instancia EC2',
+    'Other': 'Otro',
+    // Criticality enum (inventory row badges) — Spanish
   },
   fr: {
     'Management Console': 'Console de Gestion',
@@ -4060,6 +4082,28 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Recent platform activity': 'Activité récente de la plateforme',
     'No platform activity recorded yet. Admin actions (config changes, key rotations, CA uploads) will appear here.':
       'Aucune activité de plateforme enregistrée pour le moment. Les actions admin (changements de configuration, rotations de clés, dépôts de CA) apparaîtront ici.',
+
+    // Site type enum (wizard dropdown) — French
+    'Primary datacenter': 'Datacenter principal',
+    'DR datacenter': 'Datacenter de secours (PRA)',
+    'Cloud region': 'Région cloud',
+    'Colocation': 'Colocation',
+    'Branch office': 'Bureau distant',
+    // Asset type enum (inventory dropdown + summary tiles) — French
+    'Firewall': 'Pare-feu',
+    'Firewall manager': 'Gestionnaire de pare-feu',
+    'Virtual machine': 'Machine virtuelle',
+    'Storage array': 'Baie de stockage',
+    'Storage volume': 'Volume de stockage',
+    'Storage host': 'Hôte de stockage',
+    'Backup appliance': 'Appliance de sauvegarde',
+    'Repository': 'Référentiel',
+    'Network device': 'Équipement réseau',
+    'Service': 'Service',
+    'Device': 'Équipement',
+    'EC2 instance': 'Instance EC2',
+    'Other': 'Autre',
+    // Criticality enum (inventory row badges) — French
   },
   de: {
     'Management Console': 'Verwaltungskonsole',
@@ -5938,6 +5982,28 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     "When something on the platform isn't behaving correctly and you need help debugging it, this\n          page produces a signed": 'Wenn etwas auf der Plattform sich nicht korrekt verhält und Sie Hilfe beim Debuggen brauchen, erstellt diese Seite ein signiertes',
     'with a name,\n                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts\n                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.': 'mit einem Namen, Kadenzregel, RTO-Ziel und Wartungsfenster-Flag. Das Pilot-DR-Modul akzeptiert Ad-hoc-Planungen; vorgefertigte Vorlagen kommen mit dem Framework-YAML-Folgeschritt.',
     "with the last 7 days of audit events, the last month\n          of scoring trend events, current connector status, dead-letter queue summary, and the\n          platform's framework YAML hashes. Email it to support; we use it to reproduce the issue\n          without needing access to your network.": 'mit den letzten 7 Tagen Audit-Ereignisse, dem letzten Monat Bewertungs-Trend-Ereignisse, dem aktuellen Konnektor-Status, der Dead-Letter-Queue-Zusammenfassung und den Framework-YAML-Hashes der Plattform. Senden Sie es per E-Mail an den Support; wir verwenden es, um das Problem ohne Zugriff auf Ihr Netzwerk zu reproduzieren.',
+
+    // Site type enum — German
+    'Primary datacenter': 'Primäres Rechenzentrum',
+    'DR datacenter': 'DR-Rechenzentrum',
+    'Cloud region': 'Cloud-Region',
+    'Colocation': 'Colocation',
+    'Branch office': 'Niederlassung',
+    // Asset type enum — German
+    'Firewall': 'Firewall',
+    'Firewall manager': 'Firewall-Manager',
+    'Virtual machine': 'Virtuelle Maschine',
+    'Storage array': 'Speicher-Array',
+    'Storage volume': 'Speichervolume',
+    'Storage host': 'Speicher-Host',
+    'Backup appliance': 'Backup-Appliance',
+    'Repository': 'Repository',
+    'Network device': 'Netzwerkgerät',
+    'Service': 'Dienst',
+    'Device': 'Gerät',
+    'EC2 instance': 'EC2-Instanz',
+    'Other': 'Andere',
+    // Criticality enum — German
   },
   lt: {
     'Management Console': 'Valdymo konsolė',
@@ -7817,6 +7883,28 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     "When something on the platform isn't behaving correctly and you need help debugging it, this\n          page produces a signed": 'Kai kažkas platformoje neveikia teisingai ir jums reikia pagalbos derinant, šis puslapis sukuria pasirašytą',
     'with a name,\n                cadence rule, RTO target, and maintenance window flag. The pilot DR module accepts\n                ad-hoc schedules; pre-canned templates ship with the framework YAML follow-up.': 'su pavadinimu, dažnumo taisykle, RTO tikslu ir techninės priežiūros lango vėliava. Pilotinis DR modulis priima ad-hoc tvarkaraščius; iš anksto paruošti šablonai pateikiami su referencinės sistemos YAML tęsiniu.',
     "with the last 7 days of audit events, the last month\n          of scoring trend events, current connector status, dead-letter queue summary, and the\n          platform's framework YAML hashes. Email it to support; we use it to reproduce the issue\n          without needing access to your network.": 'su paskutinių 7 dienų audito įvykiais, paskutinio mėnesio vertinimo tendencijos įvykiais, dabartine jungčių būsena, dead-letter eilės santrauka ir platformos referencinių sistemų YAML maišomis. Siųskite el. paštu palaikymui; mes ją naudojame problemai atkurti be prieigos prie jūsų tinklo.',
+
+    // Site type enum — Lithuanian
+    'Primary datacenter': 'Pagrindinis duomenų centras',
+    'DR datacenter': 'Atsarginis duomenų centras (DR)',
+    'Cloud region': 'Debesų regionas',
+    'Colocation': 'Kolokacija',
+    'Branch office': 'Filialas',
+    // Asset type enum — Lithuanian
+    'Firewall': 'Ugniasienė',
+    'Firewall manager': 'Ugniasienių valdiklis',
+    'Virtual machine': 'Virtuali mašina',
+    'Storage array': 'Saugyklų masyvas',
+    'Storage volume': 'Saugyklos tomas',
+    'Storage host': 'Saugyklos kompiuteris',
+    'Backup appliance': 'Atsarginių kopijų įrenginys',
+    'Repository': 'Saugykla',
+    'Network device': 'Tinklo įrenginys',
+    'Service': 'Paslauga',
+    'Device': 'Įrenginys',
+    'EC2 instance': 'EC2 egzempliorius',
+    'Other': 'Kita',
+    // Criticality enum — Lithuanian
   },
 }
 

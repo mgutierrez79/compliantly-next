@@ -38,12 +38,18 @@ type ExistingSite = {
   display_name?: string
 }
 
-const SITE_TYPE_LABEL: Record<SiteType, { en: string; fr: string }> = {
-  primary_datacenter: { en: 'Primary datacenter', fr: 'Datacenter principal' },
-  dr_datacenter:      { en: 'DR datacenter',      fr: 'Datacenter de secours (PRA)' },
-  cloud_region:       { en: 'Cloud region',       fr: 'Région cloud' },
-  colocation:         { en: 'Colocation',         fr: 'Colocation' },
-  branch_office:      { en: 'Branch office',      fr: 'Bureau distant' },
+// SITE_TYPE_LABEL stores the canonical English label as both the
+// i18n key AND the fallback literal. siteTypeOptions then routes it
+// through t() so es/de/lt fall back to the English literal until a
+// translator fills them in. Previously this map carried inline
+// {en, fr} pairs which made French look translated but left every
+// other language broken.
+const SITE_TYPE_LABEL: Record<SiteType, string> = {
+  primary_datacenter: 'Primary datacenter',
+  dr_datacenter:      'DR datacenter',
+  cloud_region:       'Cloud region',
+  colocation:         'Colocation',
+  branch_office:      'Branch office',
 }
 
 function slugify(value: string): string {
@@ -243,8 +249,8 @@ export function AttestivSiteWizard() {
   }, [])
 
   const siteTypeOptions = useMemo(() => {
-    const entries = Object.entries(SITE_TYPE_LABEL) as Array<[SiteType, { en: string; fr: string }]>
-    return entries.map(([value, labels]) => ({ value, label: t(labels.en, labels.en) }))
+    const entries = Object.entries(SITE_TYPE_LABEL) as Array<[SiteType, string]>
+    return entries.map(([value, label]) => ({ value, label: t(label, label) }))
   }, [t])
 
   const drSiteOptions = useMemo(() => {

@@ -329,7 +329,7 @@ export function InventoryPage() {
             .map(([type, count]) => (
               <SummaryTile
                 key={type}
-                label={formatAssetTypeLabel(type)}
+                label={translatedAssetTypeLabel(t, type)}
                 value={count}
                 active={assetTypeFilter === type}
                 onClick={() => pushFilter('asset_type', assetTypeFilter === type ? '' : type)}
@@ -419,12 +419,19 @@ function AssetRow({
   busy: boolean
   onAssign: (siteID: string) => void
 }) {
+  const { t } = useI18n()
   const displayName = (asset.name && asset.name.trim()) || asset.asset_id
   const assetType = String(asset.asset_type ?? '').toLowerCase()
   const criticality = String(asset.criticality ?? '').toLowerCase()
   const sources = (asset.external_refs ?? []).map((ref) => ref.source).filter(Boolean)
   const tags = asset.tags ?? []
   const currentSite = String(asset.datacenter_id ?? '').trim()
+  // Criticality enum is fixed; translate via i18n. Unknown values
+  // (a connector emitting something off-vocabulary) fall back to
+  // the raw value via t()'s default-literal mechanism.
+  const criticalityLabel = criticality
+    ? t(criticality.charAt(0).toUpperCase() + criticality.slice(1), criticality)
+    : ''
   return (
     <tr style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
       <td style={{ padding: '10px 10px 10px 0' }}>
@@ -434,11 +441,11 @@ function AssetRow({
         </div>
       </td>
       <td style={{ padding: '10px' }}>
-        {assetType ? <Badge tone="navy">{formatAssetTypeLabel(assetType)}</Badge> : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}
+        {assetType ? <Badge tone="navy">{translatedAssetTypeLabel(t, assetType)}</Badge> : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}
       </td>
       <td style={{ padding: '10px' }}>
         {criticality ? (
-          <Badge tone={CRITICALITY_TONE[criticality] ?? 'gray'}>{criticality}</Badge>
+          <Badge tone={CRITICALITY_TONE[criticality] ?? 'gray'}>{criticalityLabel}</Badge>
         ) : (
           <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
         )}
@@ -646,13 +653,19 @@ function SelectChip({
       <option value="">{label}{t(': any', ': any')}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
-          {label}: {formatAssetTypeLabel(opt)}
+          {label}: {translatedAssetTypeLabel(t, opt)}
         </option>
       ))}
     </select>
   )
 }
 
+// formatAssetTypeLabel is the pure fallback used when no translation
+// hook is available (e.g. in option arrays computed outside a
+// component). It just title-cases the raw value. For per-row /
+// per-option rendering, prefer translatedAssetTypeLabel(t, value)
+// which routes through i18n so dropdown options show in the user's
+// language.
 function formatAssetTypeLabel(value: string): string {
   return value
     .replace(/_/g, ' ')
@@ -660,4 +673,45 @@ function formatAssetTypeLabel(value: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+// translatedAssetTypeLabel maps the backend's asset_type string to a
+// localised label. The English form is the i18n key; t() handles the
+// per-language lookup. Falls through to the title-cased raw value
+// when the type is one the dictionary doesn't know yet — so a new
+// connector emitting an unmapped asset_type still renders something
+// readable instead of "??firewall??".
+function translatedAssetTypeLabel(
+  t: (key: string, defaultText?: string) => string,
+  value: string,
+): string {
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) return ''
+  const known: Record<string, string> = {
+    firewall: 'Firewall',
+    firewall_manager: 'Firewall manager',
+    server: 'Server',
+    host: 'Host',
+    vm: 'Virtual machine',
+    cluster: 'Cluster',
+    storage: 'Storage',
+    storage_array: 'Storage array',
+    storage_volume: 'Storage volume',
+    storage_host: 'Storage host',
+    backup_appliance: 'Backup appliance',
+    repository: 'Repository',
+    datacenter: 'Datacenter',
+    network_device: 'Network device',
+    network: 'Network',
+    application: 'Application',
+    service: 'Service',
+    computer: 'Computer',
+    device: 'Device',
+    ec2: 'EC2 instance',
+    other: 'Other',
+    unknown: 'Unknown',
+  }
+  const englishLabel = known[normalized]
+  if (englishLabel) return t(englishLabel, englishLabel)
+  return formatAssetTypeLabel(value)
 }
