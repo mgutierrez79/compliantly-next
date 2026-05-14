@@ -503,6 +503,13 @@ function AssetRow({
     String(asset.metadata?.['cluster_name'] ?? '').trim() ||
     String(asset.metadata?.['vcenter_cluster'] ?? '').trim()
   const vmIsStretched = Boolean(asset.metadata?.['is_stretched_cluster'])
+  // Storage volume "location" is the parent array's name, not a
+  // physical site. The site already lives on the storage_array row;
+  // repeating it across 100+ volumes adds noise. Operator's mental
+  // model is "this volume belongs to POWERSTOREA01" — surface that
+  // directly. Collector stamps metadata.array_name at emission.
+  const isStorageVolume = assetType === 'storage_volume'
+  const storageVolumeArrayName = String(asset.metadata?.['array_name'] ?? '').trim()
   // Cluster row metadata: effective_sites + stretched flag the
   // backend recomputes after every poll.
   const isCluster = assetType === 'cluster'
@@ -588,6 +595,29 @@ function AssetRow({
               )
             })}
           </span>
+        ) : isStorageVolume ? (
+          // Storage volume: render the parent array's name (e.g.
+          // "POWERSTOREA01") as the location identity. Backend
+          // stamps metadata.array_name at emission time. Site lives
+          // on the array row itself; repeating it 100+ times per
+          // volume isn't useful.
+          storageVolumeArrayName ? (
+            <span
+              style={{
+                fontSize: 11,
+                padding: '2px 6px',
+                background: 'var(--color-background-secondary)',
+                borderRadius: 'var(--border-radius-sm)',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--color-text-primary)',
+              }}
+              title={t('Storage array', 'Storage array')}
+            >
+              {storageVolumeArrayName}
+            </span>
+          ) : (
+            <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+          )
         ) : isDerivedVMSite && !overrideVMSite ? (
           // VM with derived location: cluster is the primary,
           // stable identity (VM never leaves its cluster). Site
