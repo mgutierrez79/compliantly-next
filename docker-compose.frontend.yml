@@ -5,12 +5,13 @@ services:
     image: compliantly-next:pilot
     restart: unless-stopped
     ports:
-      # Same external port (3000) regardless of HTTP / HTTPS, so URLs
-      # don't change when you flip TLS on. The container ALWAYS listens
-      # on 3000 internally; https-server.mjs decides whether that
-      # listener is plain HTTP or TLS-terminated based on the cert env
-      # vars below.
-      - "${COMPLIANCE_FRONTEND_PORT:-3000}:3000"
+      # Default external port is 443 (standard HTTPS). The container
+      # ALWAYS listens on 3000 internally; https-server.mjs decides
+      # whether that listener is plain HTTP or TLS-terminated based
+      # on the cert env vars below. Operators that want HTTP-only
+      # or a non-standard external port override via
+      # COMPLIANCE_FRONTEND_PORT in the deployment .env.
+      - "${COMPLIANCE_FRONTEND_PORT:-443}:3000"
     environment:
       # API proxy mTLS (Next.js -> Go API)
       COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-http://host.docker.internal:8080}
