@@ -389,18 +389,15 @@ export function InventoryPage() {
           }}
         >
           <SummaryTile label={t('Total assets', 'Total assets')} value={assets.length} active={!assetTypeFilter} onClick={() => pushFilter('asset_type', '')} />
-          {Object.entries(counts)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 6)
-            .map(([type, count]) => (
-              <SummaryTile
-                key={type}
-                label={translatedAssetTypeLabel(t, type)}
-                value={count}
-                active={assetTypeFilter === type}
-                onClick={() => pushFilter('asset_type', assetTypeFilter === type ? '' : type)}
-              />
-            ))}
+          {orderedAssetTypeTiles(counts).map(([type, count]) => (
+            <SummaryTile
+              key={type}
+              label={translatedAssetTypeLabel(t, type)}
+              value={count}
+              active={assetTypeFilter === type}
+              onClick={() => pushFilter('asset_type', assetTypeFilter === type ? '' : type)}
+            />
+          ))}
         </div>
 
         <Card>
@@ -884,4 +881,42 @@ function translatedAssetTypeLabel(
   const englishLabel = known[normalized]
   if (englishLabel) return t(englishLabel, englishLabel)
   return formatAssetTypeLabel(value)
+}
+
+// orderedAssetTypeTiles decides which asset_type tiles get a summary
+// tile and in what order. The naive "top 6 by count desc" approach
+// hides sparse infrastructure types (storage_array, firewall_manager,
+// cluster) the moment the inventory is dominated by VMs — an operator
+// looking at 200+ VMs may genuinely not realize their 4 PowerStore
+// arrays are in inventory because the tile fell off the list.
+//
+// Fix: pin the well-known infrastructure types in a stable order so
+// they always appear if at least one asset of that type exists, then
+// append any remaining types (in count-desc order) up to a generous
+// cap. Operator scans down a predictable layout instead of having
+// the tile grid reshuffle itself every poll.
+function orderedAssetTypeTiles(counts: Record<string, number>): Array<[string, number]> {
+  const pinned = [
+    'vm',
+    'host',
+    'cluster',
+    'storage_array',
+    'firewall',
+    'firewall_manager',
+    'server',
+    'backup_appliance',
+  ]
+  const seen = new Set<string>()
+  const out: Array<[string, number]> = []
+  for (const type of pinned) {
+    if (counts[type] !== undefined && counts[type] > 0) {
+      out.push([type, counts[type]])
+      seen.add(type)
+    }
+  }
+  const rest = Object.entries(counts)
+    .filter(([type, count]) => !seen.has(type) && count > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 12 - out.length)
+  return out.concat(rest)
 }
