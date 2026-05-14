@@ -858,7 +858,7 @@ function translatedAssetTypeLabel(
     firewall: 'Firewall',
     firewall_manager: 'Firewall manager',
     server: 'Server',
-    host: 'Host',
+    host: 'Hypervisor host',
     vm: 'Virtual machine',
     cluster: 'Cluster',
     storage: 'Storage',
