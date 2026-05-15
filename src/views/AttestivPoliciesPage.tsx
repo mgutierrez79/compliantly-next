@@ -51,13 +51,16 @@ const STATUS_TONE: Record<string, 'amber' | 'green' | 'gray' | 'red'> = {
 }
 
 const CATEGORIES = [
+  'ict_risk_management',
   'ict_continuity',
+  'incident_classification',
+  'incident_response',
+  'risk_management',
   'access_control',
   'patch_management',
-  'incident_response',
   'backup',
   'encryption',
-  'risk_management',
+  'system_validation',
 ] as const
 
 export function AttestivPoliciesPage() {
