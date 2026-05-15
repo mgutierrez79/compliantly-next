@@ -88,7 +88,13 @@ export function AttestivFrameworkControlsPage() {
         const response = await apiFetch('/config/control-mappings')
         if (!response.ok) throw new Error(`${response.status}`)
         const body = await response.json().catch(() => ({}))
-        const items: any[] = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : []
+        // The backend now returns the flat library control list under
+        // `controls`; `items` is the legacy per-connector mapping shape
+        // that ControlMappingsPage writes. Prefer `controls`, fall back
+        // to `items` for older builds.
+        const items: any[] = Array.isArray(body?.controls)
+          ? body.controls
+          : Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : []
         const mapped: Control[] = items
           .map((item) => ({
             framework: String(item?.framework ?? ''),
