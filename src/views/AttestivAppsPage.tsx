@@ -31,6 +31,7 @@ type AppSummary = {
   gxp_validated?: boolean
   component_count?: number
   dependency_count?: number
+  runtime_managed?: boolean
 }
 
 const TIER_TONE: Record<string, 'red' | 'amber' | 'navy' | 'gray'> = {
@@ -55,6 +56,25 @@ export function AttestivAppsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<{ tier?: string; gxp?: string }>({})
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  async function deleteApp(applicationID: string) {
+    if (!confirm(t(`Delete application "${applicationID}"?`, `Delete application "${applicationID}"?`))) return
+    setDeleting(applicationID)
+    setError(null)
+    try {
+      const response = await apiFetch(`/apps/${encodeURIComponent(applicationID)}`, { method: 'DELETE' })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(body?.detail || body?.error || `${response.status} ${response.statusText}`)
+      }
+      setApps((current) => current.filter((a) => a.application_id !== applicationID))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -109,7 +129,23 @@ export function AttestivAppsPage() {
         title={t('Applications', 'Applications')}
         left={<Badge tone="navy">{apps.length} registered</Badge>}
         right={
-          <FilterBar value={filter} onChange={setFilter} />
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <FilterBar value={filter} onChange={setFilter} />
+            <a
+              href="/apps/new"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 4,
+                background: 'var(--color-text-primary)',
+                color: 'var(--color-surface-primary)',
+                fontSize: 12,
+                textDecoration: 'none',
+                fontWeight: 500,
+              }}
+            >
+              + {t('Add application', 'Add application')}
+            </a>
+          </div>
         }
       />
       <div className="attestiv-content">
@@ -159,7 +195,8 @@ export function AttestivAppsPage() {
                   <th style={{ padding: '6px 10px' }}>{t('GxP', 'GxP')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Owner', 'Owner')}</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('Components', 'Components')}</th>
-                  <th style={{ padding: '6px 0 6px 10px', textAlign: 'right' }}>{t('Dependencies', 'Dependencies')}</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right' }}>{t('Dependencies', 'Dependencies')}</th>
+                  <th style={{ padding: '6px 0 6px 10px', width: 64 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -201,8 +238,41 @@ export function AttestivAppsPage() {
                       <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
                         {app.component_count ?? '—'}
                       </td>
-                      <td style={{ padding: '10px 0 10px 10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
+                      <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
                         {app.dependency_count ?? '—'}
+                      </td>
+                      <td
+                        style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {app.runtime_managed ? (
+                          <button
+                            type="button"
+                            disabled={deleting === app.application_id}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void deleteApp(app.application_id)
+                            }}
+                            title={t('Delete this runtime-added application', 'Delete this runtime-added application')}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: deleting === app.application_id ? 'wait' : 'pointer',
+                              color: 'var(--color-text-danger, #b53b3b)',
+                              fontSize: 11,
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            {deleting === app.application_id ? '…' : t('Delete', 'Delete')}
+                          </button>
+                        ) : (
+                          <span
+                            title={t('YAML-defined apps require git removal', 'YAML-defined apps require git removal')}
+                            style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}
+                          >
+                            {t('YAML', 'YAML')}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
