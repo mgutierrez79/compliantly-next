@@ -26,11 +26,26 @@ import { useI18n } from '../lib/i18n'
 
 const CRITICALITY_TIERS = ['tier_1', 'tier_2', 'tier_3'] as const
 
+// slugify turns a display name into a backend-valid application_id
+// (lowercase, alphanumeric + dash). The backend regex is
+// /^[a-z0-9-]+$/ so we strip everything else, fold consecutive
+// dashes, and trim leading/trailing dashes.
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 export function AttestivAppCreatePage() {
   const { t } = useI18n()
   const router = useRouter()
 
   const [applicationId, setApplicationId] = useState('')
+  const [idManuallyEdited, setIdManuallyEdited] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
@@ -127,28 +142,70 @@ export function AttestivAppCreatePage() {
           <Card>
             <CardTitle>{t('Identity', 'Identity')}</CardTitle>
             <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
-              <Field
-                label={t('Application ID', 'Application ID') + ' *'}
-                hint={t('Lowercase letters, digits, dashes. Example: mssql-finance', 'Lowercase letters, digits, dashes. Example: mssql-finance')}
-              >
-                <input
-                  type="text"
-                  value={applicationId}
-                  onChange={(e) => setApplicationId(e.target.value)}
-                  required
-                  style={inputStyle}
-                  placeholder="mssql-finance"
-                />
-              </Field>
               <Field label={t('Display name', 'Display name') + ' *'}>
                 <input
                   type="text"
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setDisplayName(v)
+                    if (!idManuallyEdited) {
+                      setApplicationId(slugify(v))
+                    }
+                  }}
                   required
                   style={inputStyle}
                   placeholder="Microsoft SQL Server — Finance"
                 />
+              </Field>
+              <Field
+                label={t('Application ID', 'Application ID')}
+                hint={
+                  idManuallyEdited
+                    ? t('Lowercase letters, digits, dashes only.', 'Lowercase letters, digits, dashes only.')
+                    : t('Auto-derived from display name. Click Edit ID to customize.', 'Auto-derived from display name. Click Edit ID to customize.')
+                }
+              >
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={applicationId}
+                    onChange={(e) => setApplicationId(e.target.value)}
+                    readOnly={!idManuallyEdited}
+                    required
+                    style={{
+                      ...inputStyle,
+                      opacity: idManuallyEdited ? 1 : 0.7,
+                      cursor: idManuallyEdited ? 'text' : 'default',
+                    }}
+                    placeholder="mssql-finance"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (idManuallyEdited) {
+                        // Reset: re-derive from current display name.
+                        setApplicationId(slugify(displayName))
+                        setIdManuallyEdited(false)
+                      } else {
+                        setIdManuallyEdited(true)
+                      }
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: '0.5px solid var(--color-border-tertiary)',
+                      borderRadius: 4,
+                      padding: '6px 10px',
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      color: 'var(--color-text-secondary)',
+                      fontFamily: 'inherit',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {idManuallyEdited ? t('Reset', 'Reset') : t('Edit ID', 'Edit ID')}
+                  </button>
+                </div>
               </Field>
               <Field label={t('Description', 'Description')}>
                 <textarea
