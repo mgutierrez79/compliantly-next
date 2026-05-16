@@ -63,11 +63,15 @@ function describeEvidence(item: any): { kind: string; title: string } {
       ? item.frameworks.join(', ').toUpperCase()
       : 'all frameworks'
     const findings = Number.isFinite(item.finding_count) ? Number(item.finding_count) : 0
+    const controlFails = Number.isFinite(item.control_fail_count) ? Number(item.control_fail_count) : 0
     const risk = Number.isFinite(item.risk_score) ? Number(item.risk_score) : 0
     const findingsLabel = findings === 1 ? '1 finding' : `${findings} findings`
+    const controlFailLabel = controlFails > 0
+      ? ` · ${controlFails === 1 ? '1 failing control' : `${controlFails} failing controls`}`
+      : ''
     return {
       kind: 'run_report',
-      title: `Run report — ${frameworks} · ${findingsLabel} · risk ${risk}`,
+      title: `Run report — ${frameworks} · ${findingsLabel}${controlFailLabel} · risk ${risk}`,
     }
   }
   // Connector / asset evidence

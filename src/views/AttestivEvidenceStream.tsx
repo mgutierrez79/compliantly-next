@@ -36,6 +36,7 @@ type EvidenceLogEntry = {
   run_hash?: string | null
   status?: string
   finding_count?: number
+  control_fail_count?: number
   risk_score?: number
   metadata?: Record<string, unknown>
 }
@@ -66,8 +67,12 @@ function evidenceTitle(entry: EvidenceLogEntry): string {
       ? entry.frameworks.join(', ').toUpperCase()
       : 'all frameworks'
     const findings = Number.isFinite(entry.finding_count) ? Number(entry.finding_count) : 0
+    const controlFails = Number.isFinite(entry.control_fail_count) ? Number(entry.control_fail_count) : 0
     const risk = Number.isFinite(entry.risk_score) ? Number(entry.risk_score) : 0
-    return `Run report — ${frameworks} · ${findings === 1 ? '1 finding' : `${findings} findings`} · risk ${risk}`
+    const failPart = controlFails > 0
+      ? ` · ${controlFails === 1 ? '1 failing control' : `${controlFails} failing controls`}`
+      : ''
+    return `Run report — ${frameworks} · ${findings === 1 ? '1 finding' : `${findings} findings`}${failPart} · risk ${risk}`
   }
   if (entry.run_id) return `Run ${entry.run_id}`
   return 'Evidence record'
