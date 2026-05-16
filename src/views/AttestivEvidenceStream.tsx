@@ -35,6 +35,8 @@ type EvidenceLogEntry = {
   report_signature?: string | null
   run_hash?: string | null
   status?: string
+  finding_count?: number
+  risk_score?: number
   metadata?: Record<string, unknown>
 }
 type EvidenceLogResponse = {
@@ -58,6 +60,15 @@ function evidenceTitle(entry: EvidenceLogEntry): string {
     const kind = entry.kind.replace(/_/g, ' ')
     return `${friendly[0].toUpperCase()}${friendly.slice(1)} — ${kind}`
   }
+  // Run summary: frameworks + finding count + risk
+  if (entry.run_id && (Array.isArray(entry.frameworks) || typeof entry.risk_score === 'number')) {
+    const frameworks = Array.isArray(entry.frameworks) && entry.frameworks.length
+      ? entry.frameworks.join(', ').toUpperCase()
+      : 'all frameworks'
+    const findings = Number.isFinite(entry.finding_count) ? Number(entry.finding_count) : 0
+    const risk = Number.isFinite(entry.risk_score) ? Number(entry.risk_score) : 0
+    return `Run report — ${frameworks} · ${findings === 1 ? '1 finding' : `${findings} findings`} · risk ${risk}`
+  }
   if (entry.run_id) return `Run ${entry.run_id}`
   return 'Evidence record'
 }
@@ -66,6 +77,7 @@ function evidenceMeta(entry: EvidenceLogEntry): string {
   const parts: string[] = []
   if (entry.kind) parts.push(entry.kind)
   if (entry.section) parts.push(entry.section)
+  if (entry.run_id && !entry.kind) parts.push(entry.run_id)
   if (entry.timestamp) parts.push(`${entry.timestamp.replace('T', ' ').replace(/\.\d+Z$/, ' UTC')}`)
   return parts.join(' · ')
 }

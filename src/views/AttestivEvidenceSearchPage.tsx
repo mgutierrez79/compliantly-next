@@ -8,6 +8,8 @@
 
 import { type FormEvent, useState } from 'react'
 
+
+
 import {
   Badge,
   Card,
@@ -23,6 +25,8 @@ import { useI18n } from '../lib/i18n';
 
 type EvidenceHit = {
   evidence_id: string
+  kind: string
+  title: string
   source?: string
   event?: string
   timestamp?: string
@@ -30,6 +34,10 @@ type EvidenceHit = {
   signature_status?: 'signed' | 'dlq' | 'retrying' | 'unknown'
   frameworks?: string[]
   run_id?: string
+  finding_count?: number
+  risk_score?: number
+  run_hash?: string
+  raw: any
 }
 
 const STATUS_TONE: Record<NonNullable<EvidenceHit['signature_status']>, 'green' | 'red' | 'amber' | 'gray'> = {
@@ -37,6 +45,58 @@ const STATUS_TONE: Record<NonNullable<EvidenceHit['signature_status']>, 'green' 
   dlq: 'red',
   retrying: 'amber',
   unknown: 'gray',
+}
+
+// describeEvidence turns an evidence record's raw fields into a one-
+// line human title. Today the pilot emits two shapes:
+//   1. Run summaries (run_id + frameworks + finding_count + risk_score)
+//   2. Connector evidence (asset_type, action, vm_name, etc.)
+// Keep the matcher loose so unknown shapes still render a sensible
+// title rather than a hex blob.
+function describeEvidence(item: any): { kind: string; title: string } {
+  if (!item || typeof item !== 'object') {
+    return { kind: 'unknown', title: 'Evidence record' }
+  }
+  // Run summary
+  if (item.run_id && (Array.isArray(item.frameworks) || typeof item.risk_score === 'number')) {
+    const frameworks = Array.isArray(item.frameworks) && item.frameworks.length
+      ? item.frameworks.join(', ').toUpperCase()
+      : 'all frameworks'
+    const findings = Number.isFinite(item.finding_count) ? Number(item.finding_count) : 0
+    const risk = Number.isFinite(item.risk_score) ? Number(item.risk_score) : 0
+    const findingsLabel = findings === 1 ? '1 finding' : `${findings} findings`
+    return {
+      kind: 'run_report',
+      title: `Run report — ${frameworks} · ${findingsLabel} · risk ${risk}`,
+    }
+  }
+  // Connector / asset evidence
+  const action = typeof item.action === 'string' ? item.action : ''
+  const assetType = typeof item.asset_type === 'string' ? item.asset_type : ''
+  const subject = typeof item.vm_name === 'string'
+    ? item.vm_name
+    : typeof item.asset_id === 'string'
+      ? item.asset_id
+      : ''
+  if (action || assetType) {
+    const verb = action || 'observed'
+    const obj = assetType || 'asset'
+    return {
+      kind: assetType || action || 'event',
+      title: subject ? `${verb} · ${obj} · ${subject}` : `${verb} · ${obj}`,
+    }
+  }
+  // Fallback: use event/name/message if present, else evidence_id
+  if (typeof item.event === 'string' && item.event) {
+    return { kind: 'event', title: item.event }
+  }
+  if (typeof item.name === 'string' && item.name) {
+    return { kind: 'event', title: item.name }
+  }
+  if (typeof item.message === 'string' && item.message) {
+    return { kind: 'event', title: item.message }
+  }
+  return { kind: 'unknown', title: String(item.evidence_id ?? item.id ?? 'Evidence record') }
 }
 
 export function AttestivEvidenceSearchPage() {
@@ -79,8 +139,11 @@ export function AttestivEvidenceSearchPage() {
           (typeof item?.metadata?.source === 'string' && item.metadata.source) ||
           (typeof item?.metadata?.connectors === 'string' && item.metadata.connectors) ||
           undefined
+        const described = describeEvidence(item)
         return {
           evidence_id: String(item?.evidence_id ?? item?.id ?? item?.run_id ?? ''),
+          kind: described.kind,
+          title: described.title,
           source,
           event: item?.event ?? item?.name,
           timestamp: item?.timestamp ?? item?.created_at,
@@ -88,6 +151,10 @@ export function AttestivEvidenceSearchPage() {
           signature_status: item?.signature_status ?? (signature ? 'signed' : 'unknown'),
           frameworks: Array.isArray(item?.frameworks) ? item.frameworks : undefined,
           run_id: item?.run_id,
+          finding_count: typeof item?.finding_count === 'number' ? item.finding_count : undefined,
+          risk_score: typeof item?.risk_score === 'number' ? item.risk_score : undefined,
+          run_hash: typeof item?.run_hash === 'string' ? item.run_hash : undefined,
+          raw: item,
         }
       })
       setResults(mapped)
@@ -215,6 +282,7 @@ export function AttestivEvidenceSearchPage() {
 }
 
 function EvidenceHitRow({ hit }: { hit: EvidenceHit }) {
+  const [expanded, setExpanded] = useState(false)
   return (
     <div
       style={{
@@ -227,8 +295,8 @@ function EvidenceHitRow({ hit }: { hit: EvidenceHit }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500 }}>
-          {hit.evidence_id}
+        <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>
+          {hit.title}
         </span>
         {hit.signature_status ? <Badge tone={STATUS_TONE[hit.signature_status]}>{hit.signature_status}</Badge> : null}
         {hit.source ? <Badge tone="navy">{hit.source}</Badge> : null}
@@ -241,8 +309,54 @@ function EvidenceHitRow({ hit }: { hit: EvidenceHit }) {
           {hit.timestamp ? formatTimestamp(hit.timestamp) : '—'}
         </span>
       </div>
+      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {hit.evidence_id ? (
+          <span style={{ fontFamily: 'var(--font-mono)' }}>{hit.evidence_id}</span>
+        ) : null}
+        {hit.signature ? (
+          <span title={hit.signature}>
+            Ed25519 · {hit.signature.slice(0, 12)}…
+          </span>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--color-text-link, var(--color-brand-blue))',
+            cursor: 'pointer',
+            padding: 0,
+            fontSize: 11,
+            fontFamily: 'inherit',
+          }}
+        >
+          {expanded ? '− hide details' : '+ details'}
+        </button>
+      </div>
       {hit.event ? <div style={{ color: 'var(--color-text-secondary)' }}>{hit.event}</div> : null}
-      {hit.signature ? <SignatureBox label="signature" value={hit.signature} /> : null}
+      {expanded ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {hit.signature ? <SignatureBox label="signature" value={hit.signature} /> : null}
+          {hit.run_hash ? <SignatureBox label="run_hash" value={hit.run_hash} /> : null}
+          <pre
+            style={{
+              background: 'var(--color-surface-secondary, #f7f7fa)',
+              padding: '8px 10px',
+              borderRadius: 4,
+              fontSize: 11,
+              fontFamily: 'var(--font-mono)',
+              overflowX: 'auto',
+              maxHeight: 240,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              margin: 0,
+            }}
+          >
+            {JSON.stringify(hit.raw, null, 2)}
+          </pre>
+        </div>
+      ) : null}
     </div>
   )
 }
