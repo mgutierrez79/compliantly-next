@@ -13,7 +13,7 @@
 // areas need an evidence push, and trigger the signed PDF for an
 // auditor.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   Badge,
@@ -129,6 +129,8 @@ export function AttestivFrameworksPage() {
   const [error, setError] = useState<string | null>(null)
   const [usingDemo, setUsingDemo] = useState(false)
   const [generating, setGenerating] = useState<string | null>(null)
+  const [elapsed, setElapsed] = useState(0)
+  const cancelRef = useRef<{ cancelled: boolean; jobID: string | null }>({ cancelled: false, jobID: null })
   const [generated, setGenerated] = useState<{ id: string; path: string } | null>(null)
 
   useEffect(() => {
@@ -187,25 +189,34 @@ export function AttestivFrameworksPage() {
     return { passing, total }
   }, [frameworks])
 
-  // Two-step generate-and-download:
-  //   1. POST /v1/generate-report — synchronously creates the run +
-  //      markdown report. Response includes the run_id we need to
-  //      pull the PDF off the per-run endpoint.
-  //   2. GET /v1/runs/{run_id}/report/pdf — auto-generates the PDF
-  //      from the just-created run and streams it back. We turn the
-  //      streamed bytes into a blob URL and click an invisible <a>
-  //      to trigger the browser's download dialogue.
+  // Async generate-and-download:
+  //   1. POST /v1/generate-report/async — enqueues a worker job and
+  //      returns { job_id } immediately so the UI doesn't block.
+  //   2. Poll GET /v1/worker/report/{job_id} until status="completed"
+  //      (or "failed"/"cancelled"). result.run_id arrives once the
+  //      worker finishes evaluating + rendering the markdown report.
+  //   3. GET /v1/runs/{run_id}/report/pdf — pulls the PDF and triggers
+  //      the browser download.
   //
-  // Errors at either step surface in the error banner and never
-  // produce a half-generated state — if step 1 succeeds but step 2
-  // fails, the markdown report is still on the server and the user
-  // can download it later from the Audit / Reports page.
+  // The old synchronous /v1/generate-report path blocked the request
+  // for 60+s on tenants with hundreds of assets, which read as
+  // "broken" in the UI. The async flow surfaces an elapsed counter and
+  // a Cancel button so the user can leave or abort. Polling cap: 10
+  // min — long enough for big tenants, short enough that a wedged
+  // worker doesn't keep polling forever.
   async function generateReport(framework: FrameworkPosture) {
+    cancelRef.current = { cancelled: false, jobID: null }
     setGenerating(framework.id)
     setGenerated(null)
     setError(null)
+    setElapsed(0)
+    const startedAt = Date.now()
+    const tick = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000)
+    const POLL_MS = 2000
+    const MAX_MS = 10 * 60 * 1000
+
     try {
-      const genResponse = await apiFetch('/generate-report', {
+      const enqueueResponse = await apiFetch('/generate-report/async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -213,17 +224,51 @@ export function AttestivFrameworksPage() {
           frameworks: [framework.id],
         }),
       })
-      if (!genResponse.ok) {
-        const text = await genResponse.text().catch(() => '')
-        throw new Error(text || `${genResponse.status} ${genResponse.statusText}`)
+      if (!enqueueResponse.ok) {
+        const text = await enqueueResponse.text().catch(() => '')
+        throw new Error(text || `${enqueueResponse.status} ${enqueueResponse.statusText}`)
       }
-      const genBody = await genResponse.json().catch(() => ({}))
+      const enqueueBody = await enqueueResponse.json().catch(() => ({}))
+      const jobID: string | undefined = typeof enqueueBody?.job_id === 'string' ? enqueueBody.job_id : undefined
+      if (!jobID) {
+        throw new Error('Backend returned no job_id; cannot track report')
+      }
+      cancelRef.current.jobID = jobID
+
+      let result: any = null
+      while (true) {
+        if (cancelRef.current.cancelled) {
+          throw new Error('cancelled')
+        }
+        if (Date.now() - startedAt > MAX_MS) {
+          throw new Error('Report generation exceeded 10 min — check /v1/worker/jobs for the job state')
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_MS))
+        const pollResponse = await apiFetch(`/worker/report/${encodeURIComponent(jobID)}`)
+        if (!pollResponse.ok) {
+          const text = await pollResponse.text().catch(() => '')
+          throw new Error(text || `poll: ${pollResponse.status} ${pollResponse.statusText}`)
+        }
+        const pollBody = await pollResponse.json().catch(() => ({}))
+        const status = String(pollBody?.status ?? '')
+        if (status === 'completed') {
+          result = pollBody?.result ?? {}
+          break
+        }
+        if (status === 'failed') {
+          throw new Error(String(pollBody?.error ?? 'job failed'))
+        }
+        if (status === 'cancelled') {
+          throw new Error('cancelled')
+        }
+      }
+
       const runID: string | undefined =
-        (typeof genBody?.run?.run_id === 'string' && genBody.run.run_id) ||
-        (typeof genBody?.run_id === 'string' && genBody.run_id) ||
+        (typeof result?.run?.run_id === 'string' && result.run.run_id) ||
+        (typeof result?.run_id === 'string' && result.run_id) ||
         undefined
       if (!runID) {
-        throw new Error('Backend returned no run_id; cannot fetch PDF')
+        throw new Error('Job finished without a run_id; cannot fetch PDF')
       }
 
       const pdfResponse = await apiFetch(`/runs/${encodeURIComponent(runID)}/report/pdf`)
@@ -243,9 +288,27 @@ export function AttestivFrameworksPage() {
 
       setGenerated({ id: framework.id, path: runID })
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to generate report')
+      if (err?.message === 'cancelled') {
+        setError(t('Report generation cancelled.', 'Report generation cancelled.'))
+      } else {
+        setError(err?.message ?? 'Failed to generate report')
+      }
     } finally {
+      clearInterval(tick)
       setGenerating(null)
+      setElapsed(0)
+    }
+  }
+
+  async function cancelGenerate() {
+    cancelRef.current.cancelled = true
+    const jobID = cancelRef.current.jobID
+    if (!jobID) return
+    try {
+      await apiFetch(`/worker/jobs/${encodeURIComponent(jobID)}/cancel`, { method: 'POST' })
+    } catch {
+      // The polling loop will surface the cancellation regardless;
+      // ignore network failures from the cancel call itself.
     }
   }
 
@@ -311,7 +374,9 @@ export function AttestivFrameworksPage() {
                 key={framework.id}
                 framework={framework}
                 generating={generating === framework.id}
+                elapsed={generating === framework.id ? elapsed : 0}
                 onGenerate={() => generateReport(framework)}
+                onCancel={() => void cancelGenerate()}
               />
             ))}
           </div>
@@ -324,11 +389,15 @@ export function AttestivFrameworksPage() {
 function FrameworkCard({
   framework,
   generating,
+  elapsed,
   onGenerate,
+  onCancel,
 }: {
   framework: FrameworkPosture
   generating: boolean
+  elapsed: number
   onGenerate: () => void
+  onCancel: () => void
 }) {
   const {
     t
@@ -380,11 +449,17 @@ function FrameworkCard({
             <i className="ti ti-math-function" aria-hidden="true" />
             {t('How scored', 'How scored')}
           </GhostButton>
+          {generating ? (
+            <GhostButton onClick={onCancel}>
+              <i className="ti ti-x" aria-hidden="true" />
+              {t('Cancel', 'Cancel')}
+            </GhostButton>
+          ) : null}
           <PrimaryButton onClick={onGenerate} disabled={generating}>
             {generating ? (
               <>
                 <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
-                {t('Generating…', 'Generating…')}
+                {t('Generating…', 'Generating…')} {elapsed > 0 ? `${elapsed}s` : null}
               </>
             ) : (
               <>
