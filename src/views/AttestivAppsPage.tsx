@@ -15,6 +15,7 @@ import {
   Card,
   CardTitle,
   EmptyState,
+  PrimaryButton,
   Skeleton,
   Topbar,
 } from '../components/AttestivUi'
@@ -131,20 +132,9 @@ export function AttestivAppsPage() {
         right={
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <FilterBar value={filter} onChange={setFilter} />
-            <a
-              href="/apps/new"
-              style={{
-                padding: '6px 12px',
-                borderRadius: 4,
-                background: 'var(--color-text-primary)',
-                color: 'var(--color-surface-primary)',
-                fontSize: 12,
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
+            <PrimaryButton onClick={() => router.push('/apps/new')}>
               + {t('Add application', 'Add application')}
-            </a>
+            </PrimaryButton>
           </div>
         }
       />
