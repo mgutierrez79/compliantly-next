@@ -164,6 +164,7 @@ const sections: Record<SectionKey, Section> = {
       { to: '/frameworks',           label: 'All frameworks', icon: 'ti-layout-list' },
       { to: '/frameworks/controls',  label: 'Controls',       icon: 'ti-list-check' },
       { to: '/frameworks/crosswalk', label: 'Crosswalk',      icon: 'ti-arrows-cross' },
+      { to: '/scoring/scope',        label: 'Per-scope score', icon: 'ti-zoom-scan' },
     ],
   },
   apps: {
