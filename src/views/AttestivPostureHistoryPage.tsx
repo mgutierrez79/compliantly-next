@@ -86,7 +86,7 @@ export function AttestivPostureHistoryPage() {
     const allowDemo = isDemoMode()
     async function load() {
       try {
-        const response = await apiFetch(`/scores/history?days=${window}`)
+        const response = await apiFetch(`/scoring/history?days=${window}`)
         if (!response.ok) throw new Error(`${response.status}`)
         const body = await response.json().catch(() => ({}))
         const items: any[] = Array.isArray(body?.items) ? body.items : []
