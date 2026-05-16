@@ -65,16 +65,31 @@ export function AttestivEvidenceSearchPage() {
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
       const body = await response.json().catch(() => ({}))
       const items: any[] = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : []
-      const mapped: EvidenceHit[] = items.map((item) => ({
-        evidence_id: String(item?.evidence_id ?? item?.id ?? ''),
-        source: item?.source,
-        event: item?.event ?? item?.name,
-        timestamp: item?.timestamp ?? item?.created_at,
-        signature: item?.signature,
-        signature_status: item?.signature_status ?? (item?.signature ? 'signed' : 'unknown'),
-        frameworks: Array.isArray(item?.frameworks) ? item.frameworks : undefined,
-        run_id: item?.run_id,
-      }))
+      const mapped: EvidenceHit[] = items.map((item) => {
+        // The on-disk evidence log uses `report_signature` (Ed25519 hex
+        // hash) and stashes the connector source under metadata.source.
+        // Fall through to the legacy top-level fields if a future
+        // emitter does add them so the row still renders right.
+        const signature: string | undefined =
+          (typeof item?.signature === 'string' && item.signature) ||
+          (typeof item?.report_signature === 'string' && item.report_signature) ||
+          undefined
+        const source: string | undefined =
+          (typeof item?.source === 'string' && item.source) ||
+          (typeof item?.metadata?.source === 'string' && item.metadata.source) ||
+          (typeof item?.metadata?.connectors === 'string' && item.metadata.connectors) ||
+          undefined
+        return {
+          evidence_id: String(item?.evidence_id ?? item?.id ?? item?.run_id ?? ''),
+          source,
+          event: item?.event ?? item?.name,
+          timestamp: item?.timestamp ?? item?.created_at,
+          signature,
+          signature_status: item?.signature_status ?? (signature ? 'signed' : 'unknown'),
+          frameworks: Array.isArray(item?.frameworks) ? item.frameworks : undefined,
+          run_id: item?.run_id,
+        }
+      })
       setResults(mapped)
     } catch (err: any) {
       setError(err?.message ?? 'Search failed')
