@@ -236,25 +236,45 @@ export function AttestivAppsPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         {app.runtime_managed ? (
-                          <button
-                            type="button"
-                            disabled={deleting === app.application_id}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              void deleteApp(app.application_id)
-                            }}
-                            title={t('Delete this runtime-added application', 'Delete this runtime-added application')}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: deleting === app.application_id ? 'wait' : 'pointer',
-                              color: 'var(--color-text-danger, #b53b3b)',
-                              fontSize: 11,
-                              fontFamily: 'inherit',
-                            }}
-                          >
-                            {deleting === app.application_id ? '…' : t('Delete', 'Delete')}
-                          </button>
+                          <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/apps/${encodeURIComponent(app.application_id)}/edit`)
+                              }}
+                              title={t('Edit this runtime-added application', 'Edit this runtime-added application')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--color-text-link, var(--color-brand-blue))',
+                                fontSize: 11,
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {t('Edit', 'Edit')}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deleting === app.application_id}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void deleteApp(app.application_id)
+                              }}
+                              title={t('Delete this runtime-added application', 'Delete this runtime-added application')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: deleting === app.application_id ? 'wait' : 'pointer',
+                                color: 'var(--color-text-danger, #b53b3b)',
+                                fontSize: 11,
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {deleting === app.application_id ? '…' : t('Delete', 'Delete')}
+                            </button>
+                          </div>
                         ) : (
                           <span
                             title={t('YAML-defined apps require git removal', 'YAML-defined apps require git removal')}
