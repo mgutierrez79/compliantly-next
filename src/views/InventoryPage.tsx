@@ -79,6 +79,11 @@ export function InventoryPage() {
   // assetId currently mid-patch; suppresses concurrent edits to the
   // same row and shows a small busy state on the dropdown.
   const [assigningAssetId, setAssigningAssetId] = useState<string | null>(null)
+  // Bulk-select state for compliance-scope toggle. The operator can
+  // pick test/dev/decommissioned VMs and mark them out of evaluation
+  // scope (PCI CDE segmentation, GxP scope rules etc.).
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   // URL drives the filter so a sidebar link like
   // /inventory?asset_type=firewall lands on the right slice without
@@ -204,6 +209,47 @@ export function InventoryPage() {
       setError(err instanceof Error ? err.message : 'Failed to assign site')
     } finally {
       setAssigningAssetId(null)
+    }
+  }
+
+  // bulkScopeToggle sends a single bulk PATCH for the selected asset
+  // ids, marking them in/out of compliance evaluation scope. Used
+  // for PCI CDE segmentation, GxP scope rules, ISO27001 SoA scope.
+  async function bulkScopeToggle(inScope: boolean) {
+    if (selected.size === 0) return
+    setBulkBusy(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const response = await apiFetch('/inventory/scope-toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset_ids: Array.from(selected),
+          framework_evaluation_enabled: inScope,
+        }),
+      })
+      const responseBody = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(responseBody?.detail || responseBody?.error || `${response.status} ${response.statusText}`)
+      }
+      const updated = Number(responseBody?.updated ?? 0)
+      const ids = new Set(selected)
+      setAssets((current) =>
+        current.map((a) =>
+          ids.has(a.asset_id) ? { ...a, framework_evaluation_enabled: inScope } : a,
+        ),
+      )
+      setInfo(
+        inScope
+          ? t('{count} asset(s) marked in scope.', '{count} asset(s) marked in scope.', { count: updated })
+          : t('{count} asset(s) marked out of scope.', '{count} asset(s) marked out of scope.', { count: updated }),
+      )
+      setSelected(new Set())
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Bulk update failed')
+    } finally {
+      setBulkBusy(false)
     }
   }
 
@@ -410,6 +456,70 @@ export function InventoryPage() {
           >
             {t('Asset registry', 'Asset registry')}
           </CardTitle>
+          {selected.size > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '8px 12px',
+                marginBottom: 8,
+                borderRadius: 6,
+                background: 'var(--color-surface-secondary)',
+                border: '0.5px solid var(--color-border-tertiary)',
+                fontSize: 12,
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>
+                {t('{count} selected', '{count} selected', { count: selected.size })}
+              </span>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => void bulkScopeToggle(false)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: '0.5px solid var(--color-border-tertiary)',
+                  background: 'var(--color-surface-primary)',
+                  cursor: bulkBusy ? 'wait' : 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                {t('Mark out of scope', 'Mark out of scope')}
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => void bulkScopeToggle(true)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: '0.5px solid var(--color-border-tertiary)',
+                  background: 'var(--color-surface-primary)',
+                  cursor: bulkBusy ? 'wait' : 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                {t('Mark in scope', 'Mark in scope')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelected(new Set())}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: 'var(--color-text-tertiary)',
+                }}
+              >
+                {t('Clear', 'Clear')}
+              </button>
+            </div>
+          )}
           {loading ? (
             <Skeleton lines={6} height={36} />
           ) : filtered.length === 0 ? (
@@ -444,6 +554,28 @@ export function InventoryPage() {
                     textAlign: 'left',
                   }}
                 >
+                  <th style={{ padding: '6px 4px 6px 0', width: 24 }}>
+                    <input
+                      type="checkbox"
+                      title={t('Select all visible', 'Select all visible')}
+                      checked={filtered.length > 0 && filtered.every((a) => selected.has(a.asset_id))}
+                      ref={(el) => {
+                        if (!el) return
+                        const allSelected = filtered.length > 0 && filtered.every((a) => selected.has(a.asset_id))
+                        const someSelected = filtered.some((a) => selected.has(a.asset_id))
+                        el.indeterminate = someSelected && !allSelected
+                      }}
+                      onChange={(e) => {
+                        const next = new Set(selected)
+                        if (e.target.checked) {
+                          filtered.forEach((a) => next.add(a.asset_id))
+                        } else {
+                          filtered.forEach((a) => next.delete(a.asset_id))
+                        }
+                        setSelected(next)
+                      }}
+                    />
+                  </th>
                   <th style={{ padding: '6px 10px 6px 0' }}>{t('Asset', 'Asset')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Criticality', 'Criticality')}</th>
@@ -460,6 +592,13 @@ export function InventoryPage() {
                     sites={sites}
                     busy={assigningAssetId === asset.asset_id}
                     onAssign={(siteID) => void assignSite(asset, siteID)}
+                    selected={selected.has(asset.asset_id)}
+                    onToggleSelect={(checked) => {
+                      const next = new Set(selected)
+                      if (checked) next.add(asset.asset_id)
+                      else next.delete(asset.asset_id)
+                      setSelected(next)
+                    }}
                   />
                 ))}
               </tbody>
@@ -476,11 +615,15 @@ function AssetRow({
   sites,
   busy,
   onAssign,
+  selected,
+  onToggleSelect,
 }: {
   asset: InventoryAsset
   sites: SiteOption[]
   busy: boolean
   onAssign: (siteID: string) => void
+  selected: boolean
+  onToggleSelect: (checked: boolean) => void
 }) {
   const { t } = useI18n()
   const displayName = (asset.name && asset.name.trim()) || asset.asset_id
@@ -523,10 +666,45 @@ function AssetRow({
   const criticalityLabel = criticality
     ? t(criticality.charAt(0).toUpperCase() + criticality.slice(1), criticality)
     : ''
+  // Out-of-scope assets get visually dimmed so the operator can see
+  // at a glance which rows aren't being graded by the compliance
+  // engine. opacity 0.55 reads as "muted but still legible".
+  const outOfScope = asset.framework_evaluation_enabled === false
   return (
-    <tr style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+    <tr
+      style={{
+        borderTop: '0.5px solid var(--color-border-tertiary)',
+        opacity: outOfScope ? 0.55 : 1,
+      }}
+    >
+      <td style={{ padding: '10px 4px 10px 0', verticalAlign: 'top' }}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={(e) => onToggleSelect(e.target.checked)}
+          aria-label={`Select ${displayName}`}
+        />
+      </td>
       <td style={{ padding: '10px 10px 10px 0' }}>
-        <div style={{ fontWeight: 500 }}>{displayName}</div>
+        <div style={{ fontWeight: 500 }}>
+          {displayName}
+          {outOfScope && (
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 10,
+                padding: '1px 6px',
+                borderRadius: 4,
+                background: 'var(--color-surface-secondary)',
+                color: 'var(--color-text-tertiary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {t('Out of scope', 'Out of scope')}
+            </span>
+          )}
+        </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
           {asset.asset_id}
         </div>
