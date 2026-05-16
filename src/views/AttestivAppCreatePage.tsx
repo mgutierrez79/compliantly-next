@@ -21,6 +21,7 @@ import {
   GhostButton,
   Topbar,
 } from '../components/AttestivUi'
+import { AppDependenciesField, type Dependency } from '../components/AppDependenciesField'
 import { apiFetch } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
@@ -51,6 +52,8 @@ export function AttestivAppCreatePage() {
   const [ownerEmail, setOwnerEmail] = useState('')
   const [criticalityTier, setCriticalityTier] = useState<'tier_1' | 'tier_2' | 'tier_3'>('tier_2')
   const [vmNames, setVmNames] = useState('')
+
+  const [dependencies, setDependencies] = useState<Dependency[]>([])
 
   const [gxpValidated, setGxpValidated] = useState(false)
   const [gxpRegulation, setGxpRegulation] = useState('21_cfr_11')
@@ -95,6 +98,20 @@ export function AttestivAppCreatePage() {
       return
     }
 
+    const cleanDeps = dependencies
+      .map((d) => ({
+        application_id: d.application_id.trim(),
+        dependency_type: d.dependency_type.trim(),
+        criticality: d.criticality,
+      }))
+      .filter((d) => d.application_id && d.application_id !== id)
+    for (const d of cleanDeps) {
+      if (!d.dependency_type) {
+        setError(t('Each dependency needs a dependency_type.', 'Each dependency needs a dependency_type.'))
+        return
+      }
+    }
+
     const body: any = {
       application_id: id,
       display_name: name,
@@ -102,6 +119,7 @@ export function AttestivAppCreatePage() {
       owner_email: ownerEmail.trim() || undefined,
       criticality_tier: criticalityTier,
       components,
+      dependencies: cleanDeps,
     }
     if (gxpValidated) {
       body.gxp = {
@@ -258,6 +276,17 @@ export function AttestivAppCreatePage() {
                 placeholder="VRWMSQLA01, VRWMSQLA02"
               />
             </Field>
+          </Card>
+
+          <Card style={{ marginTop: 12 }}>
+            <CardTitle>{t('Dependencies', 'Dependencies')}</CardTitle>
+            <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4, marginBottom: 8 }}>
+              {t(
+                'Other applications this one needs at runtime (e.g. an AD/LDAP service or a database backend). Cascade analysis uses these to compute blast radius.',
+                'Other applications this one needs at runtime (e.g. an AD/LDAP service or a database backend). Cascade analysis uses these to compute blast radius.',
+              )}
+            </p>
+            <AppDependenciesField value={dependencies} onChange={setDependencies} selfId={applicationId} />
           </Card>
 
           <Card style={{ marginTop: 12 }}>

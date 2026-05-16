@@ -20,6 +20,7 @@ import {
   Skeleton,
   Topbar,
 } from '../components/AttestivUi'
+import { AppDependenciesField, type Dependency } from '../components/AppDependenciesField'
 import { apiFetch } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
@@ -41,6 +42,12 @@ type GxPBlock = {
   quality_owner?: string
 }
 
+type DependencyRow = {
+  application_id?: string
+  dependency_type?: string
+  criticality?: string
+}
+
 type AppDetail = {
   application_id: string
   display_name?: string
@@ -48,6 +55,7 @@ type AppDetail = {
   owner_email?: string
   criticality_tier?: string
   components?: ComponentRow[]
+  dependencies?: DependencyRow[]
   gxp?: GxPBlock
   runtime_managed?: boolean
 }
@@ -66,6 +74,8 @@ export function AttestivAppEditPage() {
   const [ownerEmail, setOwnerEmail] = useState('')
   const [criticalityTier, setCriticalityTier] = useState<'tier_1' | 'tier_2' | 'tier_3'>('tier_2')
   const [vmNames, setVmNames] = useState('')
+
+  const [dependencies, setDependencies] = useState<Dependency[]>([])
 
   const [gxpValidated, setGxpValidated] = useState(false)
   const [gxpRegulation, setGxpRegulation] = useState('21_cfr_11')
@@ -94,6 +104,16 @@ export function AttestivAppEditPage() {
         const tier = (body.criticality_tier ?? 'tier_2') as 'tier_1' | 'tier_2' | 'tier_3'
         setCriticalityTier(CRITICALITY_TIERS.includes(tier) ? tier : 'tier_2')
         setVmNames((body.components ?? []).map((c) => c.vm_name).filter(Boolean).join(', '))
+        const deps: Dependency[] = (body.dependencies ?? [])
+          .filter((d): d is DependencyRow => !!d?.application_id)
+          .map((d) => ({
+            application_id: String(d.application_id ?? ''),
+            dependency_type: String(d.dependency_type ?? ''),
+            criticality: (['critical', 'high', 'medium', 'low'].includes(d.criticality ?? '')
+              ? (d.criticality as Dependency['criticality'])
+              : 'high'),
+          }))
+        setDependencies(deps)
         const gxp = body.gxp ?? {}
         setGxpValidated(Boolean(gxp.validated))
         setGxpRegulation(gxp.regulation ?? '21_cfr_11')
@@ -138,6 +158,20 @@ export function AttestivAppEditPage() {
       return
     }
 
+    const cleanDeps = dependencies
+      .map((d) => ({
+        application_id: d.application_id.trim(),
+        dependency_type: d.dependency_type.trim(),
+        criticality: d.criticality,
+      }))
+      .filter((d) => d.application_id && d.application_id !== applicationId)
+    for (const d of cleanDeps) {
+      if (!d.dependency_type) {
+        setError(t('Each dependency needs a dependency_type.', 'Each dependency needs a dependency_type.'))
+        return
+      }
+    }
+
     const body: any = {
       application_id: applicationId,
       display_name: name,
@@ -145,6 +179,7 @@ export function AttestivAppEditPage() {
       owner_email: ownerEmail.trim() || undefined,
       criticality_tier: criticalityTier,
       components,
+      dependencies: cleanDeps,
     }
     if (gxpValidated) {
       body.gxp = {
@@ -286,6 +321,17 @@ export function AttestivAppEditPage() {
                 placeholder="VRWMSQLA01, VRWMSQLA02"
               />
             </Field>
+          </Card>
+
+          <Card style={{ marginTop: 12 }}>
+            <CardTitle>{t('Dependencies', 'Dependencies')}</CardTitle>
+            <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4, marginBottom: 8 }}>
+              {t(
+                'Other applications this one needs at runtime (e.g. an AD/LDAP service or a database backend). Cascade analysis uses these to compute blast radius.',
+                'Other applications this one needs at runtime (e.g. an AD/LDAP service or a database backend). Cascade analysis uses these to compute blast radius.',
+              )}
+            </p>
+            <AppDependenciesField value={dependencies} onChange={setDependencies} selfId={applicationId} />
           </Card>
 
           <Card style={{ marginTop: 12 }}>
