@@ -686,25 +686,28 @@ function AssetRow({
         />
       </td>
       <td style={{ padding: '10px 10px 10px 0' }}>
-        <div style={{ fontWeight: 500 }}>
+        <a
+          href={`/inventory/${encodeURIComponent(asset.asset_id)}`}
+          style={{ fontWeight: 500, textDecoration: 'none', color: 'var(--color-text-primary)' }}
+        >
           {displayName}
-          {outOfScope && (
-            <span
-              style={{
-                marginLeft: 8,
-                fontSize: 10,
-                padding: '1px 6px',
-                borderRadius: 4,
-                background: 'var(--color-surface-secondary)',
-                color: 'var(--color-text-tertiary)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
-              {t('Out of scope', 'Out of scope')}
-            </span>
-          )}
-        </div>
+        </a>
+        {outOfScope && (
+          <span
+            style={{
+              marginLeft: 8,
+              fontSize: 10,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: 'var(--color-surface-secondary)',
+              color: 'var(--color-text-tertiary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {t('Out of scope', 'Out of scope')}
+          </span>
+        )}
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
           {asset.asset_id}
         </div>
