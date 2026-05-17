@@ -236,7 +236,6 @@ export function AttestivDashboardOverview() {
   const connectorRows = useMemo(() => {
     return connectors.slice(0, 4).map((connector) => {
       const brandHex = connectorBrandHex(connector.name)
-      const failures = connector.failure_count || 0
       const lastSeen = connector.last_success || connector.last_run
       const isStale = (() => {
         if (!lastSeen) return true
@@ -244,7 +243,12 @@ export function AttestivDashboardOverview() {
           (connector.delivery_mode === 'stream' ? 60 : 21600)) * 2 * 1000
         return Date.now() - new Date(lastSeen).getTime() > interval
       })()
-      const status: 'OK' | 'Warn' | 'Down' = failures > 0 || isStale ? 'Warn' : 'OK'
+      // last_status reflects the current attempt; failure_count is a
+      // lifetime counter and goes positive after one bad poll even
+      // when the connector has since recovered.
+      const lastStatus = ((connector as any).last_status ?? '').toLowerCase()
+      const currentlyErroring = lastStatus === 'error' || lastStatus === 'failed'
+      const status: 'OK' | 'Warn' | 'Down' = currentlyErroring || isStale ? 'Warn' : 'OK'
       const bar = status === 'OK' ? 92 : 45
       const barColor = status === 'OK'
         ? 'var(--color-status-green-mid)'

@@ -28,6 +28,7 @@ type ConnectorStatus = {
   label?: string
   category?: string
   status?: string
+  last_status?: string
   delivery_mode?: string
   last_run?: string | null
   last_success?: string | null
@@ -80,12 +81,19 @@ function classifyConnector(connector: ConnectorStatus): RowState {
     if (typeof connector.last_error === 'string') return connector.last_error || null
     return connector.last_error.message || null
   })()
+  // failure_count is a LIFETIME counter — a connector with 1 failure
+  // out of 500 successful runs would otherwise show "Retrying"
+  // forever. Use last_status (or fall back to last_error presence) so
+  // the badge reflects the CURRENT attempt's outcome.
+  const lastStatus = (connector.last_status ?? '').toLowerCase()
+  const currentlyErroring =
+    lastStatus === 'error' || lastStatus === 'failed' || (!!errorMessage && !connector.last_success)
 
-  if (failures > 0 && !isStale) {
+  if (currentlyErroring && !isStale) {
     return {
-      border: 'var(--color-status-amber-mid)',
-      badge: { tone: 'amber', label: 'Retrying' },
-      metrics: `${failures} retries · ${errorMessage || 'see logs'}`,
+      border: 'var(--color-status-red-mid)',
+      badge: { tone: 'red', label: 'Error' },
+      metrics: `${failures} lifetime failures · ${errorMessage || 'see logs'}`,
       errorLine: errorMessage || undefined,
     }
   }
