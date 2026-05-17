@@ -47,6 +47,33 @@ type CredentialField = {
   required?: boolean
 }
 
+// Mirrors internal/security/secrets.go IsSecretField. Used to decide
+// whether a "********" value in the loaded edit response is a real
+// masked secret (clear in the form, prompt for re-type) versus a
+// literal eight-asterisk string (which we'd then pass through as-is
+// — unlikely but supported).
+const SECRET_FIELD_NAMES = new Set([
+  'api_key',
+  'api_token',
+  'app_token',
+  'access_key',
+  'access_token',
+  'client_secret',
+  'password',
+  'secret',
+  'secret_key',
+  'session_token',
+  'token',
+  'user_token',
+])
+const MASKED_SECRET = '********'
+
+function isSecretFieldName(name: string): boolean {
+  const normalized = name.trim().toLowerCase()
+  if (SECRET_FIELD_NAMES.has(normalized)) return true
+  return normalized.endsWith('_secret') || normalized.endsWith('_token')
+}
+
 type ConnectorKind = {
   value: string
   label: string
@@ -278,6 +305,13 @@ export function AttestivConnectorWizard() {
   // new row instead of updating the one the user clicked Edit on.
   const [editLoadError, setEditLoadError] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState<boolean>(isEditMode)
+  // Secret fields that came back masked ("********") from the server.
+  // In edit mode we clear them from the form so the operator sees a
+  // blank input instead of literal asterisks — when they submit it
+  // blank we re-mask on the way back so the backend's MergeMasked-
+  // Secrets path preserves the existing value. When they type a new
+  // value the field name is removed from this set on the next render.
+  const [originallyMasked, setOriginallyMasked] = useState<Set<string>>(new Set())
 
   // Fetch the catalog once at mount. The wizard renders before the
   // fetch resolves; in that window the credential step shows only
@@ -351,14 +385,28 @@ export function AttestivConnectorWizard() {
         const ep = stringField(target.base_url) || stringField(target.endpoint) || stringField(target.url) || stringField(target.host)
         const poll = numberField(target.poll_interval_seconds)
         const creds: Record<string, string> = {}
+        const maskedKeys = new Set<string>()
         for (const [k, v] of Object.entries(target)) {
           if (META_KEYS.has(k)) continue
-          if (typeof v === 'string') creds[k] = v
-          else if (typeof v === 'number' || typeof v === 'boolean') creds[k] = String(v)
+          if (typeof v === 'string') {
+            // Detect masked secrets: blank the form so the operator
+            // sees an empty field with "leave blank to keep current"
+            // copy, and remember that this key was masked so we can
+            // re-mask on save if they don't change it.
+            if (isSecretFieldName(k) && v === MASKED_SECRET) {
+              creds[k] = ''
+              maskedKeys.add(k)
+            } else {
+              creds[k] = v
+            }
+          } else if (typeof v === 'number' || typeof v === 'boolean') {
+            creds[k] = String(v)
+          }
         }
         setName(displayName)
         setEndpoint(ep)
         setCredentials(creds)
+        setOriginallyMasked(maskedKeys)
         setVerifyTLS(verify)
         if (poll > 0) setPollSeconds(poll)
         setEditLoadError(null)
@@ -589,6 +637,18 @@ export function AttestivConnectorWizard() {
       if (settings.tenantId) {
         saveHeaders['X-Tenant-ID'] = settings.tenantId
       }
+      // Re-mask any secret field that was loaded masked AND was not
+      // re-typed by the operator. Sending "********" trips the backend
+      // MergeMaskedSecrets path and preserves the stored value — empty
+      // string would overwrite the secret with "", which is what
+      // produced the "I changed the password but it's still 403" bug.
+      const credsForSave: Record<string, string> = { ...credentials }
+      for (const key of originallyMasked) {
+        if ((credsForSave[key] ?? '') === '') {
+          credsForSave[key] = MASKED_SECRET
+        }
+      }
+
       const response = await fetch(`${baseUrl}/v1/connectors`, {
         method: 'POST',
         headers: saveHeaders,
@@ -599,7 +659,7 @@ export function AttestivConnectorWizard() {
           // verify_tls travels alongside credentials so the backend
           // config map carries the same shape connectors already
           // read (boolConfig(config["verify_tls"], envBool(...))).
-          credentials: { ...credentials, verify_tls: verifyTLS ? 'true' : 'false' },
+          credentials: { ...credsForSave, verify_tls: verifyTLS ? 'true' : 'false' },
           poll_interval_seconds: pollSeconds,
         }),
       })
@@ -678,6 +738,7 @@ export function AttestivConnectorWizard() {
                 credentials={credentials}
                 pollSeconds={pollSeconds}
                 verifyTLS={verifyTLS}
+                originallyMasked={originallyMasked}
                 setName={setName}
                 setEndpoint={setEndpoint}
                 setCredential={setCredential}
@@ -850,6 +911,7 @@ function CredentialsStep(props: {
   credentials: Record<string, string>
   pollSeconds: number
   verifyTLS: boolean
+  originallyMasked: Set<string>
   setName: (v: string) => void
   setEndpoint: (v: string) => void
   setCredential: (key: string, value: string) => void
@@ -908,15 +970,28 @@ function CredentialsStep(props: {
           ) : null}
         </FormField>
       ) : null}
-      {props.fields.map((field) => (
-        <FormField key={field.key} label={field.label} hint={field.hint}>
-          <TextInput
-            type={field.type === 'password' ? 'password' : 'text'}
-            value={props.credentials[field.key] ?? ''}
-            onChange={(event) => props.setCredential(field.key, event.target.value)}
-          />
-        </FormField>
-      ))}
+      {props.fields.map((field) => {
+        const wasMasked = props.originallyMasked.has(field.key)
+        const hint = wasMasked
+          ? t(
+              'Stored value preserved if left blank. Type a new value to rotate.',
+              'Stored value preserved if left blank. Type a new value to rotate.',
+            )
+          : field.hint
+        const placeholder = wasMasked
+          ? t('Leave blank to keep current', 'Leave blank to keep current')
+          : undefined
+        return (
+          <FormField key={field.key} label={field.label} hint={hint}>
+            <TextInput
+              type={field.type === 'password' ? 'password' : 'text'}
+              value={props.credentials[field.key] ?? ''}
+              placeholder={placeholder}
+              onChange={(event) => props.setCredential(field.key, event.target.value)}
+            />
+          </FormField>
+        )
+      })}
       <FormField label={t('Poll interval', 'Poll interval')} hint={t(
         'How often the worker collects evidence. Lower bound is enforced server-side.',
         'How often the worker collects evidence. Lower bound is enforced server-side.'
