@@ -263,9 +263,23 @@ export function AttestivFrameworksPage() {
         }
       }
 
+      // Backend result shape varies: some paths put run_id at top
+      // level, others nest it under .run, and the worker pipeline
+      // currently emits neither — only report_path with the run_id
+      // baked into the filename (`reports/run-YYYYMMDD-HHMMSS.md`).
+      // Parse the basename as a fallback so the download still fires.
+      const parseRunIDFromPath = (path: unknown): string | undefined => {
+        if (typeof path !== 'string') return undefined
+        const base = path.split(/[\\/]/).pop() ?? ''
+        const match = base.match(/^(run-\d{8}-\d{6})/)
+        return match ? match[1] : undefined
+      }
       const runID: string | undefined =
         (typeof result?.run?.run_id === 'string' && result.run.run_id) ||
         (typeof result?.run_id === 'string' && result.run_id) ||
+        (typeof result?.summary?.run_id === 'string' && result.summary.run_id) ||
+        parseRunIDFromPath(result?.report_path) ||
+        parseRunIDFromPath(result?.manifest_path) ||
         undefined
       if (!runID) {
         throw new Error('Job finished without a run_id; cannot fetch PDF')
