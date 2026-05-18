@@ -54,6 +54,11 @@ type InventoryAsset = {
   tags?: string[]
   external_refs?: InventoryExternalRef[]
   metadata?: Record<string, unknown>
+  // Set by the backend list handler from the live connector
+  // snapshot cache — the union of connectors whose latest poll
+  // included this asset. Independent of external_refs (which only
+  // reflects the connector that originally inserted the row).
+  present_in?: string[]
 }
 
 type SiteOption = { site_id: string; display_name?: string }
@@ -629,7 +634,14 @@ function AssetRow({
   const displayName = (asset.name && asset.name.trim()) || asset.asset_id
   const assetType = String(asset.asset_type ?? '').toLowerCase()
   const criticality = String(asset.criticality ?? '').toLowerCase()
-  const sources = (asset.external_refs ?? []).map((ref) => ref.source).filter(Boolean)
+  // Source pills: prefer the backend's cross-referenced present_in
+  // list (built from the live connector snapshot — shows every
+  // connector that observed this asset). Fall back to external_refs
+  // for offline / cold-cache states. Dedupe + sort so the badge
+  // order stays stable across refreshes.
+  const externalRefSources = (asset.external_refs ?? []).map((ref) => ref.source?.split(':')[0]).filter(Boolean) as string[]
+  const presentIn = (asset.present_in ?? []) as string[]
+  const sources = Array.from(new Set([...presentIn, ...externalRefSources])).sort()
   const tags = asset.tags ?? []
   const currentSite = String(asset.datacenter_id ?? '').trim()
   const [overrideVMSite, setOverrideVMSite] = useState(false)
@@ -726,8 +738,8 @@ function AssetRow({
         {sources.length === 0 ? (
           <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
         ) : (
-          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
-            {sources.slice(0, 2).map((src) => (
+          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }} title={sources.join(', ')}>
+            {sources.slice(0, 3).map((src) => (
               <span
                 key={src}
                 style={{
@@ -739,11 +751,16 @@ function AssetRow({
                 }}
                 title={src}
               >
-                {src.split(':')[0]}
+                {src}
               </span>
             ))}
-            {sources.length > 2 ? (
-              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>+{sources.length - 2}</span>
+            {sources.length > 3 ? (
+              <span
+                style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}
+                title={sources.slice(3).join(', ')}
+              >
+                +{sources.length - 3}
+              </span>
             ) : null}
           </span>
         )}
