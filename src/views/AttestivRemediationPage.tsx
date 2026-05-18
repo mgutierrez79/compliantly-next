@@ -48,6 +48,20 @@ type Task = {
   updated_at?: string
 }
 
+type RemediationSummary = {
+  total: number
+  by_status: Record<string, number>
+  by_priority: Record<string, number>
+  aging_buckets: Record<string, number>
+  open_count: number
+  in_progress_count: number
+  resolved_count: number
+  overdue_count: number
+  mean_age_open_days: number
+  oldest_open_task_id?: string
+  oldest_open_age_days: number
+}
+
 const STATUS_TONE: Record<string, 'amber' | 'green' | 'gray' | 'navy'> = {
   open: 'amber',
   in_progress: 'navy',
@@ -72,6 +86,7 @@ export function AttestivRemediationPage() {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [overdue, setOverdue] = useState<Task[]>([])
+  const [summaryStats, setSummaryStats] = useState<RemediationSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -87,9 +102,10 @@ export function AttestivRemediationPage() {
       if (filter.framework_id) params.set('framework_id', filter.framework_id)
       if (filter.assigned_to) params.set('assigned_to', filter.assigned_to)
       params.set('limit', '500')
-      const [listRes, overdueRes] = await Promise.all([
+      const [listRes, overdueRes, summaryRes] = await Promise.all([
         apiFetch(`/remediation?${params.toString()}`),
         apiFetch('/remediation/overdue'),
+        apiFetch('/remediation/summary'),
       ])
       if (!listRes.ok) throw new Error(`${listRes.status} ${listRes.statusText}`)
       const listBody = await listRes.json()
@@ -97,6 +113,9 @@ export function AttestivRemediationPage() {
       if (overdueRes.ok) {
         const overdueBody = await overdueRes.json()
         setOverdue(Array.isArray(overdueBody?.items) ? overdueBody.items : [])
+      }
+      if (summaryRes.ok) {
+        setSummaryStats(await summaryRes.json())
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load remediation'
@@ -191,11 +210,41 @@ export function AttestivRemediationPage() {
             gap: 10,
           }}
         >
-          <SummaryCard label={t('Open', 'Open')} value={summary.open} icon="ti-circle-dot" tone="amber" />
-          <SummaryCard label={t('In progress', 'In progress')} value={summary.in_progress} icon="ti-tools" tone="navy" />
-          <SummaryCard label={t('Overdue', 'Overdue')} value={overdue.length} icon="ti-clock-exclamation" tone="red" />
-          <SummaryCard label={t('Resolved', 'Resolved')} value={summary.resolved} icon="ti-circle-check" tone="green" />
+          <SummaryCard label={t('Open', 'Open')} value={summaryStats?.open_count ?? summary.open} icon="ti-circle-dot" tone="amber" />
+          <SummaryCard label={t('In progress', 'In progress')} value={summaryStats?.in_progress_count ?? summary.in_progress} icon="ti-tools" tone="navy" />
+          <SummaryCard label={t('Overdue', 'Overdue')} value={summaryStats?.overdue_count ?? overdue.length} icon="ti-clock-exclamation" tone="red" />
+          <SummaryCard label={t('Resolved', 'Resolved')} value={summaryStats?.resolved_count ?? summary.resolved} icon="ti-circle-check" tone="green" />
         </div>
+
+        {summaryStats && summaryStats.open_count + summaryStats.in_progress_count > 0 ? (
+          <Card style={{ marginTop: 10 }}>
+            <CardTitle>{t('Aging buckets (open tasks)', 'Aging buckets (open tasks)')}</CardTitle>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: 10,
+                marginTop: 8,
+              }}
+            >
+              {(['0-7d', '8-30d', '31-60d', '60+d'] as const).map((bucket) => {
+                const count = summaryStats.aging_buckets?.[bucket] ?? 0
+                const tone = bucket === '60+d' ? 'red' : bucket === '31-60d' ? 'amber' : 'navy'
+                return <SummaryCard key={bucket} label={t(`Open ${bucket}`, `Open ${bucket}`)} value={count} icon="ti-hourglass-low" tone={tone} />
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              <span>
+                {t('Mean open age', 'Mean open age')}: <strong style={{ color: 'var(--color-text-primary)' }}>{summaryStats.mean_age_open_days.toFixed(1)}d</strong>
+              </span>
+              {summaryStats.oldest_open_task_id ? (
+                <span>
+                  {t('Oldest open', 'Oldest open')}: <code>{summaryStats.oldest_open_task_id.slice(0, 8)}</code> ({summaryStats.oldest_open_age_days}d)
+                </span>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle right={<FilterBar value={filter} onChange={setFilter} />}>{t('Tasks', 'Tasks')}</CardTitle>
