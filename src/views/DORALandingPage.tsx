@@ -13,15 +13,16 @@
 //      the trust-center (prospects verifying offline).
 
 import Link from 'next/link'
-import Image from 'next/image'
-import brandLogo from '../assets/brand-logo.png.png'
+import { AttestivLogo } from '../components/AttestivLayout'
 
 export function DORALandingPage() {
   return (
     <div style={pageStyle}>
       <header style={headerStyle}>
         <Link href="/" style={brandLinkStyle}>
-          <Image src={brandLogo} alt="Attestiv" width={28} height={28} priority />
+          <span style={brandLogoBoxStyle}>
+            <AttestivLogo />
+          </span>
           <span style={brandLabelStyle}>Attestiv</span>
         </Link>
         <nav style={navStyle}>
@@ -231,6 +232,14 @@ const brandLabelStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
   letterSpacing: 0.2,
+}
+
+const brandLogoBoxStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  width: 28,
+  height: 28,
+  alignItems: 'center',
+  justifyContent: 'center',
 }
 
 const navStyle: React.CSSProperties = {

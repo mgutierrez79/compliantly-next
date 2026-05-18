@@ -461,7 +461,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
 // blue. Inlining beats a separate SVG file because the colors are
 // design tokens — keeping the source here means the logo moves with
 // the palette automatically.
-function AttestivLogo() {
+export function AttestivLogo() {
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
       <path
