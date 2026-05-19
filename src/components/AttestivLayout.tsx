@@ -161,10 +161,11 @@ const sections: Record<SectionKey, Section> = {
     key: 'frameworks',
     navLabel: 'Frameworks',
     items: [
-      { to: '/frameworks',           label: 'All frameworks', icon: 'ti-layout-list' },
-      { to: '/frameworks/controls',  label: 'Controls',       icon: 'ti-list-check' },
-      { to: '/frameworks/crosswalk', label: 'Crosswalk',      icon: 'ti-arrows-cross' },
-      { to: '/scoring/scope',        label: 'Per-scope score', icon: 'ti-zoom-scan' },
+      { to: '/frameworks',            label: 'All frameworks',    icon: 'ti-layout-list' },
+      { to: '/frameworks/controls',   label: 'Controls',          icon: 'ti-list-check' },
+      { to: '/frameworks/crosswalk',  label: 'Crosswalk',         icon: 'ti-arrows-cross' },
+      { to: '/scoring/crosswalk',     label: 'Coverage by evidence', icon: 'ti-table-options' },
+      { to: '/scoring/scope',         label: 'Per-scope score',   icon: 'ti-zoom-scan' },
     ],
   },
   apps: {
