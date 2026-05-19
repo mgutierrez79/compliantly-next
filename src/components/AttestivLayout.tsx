@@ -284,6 +284,7 @@ const sections: Record<SectionKey, Section> = {
       { to: '/settings/connectors',  label: 'Connector poll', icon: 'ti-refresh' },
       { to: '/settings/scoring',     label: 'Scoring poll',     icon: 'ti-gauge' },
       { to: '/settings/retention',   label: 'Retention policy', icon: 'ti-clock-hour-4' },
+      { to: '/settings/dr-drill',    label: 'DR drill status',  icon: 'ti-shield-check' },
       { to: '/settings/support',     label: 'Support bundle',   icon: 'ti-file-zip' },
     ],
   },
