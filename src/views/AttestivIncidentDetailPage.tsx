@@ -333,6 +333,7 @@ export function AttestivIncidentDetailPage() {
                     label={nt.label}
                     subtitle={nt.subtitle}
                     notification={existing}
+                    incidentID={id}
                     busy={busy}
                     onBuildDraft={() => buildDraft(nt.key)}
                     onMarkSubmitted={(refNum) => existing && markSubmitted(existing.id, refNum)}
@@ -351,6 +352,7 @@ function NotificationBlock({
   label,
   subtitle,
   notification,
+  incidentID,
   busy,
   onBuildDraft,
   onMarkSubmitted,
@@ -358,6 +360,7 @@ function NotificationBlock({
   label: string
   subtitle: string
   notification?: Notification
+  incidentID: string
   busy: boolean
   onBuildDraft: () => void
   onMarkSubmitted: (referenceNumber: string) => void
@@ -368,6 +371,28 @@ function NotificationBlock({
 
   const [refNumber, setRefNumber] = useState('')
   const [showJSON, setShowJSON] = useState(false)
+
+  // downloadPDF fetches the rendered notification PDF (NIS2 default
+  // or DORA Art.17) and triggers a browser save. The blob path goes
+  // through apiFetch so the session cookie is included.
+  async function downloadPDF(format: 'nis2_art23' | 'dora_art17') {
+    if (!notification) return
+    const path = `/incidents/${encodeURIComponent(incidentID)}/notifications/${encodeURIComponent(notification.id)}/pdf?format=${format}`
+    const r = await apiFetch(path)
+    if (!r.ok) return
+    const blob = await r.blob()
+    const cd = r.headers.get('Content-Disposition') || ''
+    const match = cd.match(/filename="?([^"]+)"?/)
+    const filename = match?.[1] || `${format}-${incidentID}-${notification.id}.pdf`
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(objectUrl)
+  }
   const submitted = notification?.status === 'submitted'
 
   return (
@@ -401,9 +426,15 @@ function NotificationBlock({
               <> {t('· ref', '· ref')} <code>{notification.reference_number}</code></>
             ) : null}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <GhostButton onClick={() => setShowJSON((v) => !v)}>
               <i className="ti ti-code" aria-hidden="true" /> {showJSON ? 'Hide' : 'View'} content
+            </GhostButton>
+            <GhostButton onClick={() => { void downloadPDF('nis2_art23') }}>
+              <i className="ti ti-file-download" aria-hidden="true" /> {t('NIS2 PDF', 'NIS2 PDF')}
+            </GhostButton>
+            <GhostButton onClick={() => { void downloadPDF('dora_art17') }}>
+              <i className="ti ti-file-download" aria-hidden="true" /> {t('DORA PDF', 'DORA PDF')}
             </GhostButton>
             {!submitted ? (
               <>
