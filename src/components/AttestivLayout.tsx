@@ -204,6 +204,7 @@ const sections: Record<SectionKey, Section> = {
     navLabel: 'Risk',
     items: [
       { to: '/risks',          label: 'Register',  icon: 'ti-alert-octagon' },
+      { to: '/risks/heatmap',  label: 'Heatmap',   icon: 'ti-grid-dots' },
       { to: '/risks?source=auto_scoring', label: 'Auto-created', icon: 'ti-rocket' },
       { to: '/risks?status=in_treatment', label: 'In treatment', icon: 'ti-tools' },
     ],

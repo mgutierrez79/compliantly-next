@@ -1,0 +1,215 @@
+'use client';
+// Risks ▸ Heatmap.
+//
+// 4×4 likelihood × impact grid of open risks. ISO 31000 / DORA
+// Art.6 explicitly expect this visualisation. The platform's stored
+// likelihood/impact vocabulary is 4 levels (critical/high/medium/
+// low), so the grid is honest at 4×4 — no synthetic 5×5 padding.
+//
+// Backed by /v1/risks/heatmap. Cells are color-shaded by score
+// (likelihood × impact, 1..16); clicking a cell expands the risk
+// IDs that landed there with quick links to each detail page.
+
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+
+import {
+  Badge,
+  Banner,
+  Card,
+  CardTitle,
+  Skeleton,
+  Topbar,
+} from '../components/AttestivUi'
+import { apiFetch } from '../lib/api'
+import { useI18n } from '../lib/i18n'
+
+type Cell = {
+  likelihood: string
+  impact: string
+  score: number
+  count: number
+  risk_ids?: string[]
+}
+
+type HeatmapResponse = {
+  tenant_id: string
+  likelihood_order: string[]
+  impact_order: string[]
+  cells: Cell[]
+  total_open: number
+}
+
+export function AttestivRiskHeatmapPage() {
+  const { t } = useI18n()
+  const [data, setData] = useState<HeatmapResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const r = await apiFetch('/risks/heatmap')
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+        const body = (await r.json()) as HeatmapResponse
+        if (!cancelled) setData(body)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load heatmap')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [])
+
+  // cells keyed by "likelihood|impact" for O(1) lookup as we render.
+  const cellMap = useMemo(() => {
+    const m = new Map<string, Cell>()
+    for (const c of data?.cells || []) m.set(`${c.likelihood}|${c.impact}`, c)
+    return m
+  }, [data])
+
+  return (
+    <>
+      <Topbar
+        title={t('Risk heatmap', 'Risk heatmap')}
+        left={data ? <Badge tone={data.total_open === 0 ? 'green' : 'amber'}>{data.total_open} {t('open', 'open')}</Badge> : null}
+      />
+      <div className="attestiv-content">
+        {error ? <Banner tone="error">{error}</Banner> : null}
+
+        <Banner tone="info" title={t('What this page is', 'What this page is')}>
+          {t(
+            "ISO 31000 / DORA Art.6 risk visualisation. Rows are likelihood (bottom-up); columns are impact (left-right). The top-right cell is the highest exposure (critical likelihood × critical impact = score 16). Counts are open + in_treatment risks only; closed and accepted are out of this view. Click a non-zero cell to see the risks behind the number.",
+            "ISO 31000 / DORA Art.6 risk visualisation. Rows are likelihood (bottom-up); columns are impact (left-right). The top-right cell is the highest exposure (critical likelihood × critical impact = score 16). Counts are open + in_treatment risks only; closed and accepted are out of this view. Click a non-zero cell to see the risks behind the number.",
+          )}
+        </Banner>
+
+        {loading ? (
+          <Skeleton lines={6} height={48} />
+        ) : !data ? (
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No data', 'No data')}</div>
+        ) : (
+          <Card style={{ marginTop: 12 }}>
+            <CardTitle>{t('Likelihood × Impact', 'Likelihood × Impact')}</CardTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(4, 1fr)', gap: 2, marginTop: 12 }}>
+              {/* top-left empty corner */}
+              <div />
+              {/* impact header — left to right: low → critical */}
+              {data.impact_order.map((im) => (
+                <div key={`h:${im}`} style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '6px 0', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  {im}
+                </div>
+              ))}
+              {/* rows: top-down = critical → low */}
+              {[...data.likelihood_order].reverse().map((l) => (
+                <RowSliver key={`r:${l}`} likelihood={l} impacts={data.impact_order} cellMap={cellMap} selected={selected} setSelected={setSelected} t={t} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              <span>{t('Legend', 'Legend')}:</span>
+              <LegendChip color="var(--color-status-green-mid)" label="1-2" />
+              <LegendChip color="var(--color-status-amber-mid)" label="3-6" />
+              <LegendChip color="var(--color-status-red-mid)" label="8-12" />
+              <LegendChip color="#7e1d1d" label="16" />
+              <span style={{ marginLeft: 'auto' }}>{t('Score = likelihood × impact', 'Score = likelihood × impact')} (1..16)</span>
+            </div>
+          </Card>
+        )}
+
+        {selected && data ? (
+          <Card style={{ marginTop: 12 }}>
+            <CardTitle right={<button onClick={() => setSelected(null)} style={{ fontSize: 11, background: 'none', border: '0.5px solid var(--color-border-secondary)', color: 'var(--color-text-secondary)', padding: '4px 10px', borderRadius: 'var(--border-radius-md)', cursor: 'pointer' }}>{t('Close', 'Close')}</button>}>
+              {t('Risks in', 'Risks in')} {selected}
+            </CardTitle>
+            {(() => {
+              const cell = cellMap.get(selected)
+              if (!cell || !cell.risk_ids || cell.risk_ids.length === 0) {
+                return <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No risks in this cell.', 'No risks in this cell.')}</div>
+              }
+              return (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {cell.risk_ids.map((id) => (
+                    <li key={id} style={{ padding: '6px 0', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                      <Link href={`/risks/${encodeURIComponent(id)}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-brand-blue)' }}>{id}</Link>
+                    </li>
+                  ))}
+                </ul>
+              )
+            })()}
+          </Card>
+        ) : null}
+      </div>
+    </>
+  )
+}
+
+function RowSliver({ likelihood, impacts, cellMap, selected, setSelected, t }: {
+  likelihood: string
+  impacts: string[]
+  cellMap: Map<string, Cell>
+  selected: string | null
+  setSelected: (v: string | null) => void
+  t: (k: string, fallback?: string) => string
+}) {
+  return (
+    <>
+      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', alignSelf: 'center', textTransform: 'uppercase', letterSpacing: 0.4 }}>{likelihood}</div>
+      {impacts.map((im) => {
+        const key = `${likelihood}|${im}`
+        const c = cellMap.get(key)
+        const count = c?.count ?? 0
+        const score = c?.score ?? 0
+        const isSelected = selected === key
+        const tone = scoreColor(score)
+        return (
+          <button
+            key={key}
+            onClick={() => count > 0 && setSelected(isSelected ? null : key)}
+            disabled={count === 0}
+            style={{
+              minHeight: 72,
+              border: isSelected ? '2px solid var(--color-text-primary)' : '0.5px solid var(--color-border-secondary)',
+              borderRadius: 'var(--border-radius-md)',
+              background: count > 0 ? tone : 'transparent',
+              color: count > 0 ? '#fff' : 'var(--color-text-tertiary)',
+              cursor: count > 0 ? 'pointer' : 'default',
+              padding: 8,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'inherit',
+            }}
+            title={count > 0 ? t('Click for risk IDs', 'Click for risk IDs') : t('No risks in this cell', 'No risks in this cell')}
+          >
+            <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{count}</div>
+            <div style={{ fontSize: 9, marginTop: 4, opacity: 0.85, letterSpacing: 0.4 }}>score {score}</div>
+          </button>
+        )
+      })}
+    </>
+  )
+}
+
+function LegendChip({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+      <span style={{ width: 14, height: 10, background: color, borderRadius: 2, display: 'inline-block' }} />
+      <span>{label}</span>
+    </span>
+  )
+}
+
+function scoreColor(score: number): string {
+  if (score >= 16) return '#7e1d1d'
+  if (score >= 8) return 'var(--color-status-red-mid)'
+  if (score >= 3) return 'var(--color-status-amber-mid)'
+  if (score >= 1) return 'var(--color-status-green-mid)'
+  return 'transparent'
+}
