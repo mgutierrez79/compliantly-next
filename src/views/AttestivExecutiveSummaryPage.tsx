@@ -34,6 +34,10 @@ type ExecGap = {
   status: string
   weight: number
   finding_code?: string
+  severity?: string
+  priority_score?: number
+  cross_framework_count?: number
+  cross_frameworks?: string[]
 }
 
 type TrendPoint = { timestamp: string; score: number; status: string }
@@ -90,6 +94,19 @@ export function AttestivExecutiveSummaryPage() {
       case 'REVIEW': return 'amber'
       case 'WARN': return 'amber'
       case 'FAIL': return 'red'
+      default: return 'gray'
+    }
+  }
+
+  // severityTone maps the prioritizer's canonical severity buckets to
+  // the same badge palette the rest of the audit surface uses. Keep
+  // the buckets in sync with scoring.PriorityForWeight.
+  const severityTone = (severity?: string): 'green' | 'amber' | 'red' | 'gray' => {
+    switch ((severity || '').toLowerCase()) {
+      case 'critical': return 'red'
+      case 'high': return 'red'
+      case 'medium': return 'amber'
+      case 'low': return 'green'
       default: return 'gray'
     }
   }
@@ -176,17 +193,41 @@ export function AttestivExecutiveSummaryPage() {
                   {fw.top_gaps.length > 0 ? (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
-                        {t('Top gaps (by lift contribution)', 'Top gaps (by lift contribution)')}
+                        {t('Top gaps (ranked by priority)', 'Top gaps (ranked by priority)')}
                       </div>
                       <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ fontSize: 10, color: 'var(--color-text-tertiary)', textAlign: 'left' }}>
+                            <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Severity', 'Severity')}</th>
+                            <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Control', 'Control')}</th>
+                            <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Status', 'Status')}</th>
+                            <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Priority', 'Priority')}</th>
+                            <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Leverage', 'Leverage')}</th>
+                          </tr>
+                        </thead>
                         <tbody>
                           {fw.top_gaps.map((g, i) => (
                             <tr key={g.control_id} style={{ borderTop: i ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                              <td style={{ padding: '6px 8px' }}><code style={{ fontSize: 11 }}>{g.control_id}</code></td>
-                              <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>{g.control_name || '—'}</td>
+                              <td style={{ padding: '6px 8px' }}>
+                                <Badge tone={severityTone(g.severity)}>{(g.severity || '—').toUpperCase()}</Badge>
+                              </td>
+                              <td style={{ padding: '6px 8px' }}>
+                                <code style={{ fontSize: 11 }}>{g.control_id}</code>
+                                {g.control_name ? <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{g.control_name}</div> : null}
+                              </td>
                               <td style={{ padding: '6px 8px' }}><Badge tone={kpiTone(g.status)}>{g.status}</Badge></td>
-                              <td style={{ padding: '6px 8px', color: 'var(--color-text-tertiary)', fontSize: 10 }}>{t('w=', 'w=')}{g.weight}</td>
-                              {g.finding_code ? <td style={{ padding: '6px 8px', color: 'var(--color-text-tertiary)', fontSize: 10 }}><code>{g.finding_code}</code></td> : <td />}
+                              <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                                {typeof g.priority_score === 'number' ? g.priority_score.toFixed(2) : '—'}
+                              </td>
+                              <td style={{ padding: '6px 8px', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+                                {(g.cross_framework_count || 0) > 0 ? (
+                                  <span title={g.cross_frameworks?.join(', ')}>
+                                    +{g.cross_framework_count} {t('framework(s)', 'framework(s)')}
+                                  </span>
+                                ) : (
+                                  t('Single-framework', 'Single-framework')
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
