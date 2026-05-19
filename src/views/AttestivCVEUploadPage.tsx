@@ -46,6 +46,13 @@ type CVEScan = {
   uploaded_by?: string
 }
 
+type KEVStatus = {
+  enabled: boolean
+  kev_size: number
+  last_refreshed_at?: string
+  age_hours?: number
+}
+
 const SAMPLE_CSV = `cve_id,cvss_score,affected_system,days_since_detection,severity,fixed_at
 CVE-2025-1234,9.8,vm-101,12,critical,
 CVE-2025-5678,7.5,vm-101,3,high,2026-05-15T00:00:00Z
@@ -68,23 +75,51 @@ export function AttestivCVEUploadPage() {
   const { t } = useI18n()
 
   const [scans, setScans] = useState<CVEScan[]>([])
+  const [kev, setKev] = useState<KEVStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [format, setFormat] = useState<'csv' | 'json'>('csv')
   const [body, setBody] = useState(SAMPLE_CSV)
   const [submitting, setSubmitting] = useState(false)
+  const [refreshingKEV, setRefreshingKEV] = useState(false)
 
   async function refresh() {
     try {
-      const r = await apiFetch('/evidence/cve-scan')
+      const [r, kevR] = await Promise.all([
+        apiFetch('/evidence/cve-scan'),
+        apiFetch('/system/cveenrich/status'),
+      ])
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
       const payload = (await r.json()) as { items: CVEScan[] }
       setScans(payload.items || [])
+      if (kevR.ok) {
+        setKev((await kevR.json()) as KEVStatus)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scans')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function refreshKEV() {
+    setRefreshingKEV(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const r = await apiFetch('/system/cveenrich/refresh', { method: 'POST' })
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        throw new Error(text || `${r.status} ${r.statusText}`)
+      }
+      const body = (await r.json()) as { entries_loaded: number }
+      setSuccess(t('KEV refreshed: {{n}} entries.', 'KEV refreshed: {{n}} entries.').replace('{{n}}', String(body.entries_loaded)))
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'KEV refresh failed')
+    } finally {
+      setRefreshingKEV(false)
     }
   }
 
@@ -158,6 +193,38 @@ export function AttestivCVEUploadPage() {
           )}
         </Banner>
 
+        {kev?.enabled ? (
+          <Card style={{ marginTop: 10 }}>
+            <CardTitle right={
+              <GhostButton onClick={refreshKEV} disabled={refreshingKEV}>
+                <i className="ti ti-refresh" aria-hidden="true" />
+                {refreshingKEV ? t('Refreshing…', 'Refreshing…') : t('Refresh KEV', 'Refresh KEV')}
+              </GhostButton>
+            }>
+              {t('CISA KEV enrichment', 'CISA KEV enrichment')}
+            </CardTitle>
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+              {t(
+                'CVEs uploaded here are cross-checked against the CISA Known Exploited Vulnerabilities catalog. A CVE in this catalog is being actively exploited in the wild RIGHT NOW — the strongest priority signal possible. Records gain an is_kev=true field plus a kev tag so framework controls can gate on it.',
+                'CVEs uploaded here are cross-checked against the CISA Known Exploited Vulnerabilities catalog. A CVE in this catalog is being actively exploited in the wild RIGHT NOW — the strongest priority signal possible. Records gain an is_kev=true field plus a kev tag so framework controls can gate on it.',
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12, flexWrap: 'wrap' }}>
+              <span>
+                <strong>{kev.kev_size.toLocaleString()}</strong> {t('catalog entries', 'catalog entries')}
+              </span>
+              {kev.last_refreshed_at ? (
+                <span style={{ color: 'var(--color-text-tertiary)' }}>
+                  {t('Last refresh', 'Last refresh')}: {kev.last_refreshed_at.slice(0, 19).replace('T', ' ')} UTC
+                  {kev.age_hours != null ? ` (${Math.round(kev.age_hours)}h ago)` : ''}
+                </span>
+              ) : (
+                <Badge tone="amber">{t('not refreshed yet', 'not refreshed yet')}</Badge>
+              )}
+            </div>
+          </Card>
+        ) : null}
+
         <Card style={{ marginTop: 10 }}>
           <CardTitle right={
             <div style={{ display: 'flex', gap: 4 }}>
@@ -222,24 +289,36 @@ export function AttestivCVEUploadPage() {
             </div>
           ) : (
             <div>
-              {scans.slice().reverse().map((scan) => (
-                <div key={scan.id} style={rowStyle}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>
-                      {scan.scanner} · <span style={{ color: 'var(--color-text-tertiary)' }}>{scan.scan_date.slice(0, 10)}</span>
+              {scans.slice().reverse().map((scan) => {
+                // Count of findings that look like they'd hit KEV
+                // enrichment (critical or CVSS>=9). Operator-visible
+                // proxy for "of N critical findings, how many are
+                // actively-exploited?" — the hydrator's actual gate.
+                const criticalsWithKEVPotential = scan.findings.filter(
+                  (f) => (f.severity || '').toLowerCase() === 'critical' || (f.cvss_score ?? 0) >= 9,
+                ).length
+                return (
+                  <div key={scan.id} style={rowStyle}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>
+                        {scan.scanner} · <span style={{ color: 'var(--color-text-tertiary)' }}>{scan.scan_date.slice(0, 10)}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                        <code>{scan.id}</code>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                      <code>{scan.id}</code>
-                    </div>
+                    <Badge tone="red">{scan.critical_count} critical</Badge>
+                    <Badge tone="amber">{scan.high_count} high</Badge>
+                    <Badge tone="navy">{scan.findings.length} findings</Badge>
+                    {criticalsWithKEVPotential > 0 && kev?.enabled ? (
+                      <Badge tone="red"><i className="ti ti-flame" aria-hidden="true" /> {criticalsWithKEVPotential} KEV-eligible</Badge>
+                    ) : null}
+                    <GhostButton onClick={() => deleteScan(scan.id)}>
+                      <i className="ti ti-trash" aria-hidden="true" />
+                    </GhostButton>
                   </div>
-                  <Badge tone="red">{scan.critical_count} critical</Badge>
-                  <Badge tone="amber">{scan.high_count} high</Badge>
-                  <Badge tone="navy">{scan.findings.length} findings</Badge>
-                  <GhostButton onClick={() => deleteScan(scan.id)}>
-                    <i className="ti ti-trash" aria-hidden="true" />
-                  </GhostButton>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </Card>
