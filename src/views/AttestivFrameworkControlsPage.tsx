@@ -14,6 +14,7 @@
 // communicates intent.
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 
 import {
   Badge,
@@ -289,8 +290,14 @@ export function AttestivFrameworkControlsPage() {
                         <Badge tone="navy">{control.framework}</Badge>
                       </td>
                       <td style={{ padding: '10px' }}>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500 }}>{control.control_id}</div>
-                        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{control.name}</div>
+                        <Link
+                          href={`/scoring/frameworks/${encodeURIComponent(keyFor(control.framework, control.control_id).split('/')[0])}/controls/${encodeURIComponent(control.control_id)}`}
+                          style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                          title="View evidence detail"
+                        >
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: 'var(--color-brand-blue)' }}>{control.control_id}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{control.name}</div>
+                        </Link>
                       </td>
                       <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>{control.area ?? '—'}</td>
                       <td style={{ padding: '10px' }}>

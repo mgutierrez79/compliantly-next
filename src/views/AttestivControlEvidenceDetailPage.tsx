@@ -1,0 +1,263 @@
+'use client';
+// Audit ▸ Per-control evidence detail.
+//
+// The page an auditor opens when they want to spot-check a control:
+// "evidence_count says 3, prove it". Lists every evidence record the
+// engine used to score this control — source, timestamp, type, the
+// requirement tag it satisfied, and a 5-field payload preview. Plus
+// the per-requirement breakdown so the auditor sees which axis of
+// the requirement failed (presence vs freshness vs frequency vs
+// threshold vs field-match) — not just an aggregate score.
+//
+// Backed by /v1/scoring/frameworks/{id}/controls/{cid}/evidence.
+
+import { useEffect, useState } from 'react'
+
+import {
+  Badge,
+  Banner,
+  Card,
+  CardTitle,
+  Skeleton,
+  Topbar,
+} from '../components/AttestivUi'
+import { apiFetch } from '../lib/api'
+import { useI18n } from '../lib/i18n'
+
+type EvidenceRecord = {
+  evidence_id: string
+  type: string
+  timestamp: string
+  source?: string
+  satisfies_tags?: string[]
+  payload_preview?: Record<string, string>
+}
+
+type RequirementRow = {
+  tag: string
+  type: string
+  combined_score: number
+  presence_score: number
+  freshness_score: number
+  frequency_score: number
+  threshold_score: number
+  field_match_score: number
+  gate_failed: boolean
+  evidence_ids?: string[]
+}
+
+type Response = {
+  tenant_id: string
+  framework_id: string
+  control_id: string
+  control_name: string
+  status: string
+  score: number
+  evidence_count: number
+  records: EvidenceRecord[]
+  requirements: RequirementRow[]
+}
+
+export function AttestivControlEvidenceDetailPage({
+  frameworkId,
+  controlId,
+}: {
+  frameworkId: string
+  controlId: string
+}) {
+  const { t } = useI18n()
+  const [data, setData] = useState<Response | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const r = await apiFetch(`/scoring/frameworks/${encodeURIComponent(frameworkId)}/controls/${encodeURIComponent(controlId)}/evidence`)
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+        const body = (await r.json()) as Response
+        if (!cancelled) setData(body)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load evidence detail')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [frameworkId, controlId])
+
+  const statusTone = (status: string): 'green' | 'amber' | 'red' | 'gray' => {
+    switch ((status || '').toLowerCase()) {
+      case 'pass': return 'green'
+      case 'review': return 'amber'
+      case 'warn': return 'amber'
+      case 'fail': return 'red'
+      default: return 'gray'
+    }
+  }
+
+  const scoreTone = (score: number): 'green' | 'amber' | 'red' | 'gray' => {
+    if (score >= 0.95) return 'green'
+    if (score >= 0.7) return 'amber'
+    if (score > 0) return 'red'
+    return 'gray'
+  }
+
+  return (
+    <>
+      <Topbar
+        title={`${frameworkId.toUpperCase()} · ${controlId}`}
+        left={data ? (
+          <Badge tone={statusTone(data.status)}>{(data.status || '—').toUpperCase()}</Badge>
+        ) : null}
+      />
+      <div className="attestiv-content">
+        {error ? <Banner tone="error">{error}</Banner> : null}
+
+        <Banner tone="info" title={t('What this page is', 'What this page is')}>
+          {t(
+            'Auditor spot-check view. For this control, lists every evidence record the engine used to score it — record id, source, timestamp, the requirement tag it satisfies, and a 5-field payload preview. Plus the per-requirement axis breakdown (presence, freshness, frequency, threshold, field match) so you see which axis pulled the score down.',
+            'Auditor spot-check view. For this control, lists every evidence record the engine used to score it — record id, source, timestamp, the requirement tag it satisfies, and a 5-field payload preview. Plus the per-requirement axis breakdown (presence, freshness, frequency, threshold, field match) so you see which axis pulled the score down.',
+          )}
+        </Banner>
+
+        {loading ? (
+          <Skeleton lines={8} height={32} />
+        ) : !data ? (
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('No data', 'No data')}</div>
+        ) : (
+          <>
+            <Card style={{ marginTop: 12 }}>
+              <CardTitle right={
+                <span style={{ fontSize: 18, fontWeight: 600 }}>{(data.score * 100).toFixed(1)}%</span>
+              }>
+                {data.control_name || data.control_id}
+              </CardTitle>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 8 }}>
+                <Tile label={t('Status', 'Status')} value={(data.status || '—').toUpperCase()} tone={statusTone(data.status)} />
+                <Tile label={t('Evidence count', 'Evidence count')} value={String(data.evidence_count)} tone={data.evidence_count > 0 ? 'green' : 'red'} />
+                <Tile label={t('Requirements', 'Requirements')} value={String(data.requirements.length)} />
+                <Tile label={t('Records returned', 'Records returned')} value={String(data.records.length)} />
+              </div>
+            </Card>
+
+            <Card style={{ marginTop: 12 }}>
+              <CardTitle>{t('Requirement breakdown', 'Requirement breakdown')}</CardTitle>
+              {data.requirements.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                  {t('No requirements recorded for this control.', 'No requirements recorded for this control.')}
+                </div>
+              ) : (
+                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginTop: 8 }}>
+                  <thead>
+                    <tr style={{ fontSize: 10, color: 'var(--color-text-tertiary)', textAlign: 'left' }}>
+                      <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Tag', 'Tag')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Type', 'Type')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Combined', 'Combined')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Presence', 'Presence')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Freshness', 'Freshness')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Frequency', 'Frequency')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Threshold', 'Threshold')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>{t('Fields', 'Fields')}</th>
+                      <th style={{ padding: '4px 8px', fontWeight: 500 }}>{t('Gate', 'Gate')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.requirements.map((r, i) => (
+                      <tr key={r.tag + ':' + i} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                        <td style={{ padding: '6px 8px' }}><code style={{ fontSize: 11 }}>{r.tag}</code></td>
+                        <td style={{ padding: '6px 8px', fontSize: 10, color: 'var(--color-text-tertiary)' }}>{r.type}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: scoreColor(r.combined_score) }}>{(r.combined_score * 100).toFixed(0)}%</td>
+                        <td style={cellStyle()}>{fmtAxis(r.presence_score)}</td>
+                        <td style={cellStyle()}>{fmtAxis(r.freshness_score)}</td>
+                        <td style={cellStyle()}>{fmtAxis(r.frequency_score)}</td>
+                        <td style={cellStyle()}>{fmtAxis(r.threshold_score)}</td>
+                        <td style={cellStyle()}>{fmtAxis(r.field_match_score)}</td>
+                        <td style={{ padding: '6px 8px' }}>
+                          {r.gate_failed ? <Badge tone="red">{t('FAILED', 'FAILED')}</Badge> : <Badge tone="gray">—</Badge>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+
+            <Card style={{ marginTop: 12 }}>
+              <CardTitle>{t('Evidence records', 'Evidence records')} <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>({data.records.length})</span></CardTitle>
+              {data.records.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                  {t('No evidence records resolvable. Either no evaluation has run, or every recorded evidence ID has rolled off the current evidence stream.', 'No evidence records resolvable. Either no evaluation has run, or every recorded evidence ID has rolled off the current evidence stream.')}
+                </div>
+              ) : (
+                <div style={{ marginTop: 8 }}>
+                  {data.records.map((rec, i) => (
+                    <div key={rec.evidence_id + ':' + i} style={{ padding: '8px 0', borderTop: i ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <code style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{rec.evidence_id}</code>
+                        <Badge tone="gray">{rec.type}</Badge>
+                        {rec.source ? <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{t('via', 'via')} <strong>{rec.source}</strong></span> : null}
+                        {rec.timestamp ? <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{rec.timestamp}</span> : <span style={{ fontSize: 11, color: 'var(--color-status-red-mid)' }}>{t('rolled off', 'rolled off')}</span>}
+                      </div>
+                      {rec.satisfies_tags && rec.satisfies_tags.length > 0 ? (
+                        <div style={{ marginTop: 4, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                          {t('Satisfies', 'Satisfies')}: {rec.satisfies_tags.map((tag) => <code key={tag} style={{ marginRight: 6, fontSize: 10 }}>{tag}</code>)}
+                        </div>
+                      ) : null}
+                      {rec.payload_preview && Object.keys(rec.payload_preview).length > 0 ? (
+                        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--color-text-secondary)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2px 12px' }}>
+                          {Object.entries(rec.payload_preview).map(([k, v]) => (
+                            <div key={k} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                              <span style={{ color: 'var(--color-text-tertiary)' }}>{k}:</span>
+                              <span style={{ fontFamily: 'var(--font-family-mono, monospace)', fontSize: 10 }}>{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
+function Tile({ label, value, tone }: { label: string; value: string; tone?: 'green' | 'amber' | 'red' | 'gray' }) {
+  const palette: Record<NonNullable<typeof tone>, string> = {
+    green: 'var(--color-status-green-mid)',
+    amber: 'var(--color-status-amber-mid)',
+    red: 'var(--color-status-red-mid)',
+    gray: 'var(--color-text-tertiary)',
+  }
+  const color = palette[tone || 'gray']
+  return (
+    <Card>
+      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 600, color }}>{value}</div>
+    </Card>
+  )
+}
+
+function cellStyle(): React.CSSProperties {
+  return { padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
+}
+
+function fmtAxis(v: number): string {
+  if (!v && v !== 0) return '—'
+  return `${(v * 100).toFixed(0)}%`
+}
+
+function scoreColor(v: number): string {
+  if (v >= 0.95) return 'var(--color-status-green-mid)'
+  if (v >= 0.7) return 'var(--color-status-amber-mid)'
+  if (v > 0) return 'var(--color-status-red-mid)'
+  return 'var(--color-text-tertiary)'
+}
