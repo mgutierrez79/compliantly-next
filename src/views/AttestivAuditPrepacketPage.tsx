@@ -39,6 +39,17 @@ export function AttestivAuditPrepacketPage() {
   const [frameworks, setFrameworks] = useState<FrameworkSummary[]>([])
   const [framework, setFramework] = useState<string>('')
 
+  // Auditor-link mint state. The plaintext token is shown ONCE
+  // when the mint succeeds; we keep it in component state so the
+  // operator can copy it, then it disappears on the next mint /
+  // page reload (no persistence — the auditor's URL is the
+  // copy-pastable surface, not this textarea).
+  const [auditorSubject, setAuditorSubject] = useState<string>('')
+  const [auditorTTLDays, setAuditorTTLDays] = useState<number>(7)
+  const [auditorMinting, setAuditorMinting] = useState(false)
+  const [auditorLink, setAuditorLink] = useState<string | null>(null)
+  const [auditorError, setAuditorError] = useState<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
     apiJson<FrameworksResponse>('/config/frameworks').then((resp) => {
@@ -46,6 +57,37 @@ export function AttestivAuditPrepacketPage() {
     }).catch(() => {})
     return () => { cancelled = true }
   }, [])
+
+  async function mintAuditorLink() {
+    setAuditorMinting(true)
+    setAuditorError(null)
+    setAuditorLink(null)
+    try {
+      const response = await apiFetch('/auditor/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: auditorSubject.trim() || 'Auditor engagement',
+          framework_filter: framework,
+          ttl_days: auditorTTLDays > 0 ? auditorTTLDays : 7,
+        }),
+      })
+      if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw new Error(text || `${response.status} ${response.statusText}`)
+      }
+      const body = (await response.json()) as { token: string; portal_url?: string }
+      // portal_url is "/auditor?token=..." — join to the current
+      // origin so the operator can copy a complete URL.
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const full = body.portal_url ? `${origin}${body.portal_url}` : `${origin}/auditor?token=${encodeURIComponent(body.token)}`
+      setAuditorLink(full)
+    } catch (err: unknown) {
+      setAuditorError(err instanceof Error ? err.message : 'Failed to mint auditor link')
+    } finally {
+      setAuditorMinting(false)
+    }
+  }
 
   async function downloadPacket() {
     setBusy(true)
@@ -143,6 +185,97 @@ export function AttestivAuditPrepacketPage() {
               {busy ? t('Generating…', 'Generating…') : t('Download packet', 'Download packet')}
             </PrimaryButton>
           </div>
+        </Card>
+
+        <Card style={{ marginTop: 12 }}>
+          <CardTitle right={<Badge tone="navy">{t('read-only', 'read-only')}</Badge>}>
+            {t('Generate auditor share-link', 'Generate auditor share-link')}
+          </CardTitle>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0 }}>
+            {t(
+              'Mint a tenant-scoped, read-only URL the auditor opens directly in a browser — no console account needed. The link inherits the framework filter selected above and expires after the TTL. Revoke at any time from this page (TODO: token list section will land next).',
+              'Mint a tenant-scoped, read-only URL the auditor opens directly in a browser — no console account needed. The link inherits the framework filter selected above and expires after the TTL. Revoke at any time from this page (TODO: token list section will land next).'
+            )}
+          </p>
+          {auditorError ? <Banner tone="error">{auditorError}</Banner> : null}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+            <label style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+              {t('Engagement label', 'Engagement label')}
+            </label>
+            <input
+              type="text"
+              value={auditorSubject}
+              onChange={(e) => setAuditorSubject(e.target.value)}
+              placeholder={t('e.g. BigFour LLP — engagement 2026-05', 'e.g. BigFour LLP — engagement 2026-05')}
+              style={{
+                flex: 1,
+                minWidth: 240,
+                fontSize: 12,
+                padding: '6px 10px',
+                border: '0.5px solid var(--color-border-secondary)',
+                borderRadius: 'var(--border-radius-md)',
+                background: 'var(--color-background-primary)',
+                color: 'var(--color-text-primary)',
+                fontFamily: 'inherit',
+              }}
+            />
+            <label style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+              {t('TTL (days)', 'TTL (days)')}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={90}
+              value={auditorTTLDays}
+              onChange={(e) => setAuditorTTLDays(parseInt(e.target.value, 10) || 7)}
+              style={{
+                width: 80,
+                fontSize: 12,
+                padding: '6px 10px',
+                border: '0.5px solid var(--color-border-secondary)',
+                borderRadius: 'var(--border-radius-md)',
+                background: 'var(--color-background-primary)',
+                color: 'var(--color-text-primary)',
+                fontFamily: 'inherit',
+              }}
+            />
+            <PrimaryButton onClick={mintAuditorLink} disabled={auditorMinting}>
+              <i className="ti ti-link" aria-hidden="true" />
+              {auditorMinting ? t('Minting…', 'Minting…') : t('Mint link', 'Mint link')}
+            </PrimaryButton>
+          </div>
+          {auditorLink ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
+                {t('Share this URL with the auditor', 'Share this URL with the auditor')}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <textarea
+                  readOnly
+                  value={auditorLink}
+                  rows={2}
+                  style={{
+                    flex: 1,
+                    minWidth: 320,
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono, monospace)',
+                    padding: 8,
+                    border: '0.5px solid var(--color-border-secondary)',
+                    borderRadius: 'var(--border-radius-md)',
+                    background: 'var(--color-background-secondary)',
+                    color: 'var(--color-text-primary)',
+                    resize: 'vertical',
+                  }}
+                />
+                <GhostButton onClick={() => { void navigator.clipboard.writeText(auditorLink) }}>
+                  <i className="ti ti-clipboard-copy" aria-hidden="true" /> {t('Copy', 'Copy')}
+                </GhostButton>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-status-amber-mid)', marginTop: 6 }}>
+                {t('Token shown ONCE. If you lose it, revoke this row and mint a new one.', 'Token shown ONCE. If you lose it, revoke this row and mint a new one.')}
+              </div>
+            </div>
+          ) : null}
         </Card>
 
         <Card style={{ marginTop: 12 }}>
