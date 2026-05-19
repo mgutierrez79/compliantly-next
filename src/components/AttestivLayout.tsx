@@ -266,7 +266,8 @@ const sections: Record<SectionKey, Section> = {
     key: 'audit',
     navLabel: 'Audit',
     items: [
-      { to: '/audit',           label: 'Audit trail', icon: 'ti-timeline' },
+      { to: '/audit',                  label: 'Audit trail',        icon: 'ti-timeline' },
+      { to: '/audit/executive-summary', label: 'Executive summary',  icon: 'ti-presentation' },
       { to: '/audit/reports',   label: 'Reports',     icon: 'ti-file-description' },
       { to: '/audit/manifests', label: 'Manifests',   icon: 'ti-file-certificate' },
       { to: '/audit/prepacket',      label: 'Pre-packet',  icon: 'ti-file-zip' },
