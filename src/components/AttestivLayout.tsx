@@ -282,8 +282,9 @@ const sections: Record<SectionKey, Section> = {
       { to: '/settings/frameworks',  label: 'Frameworks',     icon: 'ti-layout-list' },
       { to: '/settings/trust-store', label: 'Trust store',    icon: 'ti-certificate' },
       { to: '/settings/connectors',  label: 'Connector poll', icon: 'ti-refresh' },
-      { to: '/settings/scoring',     label: 'Scoring poll',   icon: 'ti-gauge' },
-      { to: '/settings/support',     label: 'Support bundle', icon: 'ti-file-zip' },
+      { to: '/settings/scoring',     label: 'Scoring poll',     icon: 'ti-gauge' },
+      { to: '/settings/retention',   label: 'Retention policy', icon: 'ti-clock-hour-4' },
+      { to: '/settings/support',     label: 'Support bundle',   icon: 'ti-file-zip' },
     ],
   },
 }
