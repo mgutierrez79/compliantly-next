@@ -19,9 +19,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { apiJson } from '../lib/api'
+import { apiFetch, apiJson } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { loadSettings } from '../lib/settings'
+import { loadSettings, saveSettings } from '../lib/settings'
+import { clearSessionMarker } from '../lib/session'
 import { LanguageSwitcher } from './LanguageSwitcher'
 
 // translateNavLabel: small helper that reuses the literal English label
@@ -380,6 +381,23 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Sign out: revoke the server session (clears the httpOnly cookie +
+  // audit-logs the logout), drop the locally-stored credential, clear
+  // the middleware session marker, and bounce to /login. Best-effort
+  // on the server call — in dev-mode or with an API key the endpoint
+  // may 403/401, but we still must clear local state so the next load
+  // is unauthenticated.
+  async function handleLogout() {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' })
+    } catch {
+      // ignore — clear local state regardless
+    }
+    clearSessionMarker()
+    saveSettings({ ...loadSettings(), apiKey: '', localToken: '' })
+    router.push('/login')
+  }
+
   const railLabel = useRailLabel()
   const navT = useNavTranslator()
   const renderRailButton = (item: RailItem) => {
@@ -459,6 +477,15 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="attestiv-nav-item"
+            style={{ width: '100%', marginTop: 8, color: 'var(--color-text-secondary)' }}
+          >
+            <i className="ti ti-logout" aria-hidden="true" />
+            <span style={{ flex: 1, textAlign: 'left' }}>{t('nav.logout', 'Sign out')}</span>
+          </button>
         </div>
       </aside>
       <main className="attestiv-main">{children}</main>
