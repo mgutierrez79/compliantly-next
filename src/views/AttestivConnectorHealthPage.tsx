@@ -28,6 +28,10 @@ type ConnectorHealth = {
   kind: string
   status: 'live' | 'ok' | 'retrying' | 'stale' | 'error'
   last_success?: string
+  // Backend stores last_error as { message, timestamp } (see
+  // connectors_routes.go:1005). Older builds + the DEMO data use a
+  // bare string. Normalised at parse time so the render path can
+  // always assume string.
   last_error?: string
   last_error_at?: string
   p95_latency_ms?: number
@@ -141,14 +145,26 @@ export function AttestivConnectorHealthPage() {
             } else {
               status = 'ok'
             }
-            return {
+            const lastErrorRaw = row?.last_error
+          const lastError =
+            typeof lastErrorRaw === 'string'
+              ? lastErrorRaw
+              : lastErrorRaw && typeof lastErrorRaw === 'object'
+                ? String((lastErrorRaw as { message?: unknown }).message ?? '')
+                : undefined
+          const lastErrorAt =
+            row?.last_error_at ??
+            (lastErrorRaw && typeof lastErrorRaw === 'object'
+              ? String((lastErrorRaw as { timestamp?: unknown }).timestamp ?? '')
+              : undefined)
+          return {
               name: String(row?.name ?? row?.id ?? ''),
               kind: String(row?.kind ?? row?.type ?? row?.collector_type ?? ''),
               status,
               raw_status: rawStatus,
               last_success: lastSuccess,
-              last_error: row?.last_error,
-              last_error_at: row?.last_error_at,
+              last_error: lastError || undefined,
+              last_error_at: lastErrorAt || undefined,
               p95_latency_ms: typeof row?.p95_latency_ms === 'number' ? row.p95_latency_ms : undefined,
               error_rate_pct: typeof row?.error_rate_pct === 'number' ? row.error_rate_pct : undefined,
               events_per_min: typeof row?.events_per_min === 'number' ? row.events_per_min : undefined,
