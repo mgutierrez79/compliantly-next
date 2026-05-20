@@ -47,6 +47,10 @@ type Posture = {
   mfa: {
     required_via_idp: boolean
     reason?: string
+    admin_api_key_count?: number
+    admin_api_keys_bypass_mfa?: boolean
+    admin_api_keys_blocked_by_mfa?: boolean
+    admin_api_key_warning?: string
   }
   sod: {
     mode: 'enforce' | 'audit_only' | 'disabled' | string
@@ -147,9 +151,20 @@ export function AttestivAuthPosturePage() {
               <table style={tableStyle}>
                 <tbody>
                   <Row label={t('Enforced via IdP claim', 'Enforced via IdP claim')} value={posture.mfa.required_via_idp ? 'yes' : 'no'} />
+                  <Row
+                    label={t('Admin API keys', 'Admin API keys')}
+                    value={`${posture.mfa.admin_api_key_count ?? 0}`}
+                    tone={posture.mfa.admin_api_keys_bypass_mfa ? 'amber' : undefined}
+                  />
+                  {posture.mfa.admin_api_keys_blocked_by_mfa ? (
+                    <Row label={t('Static admin keys', 'Static admin keys')} value={t('blocked under MFA', 'blocked under MFA')} />
+                  ) : null}
                   {posture.mfa.reason ? <Row label={t('Note', 'Note')} value={posture.mfa.reason} /> : null}
                 </tbody>
               </table>
+              {posture.mfa.admin_api_keys_bypass_mfa && posture.mfa.admin_api_key_warning ? (
+                <Banner tone="warning">{posture.mfa.admin_api_key_warning}</Banner>
+              ) : null}
             </Card>
 
             <Card style={{ marginTop: 10 }}>
