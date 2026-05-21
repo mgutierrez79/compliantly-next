@@ -38,6 +38,7 @@ import {
 } from '../components/AttestivUi'
 import { defaultSettings, loadSettings, saveSettings } from '../lib/settings'
 import { setSessionMarker } from '../lib/session'
+import { oidcSignIn } from '../lib/auth'
 
 import { useI18n } from '../lib/i18n';
 
@@ -179,7 +180,7 @@ export function AttestivLoginPage() {
     router.push(redirectTarget())
   }
 
-  function onSsoSubmit(event: FormEvent) {
+  async function onSsoSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
     setInfo(null)
@@ -199,9 +200,17 @@ export function AttestivLoginPage() {
       oidcScope: scope.trim() || settings.oidcScope,
       oidcAudience: settings.oidcAudience,
     })
-    setSessionMarker()
-    setInfo('OIDC settings saved. Redirecting...')
-    router.push(redirectTarget())
+    // Actually start the OIDC flow — redirect to the IdP. The session
+    // marker is deliberately NOT set here: it's set only after the IdP
+    // returns and the token is exchanged for a server session cookie
+    // (OidcCallbackPage). Setting it here is what previously let users
+    // "log in" without ever authenticating, then 401 on every call.
+    setInfo('Redirecting to your identity provider…')
+    try {
+      await oidcSignIn()
+    } catch (e) {
+      setError(`Could not start SSO sign-in: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   return (

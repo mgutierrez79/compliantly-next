@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageTitle } from '../components/Ui'
 import { oidcHandleCallback } from '../lib/auth'
+import { setSessionMarker } from '../lib/session'
 
 import { useI18n } from '../lib/i18n';
 
@@ -20,6 +21,10 @@ export function OidcCallbackPage() {
     async function run() {
       try {
         await oidcHandleCallback()
+        // The httpOnly session cookie is now minted by the backend;
+        // set the route-guard marker so middleware lets us into the
+        // console instead of bouncing back to /login.
+        setSessionMarker()
         if (!cancelled) setDone(true)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
@@ -32,7 +37,7 @@ export function OidcCallbackPage() {
   }, [])
 
   useEffect(() => {
-    if (done) router.replace('/health')
+    if (done) router.replace('/dashboard')
   }, [done, router])
 
   if (done) return null
