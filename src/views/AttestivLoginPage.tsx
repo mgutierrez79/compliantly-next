@@ -1,99 +1,61 @@
 'use client';
 // Attestiv login.
 //
-// Cream-themed sign-in for the console. We expose three sign-in modes
-// so a single deployment can satisfy operator, auditor, and CI use
-// cases with the same page:
-//
-//   - Local: username + password against /v1/auth/login. The token is
-//     stored in localStorage and used as a Bearer for every subsequent
-//     API call. Best for pilot-stage deployments without an IdP.
-//   - SSO: OIDC issuer + client. The user is redirected to the IdP and
-//     comes back through /auth/callback. Best for production.
-//   - API key: paste a long-lived key. Used by smoke tests, CI runs,
-//     and trusted automation; not a normal user path.
-//
-// Why three modes on one page rather than separate routes: the wiring
-// information (API base URL + tenant) is shared. Splitting the routes
-// would duplicate fields and let the user save inconsistent settings
-// per mode. One page = one source of truth for the connection.
-//
-// Why not a multi-step wizard (mockup specced 3 screens — email/SSO,
-// tenant, MFA): MFA isn't enforced server-side yet (it's on the 4b
-// backlog) and a true tenant-select requires server-driven discovery
-// we don't have. Showing fake steps would set expectations the
-// product can't honor. The tabbed treatment is honest about what
-// works today and matches the rest of the Attestiv visual language.
+// The page is intentionally thin: authentication CONFIGURATION (OIDC
+// issuer/client, which methods are enabled, the tenant) is owned by the
+// server and fetched from /v1/public/auth-config. The user never types
+// an issuer or client ID — they just see a username/password form
+// (local) and/or a "Sign in with <IdP>" button (SSO). An API-key path
+// is kept for automation behind an "Advanced" toggle.
 
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-import {
-  Card,
-  FormField,
-  GhostButton,
-  PrimaryButton,
-  TextInput,
-} from '../components/AttestivUi'
-import { defaultSettings, loadSettings, saveSettings } from '../lib/settings'
+import { Card, FormField, PrimaryButton, TextInput } from '../components/AttestivUi'
+import { loadSettings, saveSettings } from '../lib/settings'
 import { setSessionMarker } from '../lib/session'
-import { oidcSignIn } from '../lib/auth'
+import { oidcSignIn, fetchAuthConfig, type AuthConfig } from '../lib/auth'
 
-import { useI18n } from '../lib/i18n';
-
-type Mode = 'local' | 'sso' | 'api-key'
-
-type LocalLoginResponse = {
-  access_token: string
-  token_type: string
-  expires_at: string
-}
-
-const SSO_PRESETS = [
-  {
-    label: 'Microsoft Entra ID',
-    issuer: 'https://login.microsoftonline.com/<tenant-id>/v2.0',
-    scope: 'openid profile email',
-  },
-  {
-    label: 'Google',
-    issuer: 'https://accounts.google.com',
-    scope: 'openid profile email',
-  },
-]
+import { useI18n } from '../lib/i18n'
 
 export function AttestivLoginPage() {
-  const {
-    t
-  } = useI18n();
-
+  const { t } = useI18n()
   const router = useRouter()
 
-  const [mode, setMode] = useState<Mode>('local')
-  const [settings, setSettings] = useState(defaultSettings)
-  const [apiBaseUrl, setApiBaseUrl] = useState(settings.apiBaseUrl)
-  const [tenantId, setTenantId] = useState(settings.tenantId)
-  const [apiKey, setApiKey] = useState(settings.apiKey)
-  const [issuer, setIssuer] = useState(settings.oidcIssuer)
-  const [clientId, setClientId] = useState(settings.oidcClientId)
-  const [scope, setScope] = useState(settings.oidcScope)
+  const [config, setConfig] = useState<AuthConfig | null>(null)
+  const [configError, setConfigError] = useState<string | null>(null)
   const [localSubject, setLocalSubject] = useState('')
   const [localPassword, setLocalPassword] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
   useEffect(() => {
-    const saved = loadSettings()
-    setSettings(saved)
-    setApiBaseUrl(saved.apiBaseUrl)
-    setApiKey(saved.apiKey)
-    setTenantId(saved.tenantId)
-    setIssuer(saved.oidcIssuer)
-    setClientId(saved.oidcClientId)
-    setScope(saved.oidcScope)
+    fetchAuthConfig(true)
+      .then(setConfig)
+      .catch((e) => setConfigError(e instanceof Error ? e.message : String(e)))
   }, [])
+
+  function apiBase(): string {
+    const base = loadSettings().apiBaseUrl?.trim()?.replace(/\/+$/, '')
+    return base || '/api'
+  }
+
+  // Persist the resolved tenant from the server so api.ts sends the
+  // right X-Tenant-ID (OIDC tokens carry no tenant claim).
+  function persist(authMode: 'local' | 'oidc' | 'apiKey', key = '') {
+    const current = loadSettings()
+    saveSettings({
+      ...current,
+      authMode,
+      apiKey: key,
+      localToken: '',
+      tenantId: config?.default_tenant || current.tenantId,
+    })
+  }
 
   function redirectTarget(): string {
     if (typeof window === 'undefined') return '/dashboard'
@@ -109,49 +71,47 @@ export function AttestivLoginPage() {
     event.preventDefault()
     setError(null)
     setInfo(null)
-    if (!apiBaseUrl.trim() || !localSubject.trim() || !localPassword) {
-      setError('API base URL, username, and password are required.')
+    if (!localSubject.trim() || !localPassword) {
+      setError(t('Username and password are required.', 'Username and password are required.'))
       return
     }
     setBusy(true)
     try {
-      const baseUrl = apiBaseUrl.trim().replace(/\/+$/, '')
-      const response = await fetch(`${baseUrl}/v1/auth/login`, {
+      const response = await fetch(`${apiBase()}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject: localSubject.trim(), password: localPassword }),
-        // Phase 4b: the server sets an httpOnly session cookie on
-        // success. credentials:'include' is what tells the browser to
-        // accept and store cross-origin Set-Cookie. Without this the
-        // cookie is silently dropped and every subsequent API call
-        // would 401.
+        // The server sets an httpOnly session cookie on success;
+        // credentials:'include' is what lets the browser store it.
         credentials: 'include',
       })
       if (!response.ok) {
         const bodyText = await response.text().catch(() => '')
         throw new Error(bodyText || `${response.status} ${response.statusText}`)
       }
-      // We deliberately do NOT read access_token from the response and
-      // park it in localStorage. The credential lives in the httpOnly
-      // cookie now; localStorage was the XSS surface 4b removes.
-      saveSettings({
-        ...settings,
-        apiBaseUrl: apiBaseUrl.trim(),
-        tenantId: tenantId.trim(),
-        authMode: 'local',
-        apiKey: '',
-        localToken: '',
-        oidcIssuer: issuer.trim(),
-        oidcClientId: clientId.trim(),
-        oidcScope: scope.trim() || settings.oidcScope,
-        oidcAudience: settings.oidcAudience,
-      })
-      setInfo('Signed in. Redirecting...')
+      persist('local')
+      setSessionMarker()
+      setInfo(t('Signed in. Redirecting…', 'Signed in. Redirecting…'))
       router.push(redirectTarget())
-    } catch (err: any) {
-      setError(err?.message ?? 'Local login failed')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Local login failed')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function onSsoSignIn() {
+    setError(null)
+    setInfo(null)
+    // Persist tenant + mode BEFORE redirecting so the post-callback
+    // session sends the right X-Tenant-ID. The OIDC issuer/client come
+    // from the server (lib/auth → /v1/public/auth-config), not here.
+    persist('oidc')
+    setInfo(t('Redirecting to your identity provider…', 'Redirecting to your identity provider…'))
+    try {
+      await oidcSignIn()
+    } catch (e) {
+      setError(`Could not start SSO sign-in: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -159,59 +119,20 @@ export function AttestivLoginPage() {
     event.preventDefault()
     setError(null)
     setInfo(null)
-    if (!apiBaseUrl.trim() || !apiKey.trim()) {
-      setError('API base URL and API key are required.')
+    if (!apiKey.trim()) {
+      setError(t('API key is required.', 'API key is required.'))
       return
     }
-    saveSettings({
-      ...settings,
-      apiBaseUrl: apiBaseUrl.trim(),
-      apiKey: apiKey.trim(),
-      tenantId: tenantId.trim(),
-      authMode: 'apiKey',
-      localToken: '',
-      oidcIssuer: issuer.trim(),
-      oidcClientId: clientId.trim(),
-      oidcScope: scope.trim() || settings.oidcScope,
-      oidcAudience: settings.oidcAudience,
-    })
+    persist('apiKey', apiKey.trim())
     setSessionMarker()
-    setInfo('Saved. Redirecting...')
+    setInfo(t('Saved. Redirecting…', 'Saved. Redirecting…'))
     router.push(redirectTarget())
   }
 
-  async function onSsoSubmit(event: FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setInfo(null)
-    if (!apiBaseUrl.trim() || !issuer.trim() || !clientId.trim()) {
-      setError('API base URL, OIDC issuer, and client ID are required.')
-      return
-    }
-    saveSettings({
-      ...settings,
-      apiBaseUrl: apiBaseUrl.trim(),
-      tenantId: tenantId.trim(),
-      authMode: 'oidc',
-      apiKey: '',
-      localToken: '',
-      oidcIssuer: issuer.trim(),
-      oidcClientId: clientId.trim(),
-      oidcScope: scope.trim() || settings.oidcScope,
-      oidcAudience: settings.oidcAudience,
-    })
-    // Actually start the OIDC flow — redirect to the IdP. The session
-    // marker is deliberately NOT set here: it's set only after the IdP
-    // returns and the token is exchanged for a server session cookie
-    // (OidcCallbackPage). Setting it here is what previously let users
-    // "log in" without ever authenticating, then 401 on every call.
-    setInfo('Redirecting to your identity provider…')
-    try {
-      await oidcSignIn()
-    } catch (e) {
-      setError(`Could not start SSO sign-in: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
+  const idp = config?.idp_name || 'SSO'
+  const showLocal = config?.local_auth_enabled
+  const showSso = config?.oidc_configured
+  const devMode = config ? (config.dev_mode || !config.auth_enabled) : false
 
   return (
     <div
@@ -224,26 +145,83 @@ export function AttestivLoginPage() {
         padding: '40px 20px',
       }}
     >
-      <div style={{ width: '100%', maxWidth: 460 }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
         <BrandHeader />
 
-        <Card style={{ padding: '20px 22px' }}>
-          <ModeTabs mode={mode} onChange={setMode} />
+        <Card style={{ padding: '22px 24px' }}>
+          {configError ? (
+            <Banner tone="red">
+              {t('Could not reach the server to load sign-in options:', 'Could not reach the server to load sign-in options:')}{' '}
+              {configError}
+            </Banner>
+          ) : null}
 
-          <SharedFields
-            apiBaseUrl={apiBaseUrl}
-            tenantId={tenantId}
-            setApiBaseUrl={setApiBaseUrl}
-            setTenantId={setTenantId}
-          />
+          {!config && !configError ? (
+            <div style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '8px 0' }}>
+              {t('Loading sign-in options…', 'Loading sign-in options…')}
+            </div>
+          ) : null}
 
-          {mode === 'local' ? (
+          {devMode ? (
+            <Banner tone="blue">
+              {t(
+                'Authentication is disabled on this server (dev mode) — anyone reaching it has full access.',
+                'Authentication is disabled on this server (dev mode) — anyone reaching it has full access.'
+              )}
+            </Banner>
+          ) : null}
+
+          {showSso ? (
+            <button
+              type="button"
+              onClick={onSsoSignIn}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '10px 14px',
+                fontSize: 14,
+                fontWeight: 500,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                border: 'none',
+                borderRadius: 'var(--border-radius-md)',
+                background: 'var(--color-brand-blue)',
+                color: 'white',
+                marginBottom: showLocal ? 8 : 0,
+              }}
+            >
+              <i className="ti ti-id" aria-hidden="true" />
+              {t('Sign in with', 'Sign in with')} {idp}
+            </button>
+          ) : null}
+
+          {showSso && showLocal ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                margin: '14px 0',
+                color: 'var(--color-text-tertiary)',
+                fontSize: 11,
+              }}
+            >
+              <div style={{ flex: 1, height: 1, background: 'var(--color-border-subtle)' }} />
+              {t('or', 'or')}
+              <div style={{ flex: 1, height: 1, background: 'var(--color-border-subtle)' }} />
+            </div>
+          ) : null}
+
+          {showLocal ? (
             <form onSubmit={onLocalSubmit}>
               <FormField label={t('Username', 'Username')}>
                 <TextInput
                   value={localSubject}
                   onChange={(event) => setLocalSubject(event.target.value)}
-                  placeholder={t('admin@acme.example', 'admin@acme.example')}
+                  placeholder={t('you@company.com', 'you@company.com')}
                   autoComplete="username"
                 />
               </FormField>
@@ -260,94 +238,52 @@ export function AttestivLoginPage() {
             </form>
           ) : null}
 
-          {mode === 'api-key' ? (
-            <form onSubmit={onApiKeySubmit}>
-              <FormField
-                label={t('API key (Bearer)', 'API key (Bearer)')}
-                hint={t(
-                  'Use a key with the role required for the pages you\'ll visit. CI keys are typically scoped to reporter.',
-                  'Use a key with the role required for the pages you\'ll visit. CI keys are typically scoped to reporter.'
-                )}
-              >
-                <TextInput
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder={t('key-admin / key-reporter / ...', 'key-admin / key-reporter / ...')}
-                />
-              </FormField>
-              <SubmitRow busy={busy} label={t('Save and continue', 'Save and continue')} />
-            </form>
+          {config && !showLocal && !showSso ? (
+            <Banner tone="red">
+              {t(
+                'No sign-in method is enabled. An administrator must enable local auth or configure SSO.',
+                'No sign-in method is enabled. An administrator must enable local auth or configure SSO.'
+              )}
+            </Banner>
           ) : null}
 
-          {mode === 'sso' ? (
-            <form onSubmit={onSsoSubmit}>
-              <FormField label={t('OIDC issuer', 'OIDC issuer')}>
-                <TextInput
-                  value={issuer}
-                  onChange={(event) => setIssuer(event.target.value)}
-                  placeholder="https://login.microsoftonline.com/<tenant-id>/v2.0"
-                />
-              </FormField>
-              <FormField label={t('Client ID', 'Client ID')}>
-                <TextInput
-                  value={clientId}
-                  onChange={(event) => setClientId(event.target.value)}
-                  placeholder={t('client-id from IdP', 'client-id from IdP')}
-                />
-              </FormField>
-              <FormField label={t('Scope', 'Scope')}>
-                <TextInput
-                  value={scope}
-                  onChange={(event) => setScope(event.target.value)}
-                  placeholder={t('openid profile email', 'openid profile email')}
-                />
-              </FormField>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                {SSO_PRESETS.map((preset) => (
-                  <GhostButton
-                    key={preset.label}
-                    onClick={() => {
-                      setIssuer(preset.issuer)
-                      setScope(preset.scope)
-                      setInfo(`Preset applied: ${preset.label}`)
-                    }}
-                  >
-                    {preset.label}
-                  </GhostButton>
-                ))}
-              </div>
-              <SubmitRow busy={busy} label={t('Save and redirect', 'Save and redirect')} />
-            </form>
-          ) : null}
+          {/* Automation / break-glass only — not a normal user path. */}
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--color-border-subtle)', paddingTop: 10 }}>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 11,
+                color: 'var(--color-text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: 0,
+              }}
+            >
+              <i className={`ti ${showAdvanced ? 'ti-chevron-down' : 'ti-chevron-right'}`} aria-hidden="true" />
+              {t('Advanced: sign in with an API key (automation)', 'Advanced: sign in with an API key (automation)')}
+            </button>
+            {showAdvanced ? (
+              <form onSubmit={onApiKeySubmit} style={{ marginTop: 10 }}>
+                <FormField label={t('API key (Bearer)', 'API key (Bearer)')}>
+                  <TextInput
+                    value={apiKey}
+                    onChange={(event) => setApiKey(event.target.value)}
+                    placeholder={t('key-admin / key-reporter / …', 'key-admin / key-reporter / …')}
+                  />
+                </FormField>
+                <SubmitRow busy={busy} label={t('Save and continue', 'Save and continue')} />
+              </form>
+            ) : null}
+          </div>
 
-          {error ? (
-            <div
-              style={{
-                marginTop: 12,
-                fontSize: 12,
-                color: 'var(--color-status-red-deep)',
-                background: 'var(--color-status-red-bg)',
-                padding: '8px 10px',
-                borderRadius: 'var(--border-radius-md)',
-              }}
-            >
-              {error}
-            </div>
-          ) : null}
-          {info ? (
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 12,
-                color: 'var(--color-status-blue-deep)',
-                background: 'var(--color-status-blue-bg)',
-                padding: '8px 10px',
-                borderRadius: 'var(--border-radius-md)',
-              }}
-            >
-              {info}
-            </div>
-          ) : null}
+          {error ? <Banner tone="red" mt={12}>{error}</Banner> : null}
+          {info ? <Banner tone="blue" mt={8}>{info}</Banner> : null}
         </Card>
 
         <div
@@ -366,26 +302,35 @@ export function AttestivLoginPage() {
           >
             {t('Run first-time setup', 'Run first-time setup')}
           </a>.
-                  </div>
+        </div>
       </div>
     </div>
-  );
+  )
 }
 
-function BrandHeader() {
-  const {
-    t
-  } = useI18n();
-
+function Banner({ tone, mt, children }: { tone: 'red' | 'blue'; mt?: number; children: ReactNode }) {
+  const red = tone === 'red'
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        marginBottom: 20,
+        marginTop: mt ?? 0,
+        marginBottom: mt ? 0 : 12,
+        fontSize: 12,
+        color: red ? 'var(--color-status-red-deep)' : 'var(--color-status-blue-deep)',
+        background: red ? 'var(--color-status-red-bg)' : 'var(--color-status-blue-bg)',
+        padding: '8px 10px',
+        borderRadius: 'var(--border-radius-md)',
       }}
     >
+      {children}
+    </div>
+  )
+}
+
+function BrandHeader() {
+  const { t } = useI18n()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
       <div
         style={{
           width: 56,
@@ -398,112 +343,14 @@ function BrandHeader() {
           marginBottom: 12,
         }}
       >
-        <i
-          className="ti ti-shield-check"
-          aria-hidden="true"
-          style={{ color: 'var(--color-brand-blue-pale)', fontSize: 28 }}
-        />
+        <i className="ti ti-shield-check" aria-hidden="true" style={{ color: 'var(--color-brand-blue-pale)', fontSize: 28 }} />
       </div>
       <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{t('Attestiv', 'Attestiv')}</div>
       <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
         {t('Sign in to the compliance console', 'Sign in to the compliance console')}
       </div>
     </div>
-  );
-}
-
-function ModeTabs({ mode, onChange }: { mode: Mode; onChange: (next: Mode) => void }) {
-  const tabs: Array<{ value: Mode; label: string; icon: string }> = [
-    { value: 'local', label: 'Local', icon: 'ti-key' },
-    { value: 'sso', label: 'SSO', icon: 'ti-id' },
-    { value: 'api-key', label: 'API key', icon: 'ti-bolt' },
-  ]
-  return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 4,
-        background: 'var(--color-background-secondary)',
-        borderRadius: 'var(--border-radius-md)',
-        padding: 3,
-        marginBottom: 16,
-      }}
-    >
-      {tabs.map((tab) => {
-        const active = tab.value === mode
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => onChange(tab.value)}
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              fontSize: 12,
-              fontWeight: active ? 500 : 400,
-              padding: '6px 10px',
-              borderRadius: 'var(--border-radius-md)',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              background: active ? 'var(--color-background-primary)' : 'transparent',
-              color: active ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-              boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-            }}
-          >
-            <i className={`ti ${tab.icon}`} aria-hidden="true" />
-            {tab.label}
-          </button>
-        )
-      })}
-    </div>
   )
-}
-
-function SharedFields({
-  apiBaseUrl,
-  tenantId,
-  setApiBaseUrl,
-  setTenantId,
-}: {
-  apiBaseUrl: string
-  tenantId: string
-  setApiBaseUrl: (v: string) => void
-  setTenantId: (v: string) => void
-}) {
-  const {
-    t
-  } = useI18n();
-
-  return (
-    <>
-      <FormField label={t('API base URL', 'API base URL')} hint={t(
-        'Where the Attestiv backend is reachable from this browser.',
-        'Where the Attestiv backend is reachable from this browser.'
-      )}>
-        <TextInput
-          value={apiBaseUrl}
-          onChange={(event) => setApiBaseUrl(event.target.value)}
-          placeholder="http://127.0.0.1:8001"
-          autoComplete="off"
-        />
-      </FormField>
-      <FormField label={t('Tenant', 'Tenant')} hint={t(
-        'Lower-case slug. Leave empty for single-tenant deployments.',
-        'Lower-case slug. Leave empty for single-tenant deployments.'
-      )}>
-        <TextInput
-          value={tenantId}
-          onChange={(event) => setTenantId(event.target.value)}
-          placeholder="default"
-          autoComplete="off"
-        />
-      </FormField>
-    </>
-  );
 }
 
 function SubmitRow({ busy, label }: { busy: boolean; label: string }) {
@@ -516,4 +363,3 @@ function SubmitRow({ busy, label }: { busy: boolean; label: string }) {
     </div>
   )
 }
-
