@@ -30,6 +30,7 @@ import {
 import { apiFetch } from '../lib/api'
 
 import { useI18n } from '../lib/i18n';
+import { useRoles } from '../lib/roles'
 
 type Exception = {
   id: string
@@ -81,6 +82,7 @@ export function AttestivExceptionsPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
+  const { canWrite } = useRoles()
   const [filter, setFilter] = useState<{ status?: string; severity?: string; framework_id?: string }>({})
 
   async function refresh() {
@@ -153,9 +155,11 @@ export function AttestivExceptionsPage() {
         title={t('Exceptions register', 'Exceptions register')}
         left={<Badge tone="navy">{items.length} entries</Badge>}
         right={
-          <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> {t('Add exception', 'Add exception')}
-          </PrimaryButton>
+          canWrite ? (
+            <PrimaryButton onClick={() => setShowCreate(true)}>
+              <i className="ti ti-plus" aria-hidden="true" /> {t('Add exception', 'Add exception')}
+            </PrimaryButton>
+          ) : null
         }
       />
       <div className="attestiv-content">

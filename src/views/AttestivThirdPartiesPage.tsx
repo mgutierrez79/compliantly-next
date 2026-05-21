@@ -25,6 +25,7 @@ import {
 import { apiFetch } from '../lib/api'
 
 import { useI18n } from '../lib/i18n';
+import { useRoles } from '../lib/roles'
 
 type Provider = {
   id: string
@@ -74,6 +75,7 @@ export function AttestivThirdPartiesPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
+  const { canWrite } = useRoles()
   const [filter, setFilter] = useState<{ criticality?: string; status?: string }>({})
 
   async function refresh() {
@@ -184,9 +186,11 @@ export function AttestivThirdPartiesPage() {
             <GhostButton onClick={() => downloadROI('json')}>
               <i className="ti ti-file-code" aria-hidden="true" /> {t('RoI JSON', 'RoI JSON')}
             </GhostButton>
-            <PrimaryButton onClick={() => setShowCreate(true)}>
-              <i className="ti ti-plus" aria-hidden="true" /> {t('Add provider', 'Add provider')}
-            </PrimaryButton>
+            {canWrite ? (
+              <PrimaryButton onClick={() => setShowCreate(true)}>
+                <i className="ti ti-plus" aria-hidden="true" /> {t('Add provider', 'Add provider')}
+              </PrimaryButton>
+            ) : null}
           </div>
         }
       />

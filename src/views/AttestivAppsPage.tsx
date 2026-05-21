@@ -22,6 +22,7 @@ import {
 import { apiFetch } from '../lib/api'
 
 import { useI18n } from '../lib/i18n';
+import { useRoles } from '../lib/roles'
 
 type AppSummary = {
   application_id: string
@@ -53,6 +54,7 @@ export function AttestivAppsPage() {
   } = useI18n();
 
   const router = useRouter()
+  const { canWrite } = useRoles()
   const [apps, setApps] = useState<AppSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -132,9 +134,11 @@ export function AttestivAppsPage() {
         right={
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <FilterBar value={filter} onChange={setFilter} />
-            <PrimaryButton onClick={() => router.push('/apps/new')}>
-              + {t('Add application', 'Add application')}
-            </PrimaryButton>
+            {canWrite ? (
+              <PrimaryButton onClick={() => router.push('/apps/new')}>
+                + {t('Add application', 'Add application')}
+              </PrimaryButton>
+            ) : null}
           </div>
         }
       />

@@ -28,6 +28,7 @@ import {
 import { apiFetch } from '../lib/api'
 
 import { useI18n } from '../lib/i18n';
+import { useRoles } from '../lib/roles'
 
 type Task = {
   id: string
@@ -91,6 +92,7 @@ export function AttestivRemediationPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
+  const { canWrite } = useRoles()
   const [filter, setFilter] = useState<{ status?: string; priority?: string; framework_id?: string; assigned_to?: string }>({})
 
   async function refresh() {
@@ -187,9 +189,11 @@ export function AttestivRemediationPage() {
         title={t('Remediation', 'Remediation')}
         left={<Badge tone="navy">{tasks.length} tasks</Badge>}
         right={
-          <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> {t('Add task', 'Add task')}
-          </PrimaryButton>
+          canWrite ? (
+            <PrimaryButton onClick={() => setShowCreate(true)}>
+              <i className="ti ti-plus" aria-hidden="true" /> {t('Add task', 'Add task')}
+            </PrimaryButton>
+          ) : null
         }
       />
       <div className="attestiv-content">

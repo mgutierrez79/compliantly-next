@@ -26,6 +26,7 @@ import {
 import { apiFetch } from '../lib/api'
 
 import { useI18n } from '../lib/i18n';
+import { useRoles } from '../lib/roles'
 
 type Policy = {
   id: string
@@ -75,6 +76,7 @@ export function AttestivPoliciesPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
+  const { canWrite } = useRoles()
   const [filter, setFilter] = useState<{ status?: string; category?: string; overdueOnly?: boolean }>({})
 
   async function refresh() {
@@ -150,9 +152,11 @@ export function AttestivPoliciesPage() {
         title={t('Policy register', 'Policy register')}
         left={<Badge tone="navy">{policies.length} policies</Badge>}
         right={
-          <PrimaryButton onClick={() => setShowCreate(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> {t('Add policy', 'Add policy')}
-          </PrimaryButton>
+          canWrite ? (
+            <PrimaryButton onClick={() => setShowCreate(true)}>
+              <i className="ti ti-plus" aria-hidden="true" /> {t('Add policy', 'Add policy')}
+            </PrimaryButton>
+          ) : null
         }
       />
       <div className="attestiv-content">
