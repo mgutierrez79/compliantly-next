@@ -239,7 +239,7 @@ export function AttestivAppsPage() {
                         style={{ padding: '10px 0 10px 10px', textAlign: 'right' }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {app.runtime_managed ? (
+                        {canWrite && app.runtime_managed ? (
                           <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
                             <button
                               type="button"

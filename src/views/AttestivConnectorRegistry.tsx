@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { useI18n } from '../lib/i18n'
+import { useRoles } from '../lib/roles'
 import { Badge, Banner, Card, EmptyState, GhostButton, PrimaryButton, Skeleton, Topbar } from '../components/AttestivUi'
 import { ConnectorLogo, connectorBrandHex } from '../components/ConnectorLogo'
 
@@ -142,6 +143,7 @@ function categoryLabel(connector: ConnectorStatus): string {
 export function AttestivConnectorRegistry() {
   const router = useRouter()
   const { t } = useI18n()
+  const { canWrite } = useRoles()
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [error, setError] = useState<ApiError | null>(null)
   const [loading, setLoading] = useState(true)
@@ -393,7 +395,7 @@ export function AttestivConnectorRegistry() {
                      no on/off state in the backend - the items[] entry
                      either exists or it doesn't. Hide the toggle on
                      instance rows so it can't 404. */}
-                  {!connector.name.includes(':') ? (
+                  {canWrite && !connector.name.includes(':') ? (
                     <GhostButton
                       onClick={() => toggleConnector(connector, isDisabled)}
                       disabled={isToggling}
@@ -409,25 +411,30 @@ export function AttestivConnectorRegistry() {
                       the existing config. The same wizard handles
                       create + edit; the `edit=<row-name>` query
                       param toggles edit mode. */}
-                  <GhostButton
-                    onClick={() => router.push(`/connectors/new?edit=${encodeURIComponent(connector.name)}`)}
-                    disabled={isToggling}
-                  >
-                    <i className="ti ti-edit" aria-hidden="true" />
-                    {t('Edit', 'Edit')}
-                  </GhostButton>
-                  <GhostButton
-                    onClick={() => deleteConnector(connector)}
-                    disabled={isToggling}
-                  >
-                    <i className="ti ti-trash" aria-hidden="true" />
-                    {t('common.delete')}
-                  </GhostButton>
+                  {canWrite ? (
+                    <>
+                      <GhostButton
+                        onClick={() => router.push(`/connectors/new?edit=${encodeURIComponent(connector.name)}`)}
+                        disabled={isToggling}
+                      >
+                        <i className="ti ti-edit" aria-hidden="true" />
+                        {t('Edit', 'Edit')}
+                      </GhostButton>
+                      <GhostButton
+                        onClick={() => deleteConnector(connector)}
+                        disabled={isToggling}
+                      >
+                        <i className="ti ti-trash" aria-hidden="true" />
+                        {t('common.delete')}
+                      </GhostButton>
+                    </>
+                  ) : null}
                 </div>
               </div>
             )
           })}
 
+          {canWrite ? (
           <button
             type="button"
             onClick={() => router.push('/connectors/new')}
@@ -450,6 +457,7 @@ export function AttestivConnectorRegistry() {
             <div style={{ fontSize: 12 }}>{t('connectors.add_card_label')}</div>
             <div style={{ fontSize: 10, marginTop: 2 }}>{t('connectors.add_card_sub', { count: 8 })}</div>
           </button>
+          ) : null}
         </div>
         )}
 
