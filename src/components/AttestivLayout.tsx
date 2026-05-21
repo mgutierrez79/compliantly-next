@@ -297,6 +297,84 @@ const sections: Record<SectionKey, Section> = {
   },
 }
 
+// Role-based nav visibility. The backend RBAC (internal/security/
+// auth.go) is the enforcer; this only decides what to SHOW so a role
+// isn't sent down dead-ends that 403. Mapping mirrors the backend:
+//   - admin     superset, sees every section
+//   - reporter  full read+write surface, minus admin config (Settings)
+//   - reader    same surface as reporter for visibility (read-only)
+//   - auditor   read-only AND restricted to auditorAllowedPrefixes,
+//               so it only sees sections backed by those paths
+type Role = 'admin' | 'reporter' | 'reader' | 'auditor'
+
+// Non-admin roles allowed to see each section. admin is implicit
+// (always allowed). An empty list means admin-only.
+const SECTION_ROLES: Record<SectionKey, Role[]> = {
+  dashboard:    ['reporter', 'reader', 'auditor'],
+  connectors:   ['reporter', 'reader', 'auditor'],
+  evidence:     ['reporter', 'reader', 'auditor'],
+  frameworks:   ['reporter', 'reader', 'auditor'],
+  apps:         ['reporter', 'reader'],
+  sites:        ['reporter', 'reader'],
+  inventory:    ['reporter', 'reader', 'auditor'],
+  risks:        ['reporter', 'reader'],
+  policies:     ['reporter', 'reader'],
+  exceptions:   ['reporter', 'reader', 'auditor'],
+  remediation:  ['reporter', 'reader'],
+  incidents:    ['reporter', 'reader'],
+  thirdparties: ['reporter', 'reader'],
+  dr:           ['reporter', 'reader', 'auditor'],
+  audit:        ['reporter', 'reader', 'auditor'],
+  settings:     [],
+}
+
+// roles === null means "not resolved yet" (pre-/auth/me): render the
+// full nav optimistically so there's no empty-rail flash and no
+// regression. Once roles arrive we filter. Direct-URL access to a
+// hidden section still works — the page's own 403 handling is the
+// backstop — we just don't advertise it in the rail.
+function canSeeSection(key: SectionKey, roles: string[] | null): boolean {
+  if (roles === null) return true
+  const set = new Set(roles.map((role) => role.toLowerCase().trim()))
+  if (set.has('admin')) return true
+  return SECTION_ROLES[key].some((role) => set.has(role))
+}
+
+const ROLES_CACHE_KEY = 'compliantly.ui.roles'
+
+// Cache the resolved roles so a returning user gets the correct
+// reduced nav on the next load without waiting for /auth/me — avoids
+// a flash of admin-only sections for non-admins.
+function loadCachedRoles(): string[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(ROLES_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((role): role is string => typeof role === 'string') : null
+  } catch {
+    return null
+  }
+}
+
+function cacheRoles(roles: string[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(ROLES_CACHE_KEY, JSON.stringify(roles))
+  } catch {
+    // best-effort cache; nav still resolves from /auth/me
+  }
+}
+
+function clearCachedRoles(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(ROLES_CACHE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 function sectionFromPath(pathname: string): SectionKey {
   for (const item of [...railTop, ...railBottom]) {
     if (pathname === item.prefix || pathname.startsWith(`${item.prefix}/`)) {
@@ -336,6 +414,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
   const [tenantId, setTenantId] = useState('')
   const [subject, setSubject] = useState('')
   const [issuesCount, setIssuesCount] = useState(0)
+  const [roles, setRoles] = useState<string[] | null>(null)
 
   // Pull current tenant + subject from /auth/me so the footer pill
   // reflects the bound principal, not whatever the user typed in
@@ -343,12 +422,19 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
   // yet (cold load).
   useEffect(() => {
     setTenantId(loadSettings().tenantId)
+    // Seed from the cached roles first (instant correct nav for a
+    // returning user), then reconcile with the authoritative /auth/me.
+    setRoles(loadCachedRoles())
     let cancelled = false
     apiJson<{ subject?: string; roles?: string[]; tenant_id?: string | null }>('/auth/me')
       .then((response) => {
         if (cancelled) return
         if (response.tenant_id) setTenantId(response.tenant_id)
         if (response.subject) setSubject(response.subject)
+        if (Array.isArray(response.roles)) {
+          setRoles(response.roles)
+          cacheRoles(response.roles)
+        }
       })
       .catch(() => {
         // Layout is rendered before auth resolution; silent failure
@@ -395,6 +481,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
       // ignore — clear local state regardless
     }
     clearSessionMarker()
+    clearCachedRoles()
     saveSettings({ ...loadSettings(), apiKey: '', localToken: '' })
     router.push('/login')
   }
@@ -454,9 +541,9 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
         <div className="attestiv-rail-logo">
           <AttestivLogo />
         </div>
-        {railTop.map(renderRailButton)}
+        {railTop.filter((item) => canSeeSection(item.key, roles)).map(renderRailButton)}
         <div className="attestiv-rail-spacer" />
-        {railBottom.map(renderRailButton)}
+        {railBottom.filter((item) => canSeeSection(item.key, roles)).map(renderRailButton)}
       </div>
       <aside className="attestiv-sidebar">
         <div className="attestiv-sidebar-header">
