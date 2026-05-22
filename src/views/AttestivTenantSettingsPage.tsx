@@ -26,6 +26,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
+import { fetchAuthConfig } from '../lib/auth'
 import { loadSettings, saveSettings } from '../lib/settings'
 
 import { useI18n } from '../lib/i18n';
@@ -67,6 +68,25 @@ export function AttestivTenantSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The deployment environment is owned by the SERVER (COMPLIANCE_PROFILE),
+  // not this per-browser form — demo data is server-authoritative. Show it
+  // read-only so there's a single source of truth instead of a local
+  // dropdown that the server overrides.
+  const [deployProfile, setDeployProfile] = useState<{ profile: string; demo: boolean } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchAuthConfig()
+      .then((cfg) => {
+        if (!cancelled) setDeployProfile({ profile: cfg.profile || '', demo: Boolean(cfg.demo) })
+      })
+      .catch(() => {
+        if (!cancelled) setDeployProfile(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -221,24 +241,24 @@ export function AttestivTenantSettingsPage() {
             <FormField
               label={t('Environment', 'Environment')}
               hint={t(
-                'Demo unlocks placeholder data when the API is empty (useful for screenshots). Pilot and Production never fabricate rows.',
-                'Demo unlocks placeholder data when the API is empty (useful for screenshots). Pilot and Production never fabricate rows.',
+                'Set by the server (COMPLIANCE_PROFILE), not per-browser. Demo fabricates sample data for screenshots; production/pilot never do. Read-only here so there is one source of truth.',
+                'Set by the server (COMPLIANCE_PROFILE), not per-browser. Demo fabricates sample data for screenshots; production/pilot never do. Read-only here so there is one source of truth.',
               )}
             >
-              <Select
-                value={profile.environment}
-                onChange={(event) => {
-                  const next = event.target.value
-                  update(
-                    'environment',
-                    next === 'demo' ? 'demo' : next === 'production' ? 'production' : 'pilot',
-                  )
-                }}
-              >
-                <option value="demo">{t('Demo', 'Demo')}</option>
-                <option value="pilot">{t('Pilot', 'Pilot')}</option>
-                <option value="production">{t('Production', 'Production')}</option>
-              </Select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36 }}>
+                <Badge tone={deployProfile?.demo ? 'amber' : deployProfile?.profile === 'production' ? 'green' : 'gray'}>
+                  {deployProfile ? (deployProfile.profile || t('unset', 'unset')) : t('loading…', 'loading…')}
+                </Badge>
+                {deployProfile?.demo ? (
+                  <span style={{ fontSize: 12, color: 'var(--color-status-amber-mid)' }}>
+                    {t('demo data ON', 'demo data ON')}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                    {t('real data only', 'real data only')}
+                  </span>
+                )}
+              </div>
             </FormField>
             <FormField label={t('Industry', 'Industry')}>
               <Select value={profile.industry} onChange={(event) => update('industry', event.target.value)}>
