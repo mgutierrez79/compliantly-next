@@ -28,7 +28,7 @@ import {
   TextInput,
   Topbar,
 } from '../components/AttestivUi'
-import { loadSettings } from '../lib/settings'
+import { apiFetch, ApiError } from '../lib/api'
 import { ConnectorLogo, connectorBrandHex } from '../components/ConnectorLogo'
 import {
   loadConnectorCatalog,
@@ -363,28 +363,13 @@ export function AttestivConnectorWizard() {
   useEffect(() => {
     if (!isEditMode || !editKind) return
     let cancelled = false
-    const settings = loadSettings()
-    const baseUrl = settings.apiBaseUrl?.trim()?.replace(/\/+$/, '')
-    if (!baseUrl || !settings.apiKey) {
-      setEditLoadError('Set the API base URL and API key in Login first.')
-      setEditLoading(false)
-      return
-    }
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${settings.apiKey}`,
-    }
-    if (settings.tenantId) headers['X-Tenant-ID'] = settings.tenantId
-    fetch(`${baseUrl}/v1/config/connectors/${encodeURIComponent(editRowName)}`, { headers })
+    // apiFetch carries whichever credential the active auth mode uses
+    // (session cookie for local/OIDC, Bearer for apiKey) and throws an
+    // ApiError on non-2xx — so no manual apiKey gate or response.ok check.
+    apiFetch(`/config/connectors/${encodeURIComponent(editRowName)}`)
       .then(async (response) => {
         if (cancelled) return
         const body = await response.json().catch(() => ({}))
-        if (!response.ok) {
-          throw new Error(
-            (typeof body?.detail === 'string' && body.detail) ||
-              (typeof body?.error === 'string' && body.error) ||
-              `${response.status} ${response.statusText}`,
-          )
-        }
         // The row response is the flat config — one row per
         // connector instance after the migration. No items[]
         // traversal, no parent-globals juggling.
@@ -559,69 +544,38 @@ export function AttestivConnectorWizard() {
 
   async function runTest() {
     setTestResult({ state: 'running' })
-    const settings = loadSettings()
-    const baseUrl = settings.apiBaseUrl?.trim()?.replace(/\/+$/, '')
-    if (!baseUrl || !settings.apiKey) {
-      setTestResult({
-        state: 'deferred',
-        details: 'No API key configured locally — connection test skipped. The wizard will save the connector and the worker will attempt the first poll.',
-      })
-      return
-    }
     try {
-      // The verify_tls toggle has to travel with the probe body the
-      // same way it travels with the save body — otherwise the backend
-      // probe always uses default TLS verification and the user gets a
-      // x509 error even after un-checking "Verify TLS". Mirror the
-      // save() flow exactly: stash verify_tls inside credentials so
-      // the connector's boolConfig(config["verify_tls"], ...) reads it.
+      // verify_tls travels inside credentials so the backend probe reads
+      // boolConfig(config["verify_tls"], ...) — same shape as save().
       const probeCredentials = {
         ...credentials,
         verify_tls: verifyTLS ? 'true' : 'false',
       }
-      // X-Tenant-ID must match the tenant the user uploaded any
-      // trusted root CAs under — otherwise the backend probe loads
-      // PEMBundle("") (the empty _global bucket) and verify_tls=true
-      // hits x509 even after the operator uploaded the right root.
-      // The trust-store UI already attaches this header via apiFetch;
-      // mirror it here so probe and upload resolve to the same bucket.
-      const probeHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey}`,
-      }
-      if (settings.tenantId) {
-        probeHeaders['X-Tenant-ID'] = settings.tenantId
-      }
-      const response = await fetch(`${baseUrl}/v1/connectors/test`, {
+      // apiFetch carries the active credential (session cookie for
+      // local/OIDC, Bearer for apiKey) + X-Tenant-ID, so the probe works
+      // regardless of how the operator logged in — the old raw-fetch path
+      // required a locally-stored apiKey and silently skipped the test
+      // under cookie auth.
+      const response = await apiFetch('/connectors/test', {
         method: 'POST',
-        headers: probeHeaders,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind, endpoint, credentials: probeCredentials }),
       })
-      if (response.status === 404 || response.status === 405) {
-        setTestResult({
-          state: 'deferred',
-          details: 'Backend has no /v1/connectors/test endpoint yet. The connector will be saved and the worker will validate on first poll.',
-        })
-        return
-      }
       const body = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        // The Go API returns errors as { "detail": "..." } via its
-        // writeError helper. Some legacy endpoints used { "error": "..." }
-        // — accept both before falling back to the bare status text so
-        // we never lose the real upstream message (TLS failure, auth
-        // rejection, unreachable host) in a generic "502 Bad Gateway".
-        const message =
-          (typeof body?.detail === 'string' && body.detail) ||
-          (typeof body?.error === 'string' && body.error) ||
-          `${response.status} ${response.statusText}`
-        throw new Error(message)
-      }
       setTestResult({
         state: 'pass',
         details: typeof body?.detail === 'string' ? body.detail : 'Endpoint reachable, credentials accepted.',
       })
     } catch (err: any) {
+      // No test endpoint on this build → defer to the first worker poll
+      // rather than failing the wizard.
+      if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
+        setTestResult({
+          state: 'deferred',
+          details: 'This build has no /v1/connectors/test endpoint. The connector will be saved and the worker will validate on the first poll.',
+        })
+        return
+      }
       setTestResult({
         state: 'fail',
         details: err?.message ?? 'Connection test failed',
@@ -631,23 +585,7 @@ export function AttestivConnectorWizard() {
 
   async function save() {
     setSavingError(null)
-    const settings = loadSettings()
-    const baseUrl = settings.apiBaseUrl?.trim()?.replace(/\/+$/, '')
-    if (!baseUrl || !settings.apiKey) {
-      setSavingError('Set the API base URL and API key in Login first.')
-      return
-    }
     try {
-      // Same tenant header rationale as runTest above — the save
-      // must land in the same tenant bucket the probe used so the
-      // worker poll path inherits the right trust pool.
-      const saveHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey}`,
-      }
-      if (settings.tenantId) {
-        saveHeaders['X-Tenant-ID'] = settings.tenantId
-      }
       // Re-mask any secret field that was loaded masked AND was not
       // re-typed by the operator. Sending "********" trips the backend
       // MergeMaskedSecrets path and preserves the stored value — empty
@@ -660,9 +598,11 @@ export function AttestivConnectorWizard() {
         }
       }
 
-      const response = await fetch(`${baseUrl}/v1/connectors`, {
+      // apiFetch handles auth (cookie or Bearer) + X-Tenant-ID and throws
+      // an ApiError carrying the upstream detail on non-2xx.
+      const response = await apiFetch('/connectors', {
         method: 'POST',
-        headers: saveHeaders,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim() || kind,
           kind,
@@ -675,16 +615,6 @@ export function AttestivConnectorWizard() {
         }),
       })
       const body = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        // Mirror the test-step parser: detail is the Go API's
-        // convention, error is the legacy form. Either way, surface
-        // the real upstream message rather than a generic status.
-        const message =
-          (typeof body?.detail === 'string' && body.detail) ||
-          (typeof body?.error === 'string' && body.error) ||
-          `${response.status} ${response.statusText}`
-        throw new Error(message)
-      }
       setSaved({
         id: typeof body?.id === 'string' ? body.id : 'pending',
         created_at: typeof body?.created_at === 'string' ? body.created_at : new Date().toISOString(),
