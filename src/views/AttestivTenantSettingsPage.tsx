@@ -1,9 +1,10 @@
 'use client';
 // Tenant settings page.
 //
-// Single-pane form for the tenant profile: identity, residency,
-// branding bits, and the RTO/RPO targets the DR pages compare runs
-// against. The targets are stored in localStorage today because the
+// Single-pane form for the tenant profile: identity, branding bits,
+// and the RTO/RPO targets the DR pages compare runs against. (Data
+// residency was removed — this deployment stores evidence locally, so a
+// cloud-region picker was misleading.) The targets are stored in localStorage today because the
 // backend has no tenant-profile endpoint yet — when 4b's tenant API
 // lands, swap the persistence layer; the form shape stays.
 //
@@ -39,7 +40,6 @@ type TenantProfile = {
   // `production` keep those views truthful — empty rows render as
   // real "no data" states instead of fabricated fixtures.
   environment: 'demo' | 'pilot' | 'production'
-  residency: string
   industry: string
   rto_minutes: number
   rpo_minutes: number
@@ -47,14 +47,6 @@ type TenantProfile = {
 }
 
 const PROFILE_KEY = 'compliantly.tenant.profile'
-
-const RESIDENCIES = [
-  { value: 'us-east-1', label: 'us-east-1 (N. Virginia)' },
-  { value: 'us-west-2', label: 'us-west-2 (Oregon)' },
-  { value: 'eu-west-1', label: 'eu-west-1 (Ireland)' },
-  { value: 'eu-central-1', label: 'eu-central-1 (Frankfurt)' },
-  { value: 'ap-southeast-1', label: 'ap-southeast-1 (Singapore)' },
-]
 
 const INDUSTRIES = ['Financial services', 'Healthcare', 'SaaS', 'Manufacturing', 'Public sector', 'Other']
 
@@ -101,7 +93,6 @@ export function AttestivTenantSettingsPage() {
         tenant_id: stored?.tenant_id || settings.tenantId || '',
         display_name: stored?.display_name ?? '',
         environment: stored?.environment ?? 'pilot',
-        residency: stored?.residency ?? RESIDENCIES[0].value,
         industry: stored?.industry ?? INDUSTRIES[0],
         rto_minutes: stored?.rto_minutes ?? 30,
         rpo_minutes: stored?.rpo_minutes ?? 15,
@@ -123,7 +114,6 @@ export function AttestivTenantSettingsPage() {
                 : remote.environment === 'demo'
                   ? 'demo'
                   : 'pilot',
-            residency: typeof remote.residency === 'string' && remote.residency ? remote.residency : current.residency,
             industry: typeof remote.industry === 'string' && remote.industry ? remote.industry : current.industry,
             rto_minutes: typeof remote.rto_minutes === 'number' ? remote.rto_minutes : current.rto_minutes,
             rpo_minutes: typeof remote.rpo_minutes === 'number' ? remote.rpo_minutes : current.rpo_minutes,
@@ -166,7 +156,6 @@ export function AttestivTenantSettingsPage() {
         body: JSON.stringify({
           display_name: profile.display_name,
           environment: profile.environment,
-          residency: profile.residency,
           industry: profile.industry,
           rto_minutes: profile.rto_minutes,
           rpo_minutes: profile.rpo_minutes,
@@ -269,18 +258,6 @@ export function AttestivTenantSettingsPage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label={t('Data residency', 'Data residency')} hint={t(
-              'Region where evidence and signed manifests are stored.',
-              'Region where evidence and signed manifests are stored.'
-            )}>
-              <Select value={profile.residency} onChange={(event) => update('residency', event.target.value)}>
-                {RESIDENCIES.map((residency) => (
-                  <option key={residency.value} value={residency.value}>
-                    {residency.label}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
           </Card>
 
           <Card>
@@ -362,12 +339,6 @@ export function AttestivTenantSettingsPage() {
                 'determines reminder cadence and is read by the framework engines (DORA Art. 12, ISO 27001 A.17) to grade the tenant\'s posture.'
               )}
             </li>
-            <li>
-              <strong>{t('Data residency', 'Data residency')}</strong> {t(
-                'is encoded in every signed manifest so an auditor can verify where evidence was stored at the time of signing.',
-                'is encoded in every signed manifest so an auditor can verify where evidence was stored at the time of signing.'
-              )}
-            </li>
           </ul>
         </Card>
       </div>
@@ -435,7 +406,6 @@ function emptyProfile(): TenantProfile {
     tenant_id: '',
     display_name: '',
     environment: 'pilot',
-    residency: RESIDENCIES[0].value,
     industry: INDUSTRIES[0],
     rto_minutes: 30,
     rpo_minutes: 15,
