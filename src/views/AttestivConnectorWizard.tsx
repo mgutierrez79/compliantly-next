@@ -77,7 +77,7 @@ function isSecretFieldName(name: string): boolean {
 type ConnectorKind = {
   value: string
   label: string
-  category: 'Network' | 'Storage' | 'Virtualization' | 'Backup' | 'ITSM' | 'Observability'
+  category: 'Network' | 'Storage' | 'Virtualization' | 'Backup' | 'ITSM' | 'Observability' | 'Security'
   endpointHint: string
   fields: CredentialField[]
   pollDefault: number
@@ -186,6 +186,17 @@ const CONNECTORS: ConnectorKind[] = [
       { key: 'password', label: 'Password', type: 'password', required: true },
     ],
     pollDefault: 600,
+  },
+  {
+    value: 'advens_mysoc',
+    label: 'Advens mySOC',
+    category: 'Security',
+    endpointHint: 'https://api.mysoc.io',
+    fields: [
+      { key: 'customer', label: 'Customer perimeter', required: true, hint: 'Your mySOC perimeter slug, e.g. gieauxia.' },
+      { key: 'api_token', label: 'API token', type: 'password', required: true, hint: 'mySOC Bearer token (portal → Authorize → Bearer).' },
+    ],
+    pollDefault: 21600,
   },
 ]
 
@@ -830,8 +841,8 @@ function PickStep({ kind, onChange }: { kind: string; onChange: (next: string) =
       <SectionHeader
         title={t('Choose a source', 'Choose a source')}
         sub={t(
-          'Eight connector kinds are available in the pilot. Each pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents) into the same signed pipeline.',
-          'Eight connector kinds are available in the pilot. Each pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents) into the same signed pipeline.'
+          'Each connector pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents, SOC vulnerabilities) into the same signed pipeline.',
+          'Each connector pulls a different evidence shape (firewall config, snapshot lineage, vCenter inventory, observability incidents, SOC vulnerabilities) into the same signed pipeline.'
         )}
       />
       <div
