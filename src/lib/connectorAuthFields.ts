@@ -67,6 +67,10 @@ export const AUTH_FIELD_DESCRIPTORS: Record<string, AuthFieldDescriptor> = {
     label: 'Serial number',
     hint: 'Used for HA-aware scoping.',
   },
+  customer: {
+    label: 'Customer perimeter',
+    hint: 'Your mySOC perimeter slug, e.g. gieauxia.',
+  },
 }
 
 export function describeAuthField(key: string): AuthFieldDescriptor {
@@ -108,10 +112,12 @@ export type AuthMethod = {
 }
 
 // Fields that belong to connector-specific configuration (e.g. PAN-OS
-// firewall serial number) and should always be visible regardless of
-// which auth method is active. These are pulled out of the auth list
-// into a separate "common fields" bucket.
-const NON_AUTH_FIELDS: ReadonlySet<string> = new Set(['serial'])
+// firewall serial number, mySOC customer perimeter) and should always
+// be visible regardless of which auth method is active. These are
+// pulled out of the auth list into a separate "common fields" bucket
+// so they don't get mistaken for mutually-exclusive auth methods (which
+// would render a method picker and hide them behind a tab).
+const NON_AUTH_FIELDS: ReadonlySet<string> = new Set(['serial', 'customer', 'perimeter'])
 
 type AuthMethodDef = {
   key: string
