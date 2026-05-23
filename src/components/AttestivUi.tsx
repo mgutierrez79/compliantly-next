@@ -14,6 +14,7 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
 } from 'react'
+import { useMemo, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 
 type Tone =
@@ -1092,4 +1093,106 @@ export function PagePlaceholder({
       </div>
     </>
   );
+}
+
+// PaginatedList renders any list of objects in a fixed-height scroll
+// container with a page-size selector (10/20/50/100) and prev/next
+// controls. Drop-in for client-side datasets: pass the full items array
+// and a row renderer. Standard list convention across the app — prefer
+// this over flat unbounded renders.
+export function PaginatedList<T>({
+  items,
+  renderItem,
+  itemKey,
+  defaultPageSize = 20,
+  pageSizes = [10, 20, 50, 100],
+  maxHeight = 560,
+  empty,
+  label,
+}: {
+  items: T[]
+  renderItem: (item: T, index: number) => ReactNode
+  itemKey?: (item: T, index: number) => string
+  defaultPageSize?: number
+  pageSizes?: number[]
+  maxHeight?: number | string
+  empty?: ReactNode
+  label?: string
+}) {
+  const { t } = useI18n()
+  const [pageSize, setPageSize] = useState(defaultPageSize)
+  const [page, setPage] = useState(0)
+
+  const total = items.length
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const current = Math.min(page, pageCount - 1)
+  const start = current * pageSize
+  const slice = useMemo(
+    () => items.slice(start, start + pageSize),
+    [items, start, pageSize],
+  )
+
+  if (total === 0) {
+    return <>{empty ?? null}</>
+  }
+
+  const from = start + 1
+  const to = Math.min(start + pageSize, total)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ maxHeight, overflowY: 'auto' }}>
+        {slice.map((item, i) => (
+          <div key={itemKey ? itemKey(item, start + i) : start + i}>
+            {renderItem(item, start + i)}
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          fontSize: 12,
+          color: 'var(--color-text-tertiary)',
+          paddingTop: 6,
+          borderTop: '0.5px solid var(--color-border-tertiary)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{t('Rows', 'Rows')}</span>
+          <Select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(0)
+            }}
+            style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }}
+            aria-label={label ? `${label} ${t('rows per page', 'rows per page')}` : t('rows per page', 'rows per page')}
+          >
+            {pageSizes.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <span>
+          {t('{from}–{to} of {total}', '{from}–{to} of {total}', { from, to, total })}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <GhostButton onClick={() => setPage(Math.max(0, current - 1))} disabled={current <= 0}>
+            <i className="ti ti-chevron-left" aria-hidden="true" /> {t('Prev', 'Prev')}
+          </GhostButton>
+          <span>
+            {t('Page {n}/{m}', 'Page {n}/{m}', { n: current + 1, m: pageCount })}
+          </span>
+          <GhostButton onClick={() => setPage(Math.min(pageCount - 1, current + 1))} disabled={current >= pageCount - 1}>
+            {t('Next', 'Next')} <i className="ti ti-chevron-right" aria-hidden="true" />
+          </GhostButton>
+        </div>
+      </div>
+    </div>
+  )
 }

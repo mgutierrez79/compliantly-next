@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
-import { Badge, Banner, Card, CardTitle, EmptyState, GhostButton, PrimaryButton, Pulse, Skeleton, Topbar } from '../components/AttestivUi'
+import { Badge, Banner, Card, CardTitle, EmptyState, GhostButton, PaginatedList, PrimaryButton, Pulse, Skeleton, Topbar } from '../components/AttestivUi'
 import { loadPublicKeys, verifyManifest, type ManifestPayload, type VerifyResult } from '../lib/verify'
 
 import { useI18n } from '../lib/i18n';
@@ -107,7 +107,7 @@ export function AttestivEvidenceStream() {
 
   const reload = useCallback(async () => {
     try {
-      const response = await apiJson<EvidenceLogResponse>('/evidence/log?limit=50')
+      const response = await apiJson<EvidenceLogResponse>('/evidence/log?limit=200')
       setItems(response.items || [])
       setError(null)
     } catch (err) {
@@ -223,21 +223,22 @@ export function AttestivEvidenceStream() {
                 </div>
               ))}
             </div>
-          ) : items.length ? (
-            items.slice(0, 30).map((entry, index) => (
-              <EvidenceRow
-                key={`${entry.evidence_id || entry.run_id}-${entry.timestamp}-${index}`}
-                entry={entry}
-              />
-            ))
           ) : (
-            <EmptyState
-              icon="ti-file-certificate"
-              title={t('No evidence records yet', 'No evidence records yet')}
-              description={t(
-                'Once a connector starts signing, records will appear here in real time.',
-                'Once a connector starts signing, records will appear here in real time.'
-              )}
+            <PaginatedList
+              items={items}
+              itemKey={(entry, index) => `${entry.evidence_id || entry.run_id}-${entry.timestamp}-${index}`}
+              renderItem={(entry) => <EvidenceRow entry={entry} />}
+              label={t('Evidence', 'Evidence')}
+              empty={
+                <EmptyState
+                  icon="ti-file-certificate"
+                  title={t('No evidence records yet', 'No evidence records yet')}
+                  description={t(
+                    'Once a connector starts signing, records will appear here in real time.',
+                    'Once a connector starts signing, records will appear here in real time.'
+                  )}
+                />
+              }
             />
           )}
         </Card>
