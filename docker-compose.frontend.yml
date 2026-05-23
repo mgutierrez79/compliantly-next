@@ -13,12 +13,21 @@ services:
       # COMPLIANCE_FRONTEND_PORT in the deployment .env.
       - "${COMPLIANCE_FRONTEND_PORT:-443}:3000"
     environment:
-      # API proxy mTLS (Next.js -> Go API)
-      COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-http://host.docker.internal:8080}
-      COMPLIANCE_API_PROXY_CLIENT_CERT_FILE: ${COMPLIANCE_API_PROXY_CLIENT_CERT_FILE:-}
-      COMPLIANCE_API_PROXY_CLIENT_KEY_FILE: ${COMPLIANCE_API_PROXY_CLIENT_KEY_FILE:-}
-      COMPLIANCE_API_PROXY_CA_FILE: ${COMPLIANCE_API_PROXY_CA_FILE:-}
-      COMPLIANCE_API_PROXY_SERVER_NAME: ${COMPLIANCE_API_PROXY_SERVER_NAME:-}
+      # API proxy mTLS (Next.js -> Go API). Defaults below make mTLS
+      # active out of the box: the proxy talks HTTPS to the API,
+      # verifies the API's server cert against the shared CA, and
+      # PRESENTS its own client cert so the API (running in
+      # VerifyClientCertIfGiven mode) mutually authenticates the proxy.
+      # All five are still ${VAR:-default} so a deployment can override
+      # any of them from the shell; the defaults are the correct pilot
+      # values so the channel is mutually authenticated even with no
+      # shell exports. proxy-client.{crt,key} + ca.crt come from the
+      # shared TLS bundle mounted at /run/secrets/compliantly below.
+      COMPLIANCE_API_PROXY_TARGET: ${COMPLIANCE_API_PROXY_TARGET:-https://host.docker.internal:8080}
+      COMPLIANCE_API_PROXY_CLIENT_CERT_FILE: ${COMPLIANCE_API_PROXY_CLIENT_CERT_FILE:-/run/secrets/compliantly/proxy-client.crt}
+      COMPLIANCE_API_PROXY_CLIENT_KEY_FILE: ${COMPLIANCE_API_PROXY_CLIENT_KEY_FILE:-/run/secrets/compliantly/proxy-client.key}
+      COMPLIANCE_API_PROXY_CA_FILE: ${COMPLIANCE_API_PROXY_CA_FILE:-/run/secrets/compliantly/ca.crt}
+      COMPLIANCE_API_PROXY_SERVER_NAME: ${COMPLIANCE_API_PROXY_SERVER_NAME:-compliantly-api}
       COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY: ${COMPLIANCE_API_PROXY_INSECURE_SKIP_VERIFY:-0}
       # Frontend HTTPS (browser -> Next.js). Leave blank to keep the
       # frontend on plain HTTP; set both cert + key to terminate TLS.
