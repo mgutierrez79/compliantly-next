@@ -29,11 +29,17 @@ import { useI18n } from '../lib/i18n'
 type AuthPolicy = {
   local_auth_enabled: boolean
   mfa_required: boolean
+  mtls_require_client_cert: boolean
   session_ttl_minutes: number
   env_defaults?: { local_auth_enabled: boolean; mfa_required: boolean; session_ttl_minutes: number }
   auth_enabled: boolean
   dev_mode: boolean
   oidc_configured: boolean
+  // mTLS context so the UI can safely gate the require toggle.
+  mtls_client_ca_configured?: boolean
+  mtls_client_cert_seen?: boolean
+  mtls_can_require?: boolean
+  mtls_last_client_cert_seen?: string
 }
 
 export function AttestivAuthSettingsPage() {
@@ -41,6 +47,7 @@ export function AttestivAuthSettingsPage() {
   const [policy, setPolicy] = useState<AuthPolicy | null>(null)
   const [localAuth, setLocalAuth] = useState(false)
   const [mfa, setMfa] = useState(false)
+  const [requireClientCert, setRequireClientCert] = useState(false)
   const [ttl, setTtl] = useState('60')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -51,6 +58,7 @@ export function AttestivAuthSettingsPage() {
     setPolicy(p)
     setLocalAuth(!!p.local_auth_enabled)
     setMfa(!!p.mfa_required)
+    setRequireClientCert(!!p.mtls_require_client_cert)
     setTtl(String(p.session_ttl_minutes ?? 60))
   }, [])
 
@@ -81,6 +89,7 @@ export function AttestivAuthSettingsPage() {
         body: JSON.stringify({
           local_auth_enabled: localAuth,
           mfa_required: mfa,
+          mtls_require_client_cert: requireClientCert,
           session_ttl_minutes: Number(ttl) || 0,
         }),
       })
@@ -134,6 +143,44 @@ export function AttestivAuthSettingsPage() {
                   <option value="false">{t('Not required', 'Not required')}</option>
                   <option value="true">{t('Required', 'Required')}</option>
                 </Select>
+              </FormField>
+
+              <FormField
+                label={t('Require client certificate (mTLS)', 'Require client certificate (mTLS)')}
+                hint={t('When required, the API rejects every TLS connection that does not present a CA-signed client certificate. Defense-in-depth on top of API keys / SSO.', 'When required, the API rejects every TLS connection that does not present a CA-signed client certificate. Defense-in-depth on top of API keys / SSO.')}
+              >
+                <Select
+                  value={requireClientCert ? 'true' : 'false'}
+                  onChange={(e) => setRequireClientCert(e.target.value === 'true')}
+                  disabled={!policy.mtls_client_ca_configured}
+                >
+                  <option value="false">{t('Not required (verify if presented)', 'Not required (verify if presented)')}</option>
+                  <option value="true">{t('Required', 'Required')}</option>
+                </Select>
+                <div style={{ fontSize: 11.5, color: 'var(--color-text-tertiary)', marginTop: 6 }}>
+                  {!policy.mtls_client_ca_configured
+                    ? t('mTLS is not configured on this deployment (no client CA).', 'mTLS is not configured on this deployment (no client CA).')
+                    : (
+                      <>
+                        {t('Client cert seen recently', 'Client cert seen recently')}:{' '}
+                        <strong>{policy.mtls_client_cert_seen ? t('yes', 'yes') : t('no', 'no')}</strong>
+                        {policy.mtls_last_client_cert_seen
+                          ? ` (${t('last', 'last')}: ${policy.mtls_last_client_cert_seen.slice(0, 19).replace('T', ' ')}Z)`
+                          : ''}
+                        {!policy.mtls_can_require
+                          ? ' — ' + t('cannot require until a client cert has been observed (the proxy must present one first).', 'cannot require until a client cert has been observed (the proxy must present one first).')
+                          : ''}
+                      </>
+                    )}
+                </div>
+                {requireClientCert && !policy.mtls_require_client_cert ? (
+                  <Banner tone="warning">
+                    {t(
+                      'Enabling this rejects EVERY connection without a client certificate — including vendor webhooks (e.g. Palo Alto CEF) and direct CLI/API calls. Make sure the Next.js proxy presents its client cert (Trust store → Platform TLS certificates) and that any direct API consumers have one. Recovery if locked out: run the pilot-diagnostic workflow with recover_mtls_required=true.',
+                      'Enabling this rejects EVERY connection without a client certificate — including vendor webhooks (e.g. Palo Alto CEF) and direct CLI/API calls. Make sure the Next.js proxy presents its client cert (Trust store → Platform TLS certificates) and that any direct API consumers have one. Recovery if locked out: run the pilot-diagnostic workflow with recover_mtls_required=true.',
+                    )}
+                  </Banner>
+                ) : null}
               </FormField>
 
               <FormField
