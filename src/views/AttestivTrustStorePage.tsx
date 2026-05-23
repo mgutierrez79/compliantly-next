@@ -82,6 +82,31 @@ const CERT_ROLE_LABELS: Record<string, string> = {
   proxy_client: 'Proxy client (Next.js → API, mTLS)',
 }
 
+// One issued mTLS client cert (metadata only — the private key is never
+// stored, it's returned once at issuance). GET/DELETE
+// /v1/settings/mtls/client-certs.
+type ClientCertRecord = {
+  fingerprint_sha256: string
+  label: string
+  common_name: string
+  issued_at: string
+  expires_at: string
+  issued_by?: string
+  revoked: boolean
+  revoked_at?: string
+}
+
+// The one-time issue response — carries the cert AND private key, shown
+// once for download and never retrievable again.
+type IssuedClientCert = {
+  fingerprint_sha256: string
+  label: string
+  common_name: string
+  expires_at: string
+  certificate_pem: string
+  private_key_pem: string
+}
+
 // Roughly how long before expiry we surface a warning chip. Same
 // heuristic as the cert-expiry helpers in siteregistry — 30 days
 // is the "renew now" window, 90 is "plan ahead."
@@ -93,6 +118,10 @@ export function AttestivTrustStorePage() {
   const router = useRouter()
   const [bundles, setBundles] = useState<CABundleSummary[] | null>(null)
   const [platformCerts, setPlatformCerts] = useState<TlsCertsResponse | null>(null)
+  const [activeTab, setActiveTab] = useState<'mtls' | 'ca'>('mtls')
+  const [clientCerts, setClientCerts] = useState<ClientCertRecord[] | null>(null)
+  const [clientCertLabel, setClientCertLabel] = useState('')
+  const [issuedCert, setIssuedCert] = useState<IssuedClientCert | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -138,10 +167,86 @@ export function AttestivTrustStorePage() {
     }
   }, [])
 
+  const refreshClientCerts = useCallback(async () => {
+    try {
+      const response = await apiFetch('/settings/mtls/client-certs')
+      if (!response.ok) return
+      const body = await response.json()
+      setClientCerts(Array.isArray(body?.client_certs) ? body.client_certs : [])
+    } catch {
+      setClientCerts([])
+    }
+  }, [])
+
   useEffect(() => {
     void refresh()
     void refreshPlatformCerts()
-  }, [refresh, refreshPlatformCerts])
+    void refreshClientCerts()
+  }, [refresh, refreshPlatformCerts, refreshClientCerts])
+
+  async function issueClientCert() {
+    if (!clientCertLabel.trim()) {
+      setError(t('A label is required to issue a client certificate.', 'A label is required to issue a client certificate.'))
+      return
+    }
+    setBusy(true)
+    setError(null)
+    setInfo(null)
+    setIssuedCert(null)
+    try {
+      const response = await apiFetch('/settings/mtls/client-certs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: clientCertLabel.trim() }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(extractMessage(body, response))
+      setIssuedCert(body as IssuedClientCert)
+      setClientCertLabel('')
+      setInfo(t('Client certificate issued. Download the key now — it is shown only once.', 'Client certificate issued. Download the key now — it is shown only once.'))
+      await refreshClientCerts()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to issue client certificate')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function revokeClientCert(fingerprint: string, label: string) {
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm(
+        t('Revoke client certificate "{label}"? Any caller presenting it will be rejected at the TLS handshake.', 'Revoke client certificate "{label}"? Any caller presenting it will be rejected at the TLS handshake.').replace('{label}', label),
+      )
+      if (!ok) return
+    }
+    setBusy(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const response = await apiFetch(`/settings/mtls/client-certs/${encodeURIComponent(fingerprint)}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(extractMessage(body, response))
+      }
+      setInfo(t('Client certificate revoked.', 'Client certificate revoked.'))
+      await refreshClientCerts()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke client certificate')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function downloadText(filename: string, content: string) {
+    if (typeof window === 'undefined') return
+    const blob = new Blob([content], { type: 'application/x-pem-file' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   // Read a .pem / .crt file directly so the operator does not have
   // to copy-paste a multi-line PEM into the textarea. We never read
@@ -288,6 +393,34 @@ export function AttestivTrustStorePage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {info ? <Banner tone="success">{info}</Banner> : null}
 
+        <div role="tablist" style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--color-border)' }}>
+          {([
+            ['mtls', t('Platform TLS & mTLS', 'Platform TLS & mTLS')],
+            ['ca', t('CA trust store', 'CA trust store')],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={activeTab === key}
+              onClick={() => setActiveTab(key)}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontWeight: activeTab === key ? 700 : 500,
+                color: activeTab === key ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                borderBottom: activeTab === key ? '2px solid var(--color-accent, #2563eb)' : '2px solid transparent',
+                marginBottom: -1,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'mtls' ? (
+        <>
         <Card>
           <CardTitle>{t('Platform TLS certificates', 'Platform TLS certificates')}</CardTitle>
           <p style={{ marginBottom: 12 }}>
@@ -372,6 +505,104 @@ export function AttestivTrustStorePage() {
           )}
         </Card>
 
+        <Card>
+          <CardTitle>{t('Client certificates (mTLS)', 'Client certificates (mTLS)')}</CardTitle>
+          <p style={{ marginBottom: 12 }}>
+            {t(
+              'Issue client certificates signed by the internal CA for callers that must present one when "Require client certificate" is enabled (vendors, CLIs). The private key is shown only once at issuance and never stored. Revoking a certificate blocks it at the TLS handshake even though it is CA-signed.',
+              'Issue client certificates signed by the internal CA for callers that must present one when "Require client certificate" is enabled (vendors, CLIs). The private key is shown only once at issuance and never stored. Revoking a certificate blocks it at the TLS handshake even though it is CA-signed.',
+            )}
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+            <label style={{ flex: '1 1 280px' }}>
+              <div className="attestiv-label">{t('Label (vendor / service name)', 'Label (vendor / service name)')}</div>
+              <input
+                type="text"
+                value={clientCertLabel}
+                onChange={(e) => setClientCertLabel(e.target.value)}
+                placeholder={t('e.g. acme-siem-collector', 'e.g. acme-siem-collector')}
+                className="attestiv-input"
+              />
+            </label>
+            <PrimaryButton onClick={() => void issueClientCert()} disabled={busy || !clientCertLabel.trim()}>
+              <i className="ti ti-certificate" aria-hidden="true" /> {t('Issue client certificate', 'Issue client certificate')}
+            </PrimaryButton>
+          </div>
+
+          {issuedCert ? (
+            <div style={{ border: '2px solid var(--color-accent, #2563eb)', borderRadius: 8, padding: 16, marginBottom: 16, background: 'rgba(37,99,235,0.04)' }}>
+              <Banner tone="warning">
+                {t('Save these now — the private key is shown only once and cannot be retrieved again.', 'Save these now — the private key is shown only once and cannot be retrieved again.')}
+              </Banner>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '12px 0' }}>
+                <GhostButton onClick={() => downloadText(`${issuedCert!.label || 'client'}.crt`, issuedCert!.certificate_pem)}>
+                  <i className="ti ti-download" aria-hidden="true" /> {t('Download certificate', 'Download certificate')}
+                </GhostButton>
+                <GhostButton onClick={() => downloadText(`${issuedCert!.label || 'client'}.key`, issuedCert!.private_key_pem)}>
+                  <i className="ti ti-download" aria-hidden="true" /> {t('Download private key', 'Download private key')}
+                </GhostButton>
+                <GhostButton onClick={() => setIssuedCert(null)}>
+                  <i className="ti ti-x" aria-hidden="true" /> {t('Done', 'Done')}
+                </GhostButton>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'monospace' }}>
+                {t('Fingerprint', 'Fingerprint')}: {issuedCert.fingerprint_sha256}
+              </div>
+            </div>
+          ) : null}
+
+          {clientCerts === null ? (
+            <p>{t('Loading…', 'Loading…')}</p>
+          ) : clientCerts.length === 0 ? (
+            <EmptyState
+              icon="ti-certificate"
+              title={t('No client certificates issued yet.', 'No client certificates issued yet.')}
+              description={t('Issue one above for any caller that must present a client cert under mTLS.', 'Issue one above for any caller that must present a client cert under mTLS.')}
+            />
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ textAlign: 'left' }}>
+                  <th style={{ padding: '8px 12px' }}>{t('Label', 'Label')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('Status', 'Status')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('Expires', 'Expires')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('Fingerprint (SHA-256)', 'Fingerprint (SHA-256)')}</th>
+                  <th style={{ padding: '8px 12px' }} />
+                </tr>
+              </thead>
+              <tbody>
+                {clientCerts.map((cert) => (
+                  <tr key={cert.fingerprint_sha256} style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>
+                      {cert.label}
+                      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{cert.common_name}</div>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <Badge tone={cert.revoked ? 'red' : 'navy'}>
+                        {cert.revoked ? t('Revoked', 'Revoked') : t('Active', 'Active')}
+                      </Badge>
+                    </td>
+                    <td style={{ padding: '8px 12px', fontSize: 13 }}>{cert.expires_at.slice(0, 10)}</td>
+                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11 }}>
+                      {cert.fingerprint_sha256.slice(0, 16)}…{cert.fingerprint_sha256.slice(-8)}
+                    </td>
+                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                      {cert.revoked ? null : (
+                        <GhostButton onClick={() => void revokeClientCert(cert.fingerprint_sha256, cert.label)} disabled={busy}>
+                          <i className="ti ti-ban" aria-hidden="true" /> {t('Revoke', 'Revoke')}
+                        </GhostButton>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+        </>
+        ) : (
+        <>
         <Card>
           <CardTitle>{t('Why this matters', 'Why this matters')}</CardTitle>
           <p>
@@ -640,6 +871,8 @@ export function AttestivTrustStorePage() {
             </table>
           )}
         </Card>
+        </>
+        )}
       </div>
     </>
   )
