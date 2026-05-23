@@ -44,6 +44,44 @@ type CABundleSummary = {
   created_by?: string
 }
 
+// Read-only view of the platform's OWN TLS/mTLS bundle (the API
+// server cert, internal CA, frontend server cert, proxy client cert).
+// Served by GET /v1/settings/tls-certificates — public certs only,
+// never private keys. Rotation stays with gentls + redeploy.
+type PlatformCert = {
+  role: string
+  file: string
+  description: string
+  subject: string
+  issuer: string
+  is_ca: boolean
+  self_signed: boolean
+  sans: string[]
+  not_before: string
+  not_after: string
+  days_until_expiry: number
+  expiry_status: 'ok' | 'warning' | 'critical' | 'expired'
+  fingerprint_sha256: string
+  key_usage: string[]
+}
+
+type TlsCertsResponse = {
+  tls_enabled: boolean
+  mtls: {
+    client_ca_configured: boolean
+    require_client_cert: boolean
+    mode: string
+  }
+  certificates: PlatformCert[]
+}
+
+const CERT_ROLE_LABELS: Record<string, string> = {
+  api_server: 'API server (backend HTTPS)',
+  internal_ca: 'Internal CA',
+  frontend_server: 'Frontend server (browser → Next.js)',
+  proxy_client: 'Proxy client (Next.js → API, mTLS)',
+}
+
 // Roughly how long before expiry we surface a warning chip. Same
 // heuristic as the cert-expiry helpers in siteregistry — 30 days
 // is the "renew now" window, 90 is "plan ahead."
@@ -54,6 +92,7 @@ export function AttestivTrustStorePage() {
   const { t } = useI18n()
   const router = useRouter()
   const [bundles, setBundles] = useState<CABundleSummary[] | null>(null)
+  const [platformCerts, setPlatformCerts] = useState<TlsCertsResponse | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -87,9 +126,22 @@ export function AttestivTrustStorePage() {
     }
   }, [])
 
+  const refreshPlatformCerts = useCallback(async () => {
+    try {
+      const response = await apiFetch('/settings/tls-certificates')
+      if (!response.ok) return
+      const body = (await response.json()) as TlsCertsResponse
+      setPlatformCerts(body)
+    } catch {
+      // Non-fatal: the platform-cert panel is informational. The CA
+      // upload below is the page's primary function and must still load.
+    }
+  }, [])
+
   useEffect(() => {
     void refresh()
-  }, [refresh])
+    void refreshPlatformCerts()
+  }, [refresh, refreshPlatformCerts])
 
   // Read a .pem / .crt file directly so the operator does not have
   // to copy-paste a multi-line PEM into the textarea. We never read
@@ -235,6 +287,90 @@ export function AttestivTrustStorePage() {
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
         {info ? <Banner tone="success">{info}</Banner> : null}
+
+        <Card>
+          <CardTitle>{t('Platform TLS certificates', 'Platform TLS certificates')}</CardTitle>
+          <p style={{ marginBottom: 12 }}>
+            {t(
+              'The certificates securing the frontend and backend, including the mutual-TLS channel between the Next.js proxy and the API. These are managed via the cert bundle (gentls) and applied on deploy — this view is read-only and never exposes private keys.',
+              'The certificates securing the frontend and backend, including the mutual-TLS channel between the Next.js proxy and the API. These are managed via the cert bundle (gentls) and applied on deploy — this view is read-only and never exposes private keys.',
+            )}
+          </p>
+          {platformCerts === null ? (
+            <p>{t('Loading…', 'Loading…')}</p>
+          ) : !platformCerts.tls_enabled ? (
+            <Banner tone="warning">
+              {t('TLS is not configured on the API (no server certificate).', 'TLS is not configured on the API (no server certificate).')}
+            </Banner>
+          ) : (
+            <>
+              <div style={{ marginBottom: 12, fontSize: 13 }}>
+                <Badge tone={platformCerts.mtls.require_client_cert ? 'navy' : 'amber'}>
+                  {t('mTLS mode', 'mTLS mode')}: {platformCerts.mtls.mode}
+                </Badge>{' '}
+                <span style={{ color: 'var(--color-text-tertiary)' }}>
+                  {platformCerts.mtls.require_client_cert
+                    ? t('Client certificate required for API connections.', 'Client certificate required for API connections.')
+                    : t('Client certificate verified when presented, but not required.', 'Client certificate verified when presented, but not required.')}
+                </span>
+              </div>
+              {platformCerts.certificates.length === 0 ? (
+                <EmptyState
+                  icon="ti-certificate"
+                  title={t('No platform certificates found.', 'No platform certificates found.')}
+                  description={t('The TLS bundle directory has no readable certificates.', 'The TLS bundle directory has no readable certificates.')}
+                />
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left' }}>
+                      <th style={{ padding: '8px 12px' }}>{t('Role', 'Role')}</th>
+                      <th style={{ padding: '8px 12px' }}>{t('Subject', 'Subject')}</th>
+                      <th style={{ padding: '8px 12px' }}>{t('SANs', 'SANs')}</th>
+                      <th style={{ padding: '8px 12px' }}>{t('Expires', 'Expires')}</th>
+                      <th style={{ padding: '8px 12px' }}>{t('Fingerprint (SHA-256)', 'Fingerprint (SHA-256)')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {platformCerts.certificates.map((cert) => {
+                      const tone: 'red' | 'amber' | 'navy' =
+                        cert.expiry_status === 'expired' || cert.expiry_status === 'critical'
+                          ? 'red'
+                          : cert.expiry_status === 'warning'
+                            ? 'amber'
+                            : 'navy'
+                      return (
+                        <tr key={cert.role + cert.fingerprint_sha256} style={{ borderTop: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 600 }}>{CERT_ROLE_LABELS[cert.role] ?? cert.role}</div>
+                            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'monospace' }}>{cert.file}</div>
+                          </td>
+                          <td style={{ padding: '8px 12px', fontSize: 13 }}>{cert.subject}</td>
+                          <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                            {cert.sans.length ? cert.sans.join(', ') : '—'}
+                          </td>
+                          <td style={{ padding: '8px 12px', fontSize: 13 }}>
+                            <Badge tone={tone}>
+                              {cert.days_until_expiry <= 0
+                                ? t('Expired', 'Expired')
+                                : t('{n} days', '{n} days').replace('{n}', String(cert.days_until_expiry))}
+                            </Badge>
+                            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+                              {cert.not_after.slice(0, 10)}
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11 }}>
+                            {cert.fingerprint_sha256.slice(0, 16)}…{cert.fingerprint_sha256.slice(-8)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+        </Card>
 
         <Card>
           <CardTitle>{t('Why this matters', 'Why this matters')}</CardTitle>
