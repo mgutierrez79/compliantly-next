@@ -36,6 +36,16 @@ type ControlArea = {
   percent: number
 }
 
+// Honest declaration of how much of the regulation the framework's
+// evidenceable control set covers, with the deferred controls listed.
+type Coverage = {
+  regulation_total: number
+  covered: number
+  status?: string
+  statement?: string
+  deferred?: { ref: string; name: string; reason?: string }[]
+}
+
 type FrameworkPosture = {
   id: string
   name: string
@@ -53,6 +63,7 @@ type FrameworkPosture = {
   review_controls?: number
   warn_controls?: number
   fail_controls?: number
+  coverage?: Coverage
 }
 
 type ScoringFrameworkResult = {
@@ -66,6 +77,7 @@ type ScoringFrameworkResult = {
   warn_controls?: number
   fail_controls?: number
   evaluated_at?: string
+  coverage?: Coverage
 }
 
 const DEMO_POSTURE: FrameworkPosture[] = [
@@ -448,6 +460,7 @@ function FrameworkCard({
           <ControlBreakdown framework={framework} />
         )}
       </div>
+      {framework.coverage ? <CoverageBlock coverage={framework.coverage} /> : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
           {framework.last_updated
@@ -547,6 +560,48 @@ function ControlBreakdown({ framework }: { framework: FrameworkPosture }) {
   )
 }
 
+// CoverageBlock makes the framework's regulation coverage explicit:
+// "X / Y controls covered" + the deferred controls (and why), so an
+// auditor sees what is automated vs. what still needs manual
+// attestation. Coverage is a best-effort assessment until juriste-
+// reviewed (status=verified).
+function CoverageBlock({ coverage }: { coverage: Coverage }) {
+  const { t } = useI18n()
+  const total = coverage.regulation_total || 0
+  const covered = coverage.covered || 0
+  const verified = (coverage.status || '').toLowerCase() === 'verified'
+  return (
+    <div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 6, background: 'var(--color-surface-muted, #f8fafc)', fontSize: 11.5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 600 }}>
+          {t('Regulation coverage', 'Regulation coverage')}: {covered} / {total} {t('controls', 'controls')}
+        </span>
+        <Badge tone={verified ? 'green' : 'amber'}>
+          {verified ? t('verified', 'verified') : t('draft — verify', 'draft — verify')}
+        </Badge>
+      </div>
+      {coverage.statement ? (
+        <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>{coverage.statement}</p>
+      ) : null}
+      {coverage.deferred && coverage.deferred.length > 0 ? (
+        <details style={{ marginTop: 6 }}>
+          <summary style={{ cursor: 'pointer', color: 'var(--color-text-tertiary)' }}>
+            {coverage.deferred.length} {t('deferred (not yet auto-evidenced)', 'deferred (not yet auto-evidenced)')}
+          </summary>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--color-text-secondary)' }}>
+            {coverage.deferred.map((d) => (
+              <li key={d.ref} style={{ marginBottom: 2 }}>
+                <code style={{ fontSize: 10 }}>{d.ref}</code> — {d.name}
+                {d.reason ? <span style={{ color: 'var(--color-text-tertiary)' }}> ({d.reason})</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  )
+}
+
 function formatEvaluatedAt(iso: string): string {
   const ts = new Date(iso).getTime()
   if (Number.isNaN(ts)) return iso
@@ -581,6 +636,7 @@ function scoringResultToPosture(result: ScoringFrameworkResult): FrameworkPostur
     review_controls: result.review_controls,
     warn_controls: result.warn_controls,
     fail_controls: result.fail_controls,
+    coverage: result.coverage,
   }
 }
 
