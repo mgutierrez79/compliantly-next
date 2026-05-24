@@ -177,7 +177,9 @@ export function AttestivControlEvidenceDetailPage({
                         {data.explanation.citation}
                         {data.explanation.citation_verified
                           ? ''
-                          : ` · ${t('draft — verify', 'draft — verify')}`}
+                          : data.explanation.citation_status === 'derived'
+                            ? ` · ${t('derived — verify', 'derived — verify')}`
+                            : ` · ${t('draft — verify', 'draft — verify')}`}
                       </Badge>
                     ) : null
                   }
@@ -238,10 +240,15 @@ export function AttestivControlEvidenceDetailPage({
 
                 {data.explanation.citation && !data.explanation.citation_verified ? (
                   <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 10 }}>
-                    {t(
-                      'Regulatory citation is a draft pending review by a qualified juriste — do not rely on it for a formal audit until verified.',
-                      'Regulatory citation is a draft pending review by a qualified juriste — do not rely on it for a formal audit until verified.',
-                    )}
+                    {data.explanation.citation_status === 'derived'
+                      ? t(
+                          'Citation derived automatically from the framework and control identifier — pending review by a qualified juriste. Do not rely on it for a formal audit until verified.',
+                          'Citation derived automatically from the framework and control identifier — pending review by a qualified juriste. Do not rely on it for a formal audit until verified.',
+                        )
+                      : t(
+                          'Regulatory citation is a draft pending review by a qualified juriste — do not rely on it for a formal audit until verified.',
+                          'Regulatory citation is a draft pending review by a qualified juriste — do not rely on it for a formal audit until verified.',
+                        )}
                   </p>
                 ) : null}
               </Card>
