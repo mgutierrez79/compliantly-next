@@ -570,32 +570,42 @@ function CoverageBlock({ coverage }: { coverage: Coverage }) {
   const total = coverage.regulation_total || 0
   const covered = coverage.covered || 0
   const verified = (coverage.status || '').toLowerCase() === 'verified'
+  const deferredCount = coverage.deferred?.length ?? 0
+  const hasDetail = Boolean(coverage.statement) || deferredCount > 0
   return (
-    <div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 6, background: 'var(--color-surface-muted, #f8fafc)', fontSize: 11.5 }}>
+    <div style={{ marginBottom: 10, fontSize: 11.5 }}>
+      {/* Card face stays clean — just the coverage ratio + status. The
+          prose statement and the deferred list live behind a disclosure
+          so the card isn't cluttered; the rich per-control narrative is
+          on the control-detail pages where there's room. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 600 }}>
-          {t('Regulation coverage', 'Regulation coverage')}: {covered} / {total} {t('controls', 'controls')}
+        <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+          {t('Regulation coverage', 'Regulation coverage')}: {covered} / {total}
         </span>
         <Badge tone={verified ? 'green' : 'amber'}>
           {verified ? t('verified', 'verified') : t('draft — verify', 'draft — verify')}
         </Badge>
       </div>
-      {coverage.statement ? (
-        <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>{coverage.statement}</p>
-      ) : null}
-      {coverage.deferred && coverage.deferred.length > 0 ? (
-        <details style={{ marginTop: 6 }}>
+      {hasDetail ? (
+        <details style={{ marginTop: 4 }}>
           <summary style={{ cursor: 'pointer', color: 'var(--color-text-tertiary)' }}>
-            {coverage.deferred.length} {t('deferred (not yet auto-evidenced)', 'deferred (not yet auto-evidenced)')}
+            {deferredCount > 0
+              ? `${deferredCount} ${t('deferred — what & why', 'deferred — what & why')}`
+              : t('coverage details', 'coverage details')}
           </summary>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--color-text-secondary)' }}>
-            {coverage.deferred.map((d) => (
-              <li key={d.ref} style={{ marginBottom: 2 }}>
-                <code style={{ fontSize: 10 }}>{d.ref}</code> — {d.name}
-                {d.reason ? <span style={{ color: 'var(--color-text-tertiary)' }}> ({d.reason})</span> : null}
-              </li>
-            ))}
-          </ul>
+          {coverage.statement ? (
+            <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>{coverage.statement}</p>
+          ) : null}
+          {deferredCount > 0 ? (
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--color-text-secondary)' }}>
+              {coverage.deferred!.map((d) => (
+                <li key={d.ref} style={{ marginBottom: 2 }}>
+                  <code style={{ fontSize: 10 }}>{d.ref}</code> — {d.name}
+                  {d.reason ? <span style={{ color: 'var(--color-text-tertiary)' }}> ({d.reason})</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </details>
       ) : null}
     </div>
