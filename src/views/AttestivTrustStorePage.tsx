@@ -107,6 +107,25 @@ type IssuedClientCert = {
   private_key_pem: string
 }
 
+// A staged custom cert awaiting apply (GET/POST/DELETE
+// /v1/settings/tls-certificates/staged). Metadata only — keys are
+// staged server-side, never returned.
+type StagedTLSCert = {
+  role: string
+  label: string
+  subject: string
+  not_after: string
+  fingerprint_sha256: string
+  staged_at: string
+  staged_by?: string
+}
+
+const STAGED_ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'api_server', label: 'API server (backend HTTPS)' },
+  { value: 'frontend_server', label: 'Frontend server (browser → Next.js)' },
+  { value: 'proxy_client', label: 'Proxy client (Next.js → API)' },
+]
+
 // Roughly how long before expiry we surface a warning chip. Same
 // heuristic as the cert-expiry helpers in siteregistry — 30 days
 // is the "renew now" window, 90 is "plan ahead."
@@ -122,6 +141,10 @@ export function AttestivTrustStorePage() {
   const [clientCerts, setClientCerts] = useState<ClientCertRecord[] | null>(null)
   const [clientCertLabel, setClientCertLabel] = useState('')
   const [issuedCert, setIssuedCert] = useState<IssuedClientCert | null>(null)
+  const [stagedCerts, setStagedCerts] = useState<StagedTLSCert[] | null>(null)
+  const [stageRole, setStageRole] = useState('api_server')
+  const [stageCertPem, setStageCertPem] = useState('')
+  const [stageKeyPem, setStageKeyPem] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -178,11 +201,69 @@ export function AttestivTrustStorePage() {
     }
   }, [])
 
+  const refreshStaged = useCallback(async () => {
+    try {
+      const response = await apiFetch('/settings/tls-certificates/staged')
+      if (!response.ok) return
+      const body = await response.json()
+      setStagedCerts(Array.isArray(body?.staged) ? body.staged : [])
+    } catch {
+      setStagedCerts([])
+    }
+  }, [])
+
   useEffect(() => {
     void refresh()
     void refreshPlatformCerts()
     void refreshClientCerts()
-  }, [refresh, refreshPlatformCerts, refreshClientCerts])
+    void refreshStaged()
+  }, [refresh, refreshPlatformCerts, refreshClientCerts, refreshStaged])
+
+  async function stageCustomCert() {
+    if (!stageCertPem.trim() || !stageKeyPem.trim()) {
+      setError(t('Both the certificate and private key (PEM) are required.', 'Both the certificate and private key (PEM) are required.'))
+      return
+    }
+    setBusy(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const response = await apiFetch('/settings/tls-certificates/staged', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: stageRole, certificate_pem: stageCertPem, private_key_pem: stageKeyPem }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(extractMessage(body, response))
+      setStageCertPem('')
+      setStageKeyPem('')
+      setInfo(t('Certificate staged. It is NOT live yet — apply it from the runner (apply_staged_tls) to swap it in and restart.', 'Certificate staged. It is NOT live yet — apply it from the runner (apply_staged_tls) to swap it in and restart.'))
+      await refreshStaged()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to stage certificate')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function discardStaged(role: string) {
+    setBusy(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const response = await apiFetch(`/settings/tls-certificates/staged/${encodeURIComponent(role)}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(extractMessage(body, response))
+      }
+      setInfo(t('Staged certificate discarded.', 'Staged certificate discarded.'))
+      await refreshStaged()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to discard staged certificate')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function issueClientCert() {
     if (!clientCertLabel.trim()) {
@@ -599,6 +680,90 @@ export function AttestivTrustStorePage() {
               </tbody>
             </table>
           )}
+        </Card>
+
+        <Card>
+          <CardTitle>{t('Install custom certificates', 'Install custom certificates')}</CardTitle>
+          <Banner tone="warning">
+            {t(
+              'Advanced. Upload your own CA-issued certificate + private key to REPLACE the platform server / frontend / proxy identity. Uploads are STAGED only — they are validated (key must match the certificate) and held aside, never written to the live bundle here. Applying them swaps the bundle and RESTARTS both stacks; run it from the pilot-diagnostic workflow with apply_staged_tls=true, which backs up the current bundle and auto-rolls-back if the API does not come back. The internal CA is not replaceable here.',
+              'Advanced. Upload your own CA-issued certificate + private key to REPLACE the platform server / frontend / proxy identity. Uploads are STAGED only — they are validated (key must match the certificate) and held aside, never written to the live bundle here. Applying them swaps the bundle and RESTARTS both stacks; run it from the pilot-diagnostic workflow with apply_staged_tls=true, which backs up the current bundle and auto-rolls-back if the API does not come back. The internal CA is not replaceable here.',
+            )}
+          </Banner>
+
+          <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+            <label style={{ display: 'block' }}>
+              <div className="attestiv-label">{t('Role to replace', 'Role to replace')}</div>
+              <select value={stageRole} onChange={(e) => setStageRole(e.target.value)} className="attestiv-input">
+                {STAGED_ROLE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'block' }}>
+              <div className="attestiv-label">{t('Certificate (PEM)', 'Certificate (PEM)')}</div>
+              <textarea
+                rows={5}
+                value={stageCertPem}
+                onChange={(e) => setStageCertPem(e.target.value)}
+                placeholder={'-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----'}
+                className="attestiv-input"
+                style={{ fontFamily: 'monospace', fontSize: 12, width: '100%' }}
+              />
+            </label>
+            <label style={{ display: 'block' }}>
+              <div className="attestiv-label">{t('Private key (PEM)', 'Private key (PEM)')}</div>
+              <textarea
+                rows={5}
+                value={stageKeyPem}
+                onChange={(e) => setStageKeyPem(e.target.value)}
+                placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'}
+                className="attestiv-input"
+                style={{ fontFamily: 'monospace', fontSize: 12, width: '100%' }}
+              />
+            </label>
+            <div>
+              <PrimaryButton onClick={() => void stageCustomCert()} disabled={busy || !stageCertPem.trim() || !stageKeyPem.trim()}>
+                <i className="ti ti-upload" aria-hidden="true" /> {t('Stage certificate', 'Stage certificate')}
+              </PrimaryButton>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div className="attestiv-label">{t('Staged (pending apply)', 'Staged (pending apply)')}</div>
+            {stagedCerts === null ? (
+              <p>{t('Loading…', 'Loading…')}</p>
+            ) : stagedCerts.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>
+                {t('Nothing staged.', 'Nothing staged.')}
+              </p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left' }}>
+                    <th style={{ padding: '8px 12px' }}>{t('Role', 'Role')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('Subject', 'Subject')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('Expires', 'Expires')}</th>
+                    <th style={{ padding: '8px 12px' }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {stagedCerts.map((cert) => (
+                    <tr key={cert.role} style={{ borderTop: '1px solid var(--color-border)' }}>
+                      <td style={{ padding: '8px 12px', fontWeight: 600 }}>{cert.label || cert.role}</td>
+                      <td style={{ padding: '8px 12px', fontSize: 13 }}>{cert.subject}</td>
+                      <td style={{ padding: '8px 12px', fontSize: 13 }}>{(cert.not_after || '').slice(0, 10)}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                        <GhostButton onClick={() => void discardStaged(cert.role)} disabled={busy}>
+                          <i className="ti ti-x" aria-hidden="true" /> {t('Discard', 'Discard')}
+                        </GhostButton>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </Card>
         </>
         ) : (
