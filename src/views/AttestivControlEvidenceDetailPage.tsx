@@ -46,6 +46,28 @@ type RequirementRow = {
   evidence_ids?: string[]
 }
 
+type ExplanationRequirement = {
+  tag: string
+  type: string
+  status: string
+  combined_score: number
+  evidence_count: number
+  sample_evidence_ids?: string[]
+  why: string
+}
+
+type ControlExplanation = {
+  citation?: string
+  citation_status?: string
+  citation_verified?: boolean
+  explanation?: string
+  rationale?: string
+  remediation?: string
+  summary?: string
+  requirements?: ExplanationRequirement[]
+  findings?: { severity: string; code: string; description: string; remediation: string; tag: string }[]
+}
+
 type Response = {
   tenant_id: string
   framework_id: string
@@ -56,6 +78,7 @@ type Response = {
   evidence_count: number
   records: EvidenceRecord[]
   requirements: RequirementRow[]
+  explanation?: ControlExplanation
 }
 
 export function AttestivControlEvidenceDetailPage({
@@ -144,6 +167,85 @@ export function AttestivControlEvidenceDetailPage({
                 <Tile label={t('Records returned', 'Records returned')} value={String(data.records.length)} />
               </div>
             </Card>
+
+            {data.explanation ? (
+              <Card style={{ marginTop: 12 }}>
+                <CardTitle
+                  right={
+                    data.explanation.citation ? (
+                      <Badge tone={data.explanation.citation_verified ? 'green' : 'amber'}>
+                        {data.explanation.citation}
+                        {data.explanation.citation_verified
+                          ? ''
+                          : ` · ${t('draft — verify', 'draft — verify')}`}
+                      </Badge>
+                    ) : null
+                  }
+                >
+                  {t('Why this result', 'Why this result')}
+                </CardTitle>
+
+                {data.explanation.summary ? (
+                  <p style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>{data.explanation.summary}</p>
+                ) : null}
+
+                {data.explanation.explanation ? (
+                  <p style={{ fontSize: 13, marginTop: 8 }}>
+                    <strong>{t('What it checks', 'What it checks')}: </strong>
+                    {data.explanation.explanation}
+                  </p>
+                ) : null}
+                {data.explanation.rationale ? (
+                  <p style={{ fontSize: 13, marginTop: 6 }}>
+                    <strong>{t('Why it matters', 'Why it matters')}: </strong>
+                    {data.explanation.rationale}
+                  </p>
+                ) : null}
+
+                {data.explanation.requirements && data.explanation.requirements.length > 0 ? (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
+                      {t('Evidence found', 'Evidence found')}
+                    </div>
+                    {data.explanation.requirements.map((req) => (
+                      <div key={req.tag} style={{ padding: '6px 0', borderTop: '0.5px solid var(--color-border-tertiary)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                        <Badge tone={reqTone(req.status)}>{req.status}</Badge>
+                        <code style={{ fontSize: 11 }}>{req.tag}</code>
+                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{req.why}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {data.status && data.status.toLowerCase() !== 'pass' && data.explanation.remediation ? (
+                  <div style={{ marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--color-surface-muted, #f8fafc)' }}>
+                    <strong style={{ fontSize: 13 }}>{t('How to fix it', 'How to fix it')}: </strong>
+                    <span style={{ fontSize: 13 }}>{data.explanation.remediation}</span>
+                  </div>
+                ) : null}
+
+                {data.explanation.findings && data.explanation.findings.length > 0 ? (
+                  <div style={{ marginTop: 10 }}>
+                    {data.explanation.findings.map((f, i) => (
+                      <div key={i} style={{ fontSize: 12, marginTop: 4 }}>
+                        <Badge tone={f.severity === 'critical' ? 'red' : 'amber'}>{f.severity}</Badge>{' '}
+                        {f.description}
+                        {f.remediation ? <span style={{ color: 'var(--color-text-tertiary)' }}> — {f.remediation}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {data.explanation.citation && !data.explanation.citation_verified ? (
+                  <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 10 }}>
+                    {t(
+                      'Regulatory citation is a draft pending review by a qualified juriste — do not rely on it for a formal audit until verified.',
+                      'Regulatory citation is a draft pending review by a qualified juriste — do not rely on it for a formal audit until verified.',
+                    )}
+                  </p>
+                ) : null}
+              </Card>
+            ) : null}
 
             <Card style={{ marginTop: 12 }}>
               <CardTitle>{t('Requirement breakdown', 'Requirement breakdown')}</CardTitle>
@@ -244,6 +346,17 @@ function Tile({ label, value, tone }: { label: string; value: string; tone?: 'gr
       <div style={{ fontSize: 18, fontWeight: 600, color }}>{value}</div>
     </Card>
   )
+}
+
+function reqTone(status: string): 'green' | 'amber' | 'red' | 'gray' {
+  switch ((status || '').toLowerCase()) {
+    case 'satisfied': return 'green'
+    case 'partial': return 'amber'
+    case 'weak': return 'red'
+    case 'missing': return 'red'
+    case 'blocked': return 'red'
+    default: return 'gray'
+  }
 }
 
 function cellStyle(): React.CSSProperties {
