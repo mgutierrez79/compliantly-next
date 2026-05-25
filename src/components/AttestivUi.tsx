@@ -255,20 +255,25 @@ export function HeroBand({
 }: {
   label: string
   value: string
-  percent: number
+  // When omitted, the progress bar is hidden and the headline renders
+  // in the primary text color — for count-style heroes (e.g. an audit
+  // entry count) where there's no natural percentage.
+  percent?: number
   caption?: ReactNode
   pills?: ReactNode
 }) {
-  const color =
-    percent >= 85
+  const hasBar = typeof percent === 'number'
+  const color = !hasBar
+    ? 'var(--color-text-primary)'
+    : percent! >= 85
       ? 'var(--color-status-green-deep)'
-      : percent >= 60
+      : percent! >= 60
         ? 'var(--color-status-amber-text)'
         : 'var(--color-status-red-deep)'
   const fill =
-    percent >= 85
+    (percent ?? 0) >= 85
       ? 'var(--color-status-green-mid)'
-      : percent >= 60
+      : (percent ?? 0) >= 60
         ? 'var(--color-status-amber-mid)'
         : 'var(--color-status-red-mid)'
   return (
@@ -311,25 +316,27 @@ export function HeroBand({
             {value}
           </span>
         </div>
-        <div
-          style={{
-            height: 10,
-            borderRadius: 999,
-            background: 'var(--color-background-tertiary)',
-            overflow: 'hidden',
-            marginBottom: 12,
-          }}
-        >
+        {hasBar ? (
           <div
             style={{
-              height: '100%',
-              width: `${Math.max(0, Math.min(100, percent))}%`,
+              height: 10,
               borderRadius: 999,
-              background: fill,
-              transition: 'width 600ms cubic-bezier(0.16, 1, 0.3, 1)',
+              background: 'var(--color-background-tertiary)',
+              overflow: 'hidden',
+              marginBottom: 12,
             }}
-          />
-        </div>
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${Math.max(0, Math.min(100, percent!))}%`,
+                borderRadius: 999,
+                background: fill,
+                transition: 'width 600ms cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            />
+          </div>
+        ) : null}
         {caption ? (
           <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{caption}</div>
         ) : null}

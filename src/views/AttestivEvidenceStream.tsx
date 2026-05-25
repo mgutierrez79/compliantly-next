@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
-import { Badge, Banner, Card, CardTitle, EmptyState, GhostButton, PaginatedList, PrimaryButton, Pulse, Skeleton, Topbar } from '../components/AttestivUi'
+import { Badge, Banner, Card, CardTitle, EmptyState, GhostButton, HeroBand, PaginatedList, PrimaryButton, Pulse, Skeleton, StatPill, Topbar } from '../components/AttestivUi'
 import { loadPublicKeys, verifyManifest, type ManifestPayload, type VerifyResult } from '../lib/verify'
 
 import { useI18n } from '../lib/i18n';
@@ -98,6 +98,7 @@ export function AttestivEvidenceStream() {
   } = useI18n();
 
   const [items, setItems] = useState<EvidenceLogEntry[]>([])
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState<ApiError | null>(null)
   const [loading, setLoading] = useState(true)
   const [verifyId, setVerifyId] = useState('')
@@ -109,6 +110,7 @@ export function AttestivEvidenceStream() {
     try {
       const response = await apiJson<EvidenceLogResponse>('/evidence/log?limit=200')
       setItems(response.items || [])
+      setTotal(response.count ?? (response.items?.length || 0))
       setError(null)
     } catch (err) {
       setError(err as ApiError)
@@ -161,6 +163,19 @@ export function AttestivEvidenceStream() {
     }
   }
 
+  // Hero: signature integrity over the loaded (recent) records — the
+  // share that carry a valid signature and aren't dead-lettered.
+  const hero = useMemo(() => {
+    const loaded = items.length
+    const dlq = items.filter(isDLQ).length
+    const signed = loaded - dlq
+    const signedPct = loaded > 0 ? Math.round((signed / loaded) * 100) : 0
+    const sources = new Set(
+      items.map((e) => (e.source ? e.source.split(/[:\/]/)[0] : '')).filter(Boolean),
+    ).size
+    return { loaded, dlq, signed, signedPct, sources }
+  }, [items])
+
   const verifyStatusLine = useMemo(() => {
     const {
       t
@@ -202,6 +217,37 @@ export function AttestivEvidenceStream() {
       />
       <div className="attestiv-content">
         {error ? <Banner tone="error">{t('Failed to load evidence:', 'Failed to load evidence:')} {error.message}</Banner> : null}
+
+        {!loading && hero.loaded > 0 ? (
+          <HeroBand
+            label={t('Evidence integrity', 'Evidence integrity')}
+            value={`${hero.signedPct}%`}
+            percent={hero.signedPct}
+            caption={`${hero.signed} ${t('of', 'of')} ${hero.loaded} ${t('recent records signed · Ed25519', 'recent records signed · Ed25519')}`}
+            pills={
+              <>
+                <StatPill
+                  label={t('Records', 'Records')}
+                  value={total.toLocaleString()}
+                  sub={t('signed envelopes', 'signed envelopes')}
+                />
+                <StatPill
+                  label={t('Signed', 'Signed')}
+                  value={String(hero.signed)}
+                  sub={t('recent', 'recent')}
+                  valueColor="var(--color-status-green-deep)"
+                />
+                <StatPill
+                  label={t('In DLQ', 'In DLQ')}
+                  value={String(hero.dlq)}
+                  sub={hero.dlq > 0 ? t('needs retry', 'needs retry') : t('clean', 'clean')}
+                  valueColor={hero.dlq > 0 ? 'var(--color-status-red-mid)' : 'var(--color-status-green-deep)'}
+                />
+                <StatPill label={t('Sources', 'Sources')} value={String(hero.sources)} />
+              </>
+            }
+          />
+        ) : null}
 
         <Card>
           <CardTitle>{t(

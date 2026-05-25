@@ -21,9 +21,11 @@ import {
   Card,
   CardTitle,
   GhostButton,
+  HeroBand,
   PaginatedList,
   PrimaryButton,
   SignatureBox,
+  StatPill,
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
@@ -135,6 +137,22 @@ export function AttestivAuditTrailPage() {
     }
   }, [])
 
+  // Hero: the audit trail is append-only + tamper-evident, so the
+  // headline is the chain length (entry count), not a percentage.
+  const hero = (() => {
+    const total = entries.length
+    const dayAgo = Date.now() - 86_400_000
+    const today = entries.filter((e) => {
+      const ts = new Date(e.timestamp).getTime()
+      return Number.isFinite(ts) && ts >= dayAgo
+    }).length
+    const actors = new Set(entries.map((e) => e.actor || 'system').filter(Boolean)).size
+    const signedEvents = entries.filter((e) =>
+      ['evidence_signed', 'evidence_verified', 'report_generated'].includes(e.action),
+    ).length
+    return { total, today, actors, signedEvents }
+  })()
+
   const filtered = filter.trim()
     ? entries.filter((entry) => {
         const needle = filter.trim().toLowerCase()
@@ -186,11 +204,35 @@ export function AttestivAuditTrailPage() {
             {error}
           </div>
         ) : null}
+
+        {!loading && hero.total > 0 ? (
+          <HeroBand
+            label={t('Audit trail', 'Audit trail')}
+            value={hero.total.toLocaleString()}
+            caption={t(
+              'Append-only, tamper-evident · Ed25519 hash-chained',
+              'Append-only, tamper-evident · Ed25519 hash-chained',
+            )}
+            pills={
+              <>
+                <StatPill label={t('Entries', 'Entries')} value={hero.total.toLocaleString()} sub={t('chain length', 'chain length')} />
+                <StatPill label={t('Last 24h', 'Last 24h')} value={String(hero.today)} sub={t('new events', 'new events')} />
+                <StatPill label={t('Actors', 'Actors')} value={String(hero.actors)} />
+                <StatPill
+                  label={t('Signed events', 'Signed events')}
+                  value={String(hero.signedEvents)}
+                  valueColor="var(--color-status-green-deep)"
+                />
+              </>
+            }
+          />
+        ) : null}
+
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr) 320px',
-            gap: 12,
+            gap: 20,
           }}
         >
           <Card>
