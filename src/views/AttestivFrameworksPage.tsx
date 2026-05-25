@@ -22,8 +22,10 @@ import {
   CardTitle,
   FrameworkBar,
   GhostButton,
+  HeroBand,
   PrimaryButton,
   Skeleton,
+  StatPill,
   Topbar,
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
@@ -201,6 +203,24 @@ export function AttestivFrameworksPage() {
     return { passing, total }
   }, [frameworks])
 
+  // Hero stats: average posture across evaluated frameworks + the
+  // aggregate control tally. Mirrors the dashboard headline so the
+  // number reads identically across the console.
+  const hero = useMemo(() => {
+    const evaluated = frameworks.filter((f) => f.status !== 'no_data')
+    const avg = evaluated.length
+      ? Math.round(evaluated.reduce((a, f) => a + f.overall, 0) / evaluated.length)
+      : 0
+    let passing = 0
+    let total = 0
+    for (const f of frameworks) {
+      passing += f.passing_controls ?? 0
+      total += f.total_controls ?? 0
+    }
+    const passingPct = total > 0 ? Math.round((passing / total) * 100) : 0
+    return { avg, evaluatedCount: evaluated.length, passing, total, passingPct }
+  }, [frameworks])
+
   // Async generate-and-download:
   //   1. POST /v1/generate-report/async — enqueues a worker job and
   //      returns { job_id } immediately so the UI doesn't block.
@@ -367,12 +387,49 @@ export function AttestivFrameworksPage() {
           </Banner>
         ) : null}
 
+        {!loading && frameworks.length > 0 ? (
+          <HeroBand
+            label={t('Overall posture', 'Overall posture')}
+            value={hero.evaluatedCount > 0 ? `${hero.avg}%` : '—'}
+            percent={hero.avg}
+            caption={
+              hero.evaluatedCount > 0
+                ? `${t('average across', 'average across')} ${hero.evaluatedCount} ${t('evaluated frameworks', 'evaluated frameworks')}`
+                : t('No scoring run yet', 'No scoring run yet')
+            }
+            pills={
+              <>
+                <StatPill
+                  label={t('Frameworks', 'Frameworks')}
+                  value={String(frameworks.length)}
+                  sub={`${hero.evaluatedCount} ${t('evaluated', 'evaluated')}`}
+                />
+                <StatPill
+                  label={t('At or above 95%', 'At or above 95%')}
+                  value={String(overallTotals.passing)}
+                  sub={`${t('of', 'of')} ${overallTotals.total}`}
+                  valueColor="var(--color-status-green-deep)"
+                />
+                <StatPill
+                  label={t('Controls passing', 'Controls passing')}
+                  value={hero.total > 0 ? `${hero.passingPct}%` : '—'}
+                  sub={hero.total > 0 ? `${hero.passing} / ${hero.total}` : undefined}
+                />
+                <StatPill
+                  label={t('Total controls', 'Total controls')}
+                  value={hero.total > 0 ? String(hero.total) : '—'}
+                />
+              </>
+            }
+          />
+        ) : null}
+
         {loading ? (
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-              gap: 10,
+              gap: 16,
             }}
           >
             {Array.from({ length: 4 }).map((_, i) => (
@@ -392,7 +449,7 @@ export function AttestivFrameworksPage() {
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-              gap: 10,
+              gap: 16,
             }}
           >
             {frameworks.map((framework) => (

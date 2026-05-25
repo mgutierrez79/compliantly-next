@@ -174,6 +174,175 @@ export function MetricCard({
   )
 }
 
+// StatPill — compact metric tile used inside hero bands (smaller than
+// MetricCard, sits four-up next to a big headline number). Shared so
+// every page's hero reads identically.
+export function StatPill({
+  label,
+  value,
+  sub,
+  valueColor,
+}: {
+  label: string
+  value: ReactNode
+  sub?: ReactNode
+  valueColor?: string
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--color-background-secondary)',
+        borderRadius: 'var(--border-radius-md)',
+        padding: '12px 14px',
+        boxShadow: '0 0 0 0.5px rgba(0, 0, 0, 0.04)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--color-text-tertiary)',
+          marginBottom: 6,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 20,
+          fontWeight: 600,
+          lineHeight: 1,
+          letterSpacing: '-0.01em',
+          fontVariantNumeric: 'tabular-nums',
+          color: valueColor,
+        }}
+      >
+        {value}
+      </div>
+      {sub ? (
+        <div
+          style={{
+            fontSize: 11,
+            color: 'var(--color-text-tertiary)',
+            marginTop: 5,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {sub}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+// HeroBand — the trust-grade headline band: a big posture number with a
+// progress bar on the left, and a grid of StatPills on the right. Used
+// at the top of the Dashboard, Frameworks, and other summary pages so
+// the primary number always reads the same way.
+export function HeroBand({
+  label,
+  value,
+  percent,
+  caption,
+  pills,
+}: {
+  label: string
+  value: string
+  percent: number
+  caption?: ReactNode
+  pills?: ReactNode
+}) {
+  const color =
+    percent >= 85
+      ? 'var(--color-status-green-deep)'
+      : percent >= 60
+        ? 'var(--color-status-amber-text)'
+        : 'var(--color-status-red-deep)'
+  const fill =
+    percent >= 85
+      ? 'var(--color-status-green-mid)'
+      : percent >= 60
+        ? 'var(--color-status-amber-mid)'
+        : 'var(--color-status-red-mid)'
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: pills ? 'minmax(280px, 1.3fr) 1fr' : '1fr',
+        gap: 28,
+        background: 'var(--color-background-primary)',
+        borderRadius: 'var(--border-radius-lg)',
+        boxShadow: 'var(--shadow-card)',
+        padding: '28px 32px',
+        marginBottom: 20,
+      }}
+    >
+      <div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--color-text-tertiary)',
+            marginBottom: 12,
+          }}
+        >
+          {label}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
+          <span
+            style={{
+              fontSize: 56,
+              fontWeight: 600,
+              lineHeight: 1,
+              letterSpacing: '-0.03em',
+              fontVariantNumeric: 'tabular-nums',
+              color,
+            }}
+          >
+            {value}
+          </span>
+        </div>
+        <div
+          style={{
+            height: 10,
+            borderRadius: 999,
+            background: 'var(--color-background-tertiary)',
+            overflow: 'hidden',
+            marginBottom: 12,
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${Math.max(0, Math.min(100, percent))}%`,
+              borderRadius: 999,
+              background: fill,
+              transition: 'width 600ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          />
+        </div>
+        {caption ? (
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{caption}</div>
+        ) : null}
+      </div>
+      {pills ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignContent: 'center' }}>
+          {pills}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 const buttonBase: CSSProperties = {
   borderRadius: 'var(--border-radius-md)',
   fontSize: 12,

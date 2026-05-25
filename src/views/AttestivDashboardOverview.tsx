@@ -26,6 +26,7 @@ import {
   PipelineStep,
   Pulse,
   SourceRow,
+  StatPill,
   Topbar,
 } from '../components/AttestivUi'
 import { ApiError, apiJson } from '../lib/api'
@@ -176,73 +177,6 @@ const EMPTY_GRC: GRCMetrics = {
   exceptionsNearestExpiryDays: null,
   overdueNIS2Notifications: null,
   policiesOverdue: null,
-}
-
-// StatPill — compact stat used inside the hero posture band. Smaller
-// than MetricCard, tuned to sit four-up next to the big posture number.
-function StatPill({
-  label,
-  value,
-  sub,
-  valueColor,
-}: {
-  label: string
-  value: string
-  sub?: string
-  valueColor?: string
-}) {
-  return (
-    <div
-      style={{
-        background: 'var(--color-background-secondary)',
-        borderRadius: 'var(--border-radius-md)',
-        padding: '12px 14px',
-        boxShadow: '0 0 0 0.5px rgba(0, 0, 0, 0.04)',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color: 'var(--color-text-tertiary)',
-          marginBottom: 6,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 20,
-          fontWeight: 600,
-          lineHeight: 1,
-          letterSpacing: '-0.01em',
-          fontVariantNumeric: 'tabular-nums',
-          color: valueColor,
-        }}
-      >
-        {value}
-      </div>
-      {sub ? (
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--color-text-tertiary)',
-            marginTop: 5,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {sub}
-        </div>
-      ) : null}
-    </div>
-  )
 }
 
 export function AttestivDashboardOverview() {

@@ -323,8 +323,8 @@ function SummaryCard({
           <i className={`ti ${icon}`} aria-hidden="true" />
         </div>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{label}</div>
-          <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}>{value}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)' }}>{label}</div>
+          <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>{value}</div>
         </div>
       </div>
     </Card>
