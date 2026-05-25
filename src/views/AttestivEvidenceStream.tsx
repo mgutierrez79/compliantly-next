@@ -163,17 +163,23 @@ export function AttestivEvidenceStream() {
     }
   }
 
-  // Hero: signature integrity over the loaded (recent) records — the
-  // share that carry a valid signature and aren't dead-lettered.
+  // Hero composition over the loaded (recent) records. "signed" means a
+  // real Ed25519 signature is present (envelope or report signature) —
+  // NOT merely "not dead-lettered". Distinct connector sources exclude
+  // the synthetic run_report/core buckets so the count reflects actual
+  // evidence sources, not the scoring-run feed.
   const hero = useMemo(() => {
     const loaded = items.length
+    const hasSignature = (e: EvidenceLogEntry) => Boolean(e.signature || e.report_signature)
     const dlq = items.filter(isDLQ).length
-    const signed = loaded - dlq
-    const signedPct = loaded > 0 ? Math.round((signed / loaded) * 100) : 0
+    const signed = items.filter((e) => hasSignature(e) && !isDLQ(e)).length
+    const unsigned = Math.max(0, loaded - signed - dlq)
     const sources = new Set(
-      items.map((e) => (e.source ? e.source.split(/[:\/]/)[0] : '')).filter(Boolean),
+      items
+        .map((e) => (e.source ? e.source.split(/[:\/]/)[0] : ''))
+        .filter((s) => s && s !== 'run_report' && s !== 'core'),
     ).size
-    return { loaded, dlq, signed, signedPct, sources }
+    return { loaded, dlq, signed, unsigned, sources }
   }, [items])
 
   const verifyStatusLine = useMemo(() => {
@@ -220,22 +226,22 @@ export function AttestivEvidenceStream() {
 
         {!loading && hero.loaded > 0 ? (
           <HeroBand
-            label={t('Evidence integrity', 'Evidence integrity')}
-            value={`${hero.signedPct}%`}
-            percent={hero.signedPct}
-            caption={`${hero.signed} ${t('of', 'of')} ${hero.loaded} ${t('recent records signed · Ed25519', 'recent records signed · Ed25519')}`}
+            label={t('Evidence records', 'Evidence records')}
+            value={total.toLocaleString()}
+            caption={`${hero.signed} ${t('signed', 'signed')} · ${hero.unsigned} ${t('unsigned', 'unsigned')} · ${hero.dlq} ${t('in DLQ', 'in DLQ')} (${t('of', 'of')} ${hero.loaded} ${t('recent', 'recent')})`}
             pills={
               <>
                 <StatPill
-                  label={t('Records', 'Records')}
-                  value={total.toLocaleString()}
-                  sub={t('signed envelopes', 'signed envelopes')}
-                />
-                <StatPill
                   label={t('Signed', 'Signed')}
                   value={String(hero.signed)}
-                  sub={t('recent', 'recent')}
-                  valueColor="var(--color-status-green-deep)"
+                  sub={t('Ed25519', 'Ed25519')}
+                  valueColor={hero.signed > 0 ? 'var(--color-status-green-deep)' : undefined}
+                />
+                <StatPill
+                  label={t('Unsigned', 'Unsigned')}
+                  value={String(hero.unsigned)}
+                  sub={hero.unsigned > 0 ? t('run summaries', 'run summaries') : t('none', 'none')}
+                  valueColor={hero.unsigned > 0 ? 'var(--color-status-amber-mid)' : undefined}
                 />
                 <StatPill
                   label={t('In DLQ', 'In DLQ')}
@@ -243,7 +249,11 @@ export function AttestivEvidenceStream() {
                   sub={hero.dlq > 0 ? t('needs retry', 'needs retry') : t('clean', 'clean')}
                   valueColor={hero.dlq > 0 ? 'var(--color-status-red-mid)' : 'var(--color-status-green-deep)'}
                 />
-                <StatPill label={t('Sources', 'Sources')} value={String(hero.sources)} />
+                <StatPill
+                  label={t('Connector sources', 'Connector sources')}
+                  value={String(hero.sources)}
+                  sub={hero.sources === 0 ? t('run reports only', 'run reports only') : undefined}
+                />
               </>
             }
           />
@@ -341,6 +351,7 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
   const dlq = isDLQ(entry)
   const id = entry.evidence_id || entry.run_id || ''
   const signature = entry.signature || entry.report_signature || ''
+  const signed = Boolean(signature)
   const algoPrefix = signature ? 'ed25519' : 'no-sig'
   const tags = entry.frameworks && entry.frameworks.length ? entry.frameworks.join(' · ') : ''
   return (
@@ -404,7 +415,9 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
           </div>
         )}
       </div>
-      <Badge tone={dlq ? 'red' : 'green'}>{dlq ? 'DLQ' : 'Signed'}</Badge>
+      <Badge tone={dlq ? 'red' : signed ? 'green' : 'gray'}>
+        {dlq ? 'DLQ' : signed ? t('Signed', 'Signed') : t('Unsigned', 'Unsigned')}
+      </Badge>
     </div>
   );
 }
