@@ -90,10 +90,11 @@ export function Card({ children, style }: PropsWithChildren<{ style?: CSSPropert
     <div
       style={{
         background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
+        border: 'none',
         borderRadius: 'var(--border-radius-lg)',
-        padding: '12px 14px',
-        marginBottom: 10,
+        padding: '16px 20px',
+        marginBottom: 12,
+        boxShadow: 'var(--shadow-card)',
         ...style,
       }}
     >
@@ -138,21 +139,32 @@ export function MetricCard({
       style={{
         background: 'var(--color-background-secondary)',
         borderRadius: 'var(--border-radius-md)',
-        padding: '10px 12px',
+        padding: '12px 16px',
+        boxShadow: '0 0 0 0.5px rgba(0, 0, 0, 0.04)',
       }}
     >
       <div
         style={{
           fontSize: 10,
+          fontWeight: 600,
           color: 'var(--color-text-tertiary)',
-          marginBottom: 5,
+          marginBottom: 8,
           textTransform: 'uppercase',
-          letterSpacing: '0.04em',
+          letterSpacing: '0.06em',
         }}
       >
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 500, lineHeight: 1, color: valueColor }}>
+      <div
+        style={{
+          fontSize: 26,
+          fontWeight: 600,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+          fontVariantNumeric: 'tabular-nums',
+          color: valueColor,
+        }}
+      >
         {value}
       </div>
       {sub ? (
@@ -195,6 +207,7 @@ export function PrimaryButton({
         background: 'var(--color-brand-blue)',
         color: 'white',
         opacity: disabled ? 0.5 : 1,
+        boxShadow: '0 1px 2px rgba(4, 44, 83, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.16)',
       }}
     >
       {children}
@@ -996,10 +1009,11 @@ export function ClickableCard({
       className="attestiv-clickable-card"
       style={{
         background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
+        border: 'none',
         borderRadius: 'var(--border-radius-lg)',
-        padding: '12px 14px',
-        marginBottom: 10,
+        padding: '16px 20px',
+        marginBottom: 12,
+        boxShadow: 'var(--shadow-card)',
         cursor: 'pointer',
         textAlign: 'left',
         fontFamily: 'inherit',
