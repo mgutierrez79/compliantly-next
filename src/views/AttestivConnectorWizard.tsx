@@ -77,10 +77,15 @@ function isSecretFieldName(name: string): boolean {
 type ConnectorKind = {
   value: string
   label: string
-  category: 'Network' | 'Storage' | 'Virtualization' | 'Backup' | 'ITSM' | 'Observability' | 'Security'
+  category: 'Network' | 'Storage' | 'Virtualization' | 'Backup' | 'ITSM' | 'Observability' | 'Security' | 'Identity'
   endpointHint: string
   fields: CredentialField[]
   pollDefault: number
+  // Some connectors derive every URL from their auth fields (the Azure
+  // ones: tenant_id + workspace_id + standard Microsoft hosts), so
+  // there's no endpoint host to enter. When true the wizard doesn't
+  // require the endpoint field.
+  endpointOptional?: boolean
 }
 
 const STEPS = ['Pick connector', 'Credentials', 'Test connection', 'Save & schedule']
@@ -197,6 +202,27 @@ const CONNECTORS: ConnectorKind[] = [
       { key: 'api_token', label: 'API token', type: 'password', required: true, hint: 'mySOC Bearer token (portal → Authorize → Bearer).' },
     ],
     pollDefault: 21600,
+  },
+  {
+    value: 'microsoft_graph',
+    label: 'Microsoft Graph (Entra)',
+    category: 'Identity',
+    endpointHint: 'Not required — uses your Entra tenant',
+    // tenant_id / client_id / client_secret come from the catalog.
+    fields: [],
+    pollDefault: 21600,
+    endpointOptional: true,
+  },
+  {
+    value: 'sentinel',
+    label: 'Microsoft Sentinel',
+    category: 'Security',
+    endpointHint: 'Not required — uses the Log Analytics workspace ID',
+    // tenant_id / client_id / client_secret / workspace_id come from
+    // the catalog.
+    fields: [],
+    pollDefault: 21600,
+    endpointOptional: true,
   },
 ]
 
@@ -718,7 +744,7 @@ export function AttestivConnectorWizard() {
               </GhostButton>
               {step < STEPS.length - 1 ? (
                 <PrimaryButton
-                  disabled={!canAdvance(step, { renderedFields, name, endpoint, credentials, testResult })}
+                  disabled={!canAdvance(step, { renderedFields, name, endpoint, endpointOptional: connector.endpointOptional, credentials, testResult })}
                   onClick={next}
                 >
                   {t('Continue', 'Continue')}
@@ -739,6 +765,7 @@ function canAdvance(
     renderedFields: CredentialField[]
     name: string
     endpoint: string
+    endpointOptional?: boolean
     credentials: Record<string, string>
     testResult: TestResult
   },
@@ -747,7 +774,7 @@ function canAdvance(
     return true
   }
   if (step === 1) {
-    if (!values.endpoint.trim()) return false
+    if (!values.endpointOptional && !values.endpoint.trim()) return false
     for (const field of values.renderedFields) {
       if (field.required && !values.credentials[field.key]?.trim()) {
         return false
