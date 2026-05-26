@@ -30,6 +30,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { ApiError, apiJson } from '../lib/api'
+import { deriveControlsPassing, deriveOverallPosture, deriveTopFramework, scoreToPercent } from '../lib/dashboardHero'
 import { ConnectorLogo, connectorBrandHex } from '../components/ConnectorLogo'
 
 import { useI18n } from '../lib/i18n';
@@ -282,8 +283,7 @@ export function AttestivDashboardOverview() {
     return entries
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, score]) => {
-        const percent = Math.round((score?.score ?? score?.controls_score ?? 0) * 100) / 100
-        const display = Math.max(0, Math.min(100, Math.round(percent)))
+        const display = scoreToPercent(score)
         return (
           <FrameworkBar
             key={key}
@@ -295,68 +295,28 @@ export function AttestivDashboardOverview() {
       })
   }, [summary])
 
-  // Top-level metric card values. Falls back to "—" when the API
-  // hasn't returned, which is more honest than a misleading zero.
+  // Hero metric values. Derivations live in src/lib/dashboardHero and
+  // are contract-tested under dashboardHero.test.ts — so the value the
+  // UI displays is, by construction, the same value the tests assert
+  // (W0-4 UI == signed source).
   const metricEvidenceCollected =
     summary?.finding_count != null ? summary.finding_count.toLocaleString() : '—'
-  const metricControlsPassing = (() => {
-    const scores = summary?.framework_scores || {}
-    let totalCompliant = 0
-    let totalControls = 0
-    for (const score of Object.values(scores)) {
-      if (score.controls_summary) {
-        totalCompliant += score.controls_summary.compliant ?? 0
-        totalControls += score.controls_summary.total ?? 0
-      }
-    }
-    if (totalControls === 0) return { value: '—', sub: '' }
-    const pct = Math.round((totalCompliant / totalControls) * 100)
-    return { value: `${pct}%`, sub: `${totalCompliant} / ${totalControls}` }
-  })()
+  const overall = deriveOverallPosture(summary)
+  const controlsPassing = deriveControlsPassing(summary)
+  const metricControlsPassing = { value: controlsPassing.value, sub: controlsPassing.sub }
+  const topFrameworkInfo = deriveTopFramework(summary)
+  const topFramework = {
+    label: topFrameworkInfo.label,
+    value: topFrameworkInfo.value,
+    sub:
+      topFrameworkInfo.count > 0
+        ? `${topFrameworkInfo.count} ${t('frameworks scored', 'frameworks scored')}`
+        : t('No scoring run yet', 'No scoring run yet'),
+  }
   const metricActiveConnectors = connectors.length || '—'
-  const metricConnectorWarning = (summary?.connector_health?.warn ?? 0) +
-    (summary?.connector_health?.error ?? 0)
+  const metricConnectorWarning =
+    (summary?.connector_health?.warn ?? 0) + (summary?.connector_health?.error ?? 0)
   const lastEvidence = relativeTime(summary?.generated_at)
-
-  // Top framework derived from real scores. The mockup hard-coded
-  // "DORA tier: High" but that's misleading on a multi-framework
-  // tenant (and outright wrong when nothing is scored yet). Pick the
-  // highest-scoring framework instead; fall back to "—" with the
-  // count of subscribed frameworks when no scores are in.
-  const topFramework = (() => {
-    const scores = summary?.framework_scores || {}
-    const entries = Object.entries(scores)
-    if (entries.length === 0) {
-      return { label: '—', value: '—', sub: t('No scoring run yet', 'No scoring run yet') }
-    }
-    const ranked = entries
-      .map(([key, score]) => ({
-        key,
-        percent: Math.max(0, Math.min(100, Math.round((score?.score ?? score?.controls_score ?? 0) * 100) / 100)),
-      }))
-      .sort((a, b) => b.percent - a.percent)
-    const winner = ranked[0]
-    return {
-      label: FRAMEWORK_LABELS[winner.key] || winner.key.toUpperCase(),
-      value: `${winner.percent}%`,
-      sub: `${entries.length} ${t('frameworks scored', 'frameworks scored')}`,
-    }
-  })()
-
-  // Overall posture = mean of the per-framework scores. An honest
-  // single-number headline for the trust-grade hero; clearly labelled
-  // "average across N frameworks" so it's never mistaken for a single
-  // framework's score. "—" when nothing has scored yet.
-  const overall = (() => {
-    const scores = summary?.framework_scores || {}
-    const entries = Object.entries(scores)
-    if (!entries.length) return { value: '—', percent: 0, count: 0 }
-    const pcts = entries.map(([, s]) =>
-      Math.max(0, Math.min(100, Math.round((s?.score ?? s?.controls_score ?? 0) * 100) / 100)),
-    )
-    const avg = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
-    return { value: `${avg}%`, percent: avg, count: entries.length }
-  })()
   const postureColor =
     overall.percent >= 85
       ? 'var(--color-status-green-deep)'

@@ -30,6 +30,7 @@ import {
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 import { isDemoMode } from '../lib/demoMode'
+import { deriveFrameworksHero } from '../lib/frameworksHero'
 
 import { useI18n } from '../lib/i18n';
 
@@ -203,23 +204,11 @@ export function AttestivFrameworksPage() {
     return { passing, total }
   }, [frameworks])
 
-  // Hero stats: average posture across evaluated frameworks + the
-  // aggregate control tally. Mirrors the dashboard headline so the
-  // number reads identically across the console.
-  const hero = useMemo(() => {
-    const evaluated = frameworks.filter((f) => f.status !== 'no_data')
-    const avg = evaluated.length
-      ? Math.round(evaluated.reduce((a, f) => a + f.overall, 0) / evaluated.length)
-      : 0
-    let passing = 0
-    let total = 0
-    for (const f of frameworks) {
-      passing += f.passing_controls ?? 0
-      total += f.total_controls ?? 0
-    }
-    const passingPct = total > 0 ? Math.round((passing / total) * 100) : 0
-    return { avg, evaluatedCount: evaluated.length, passing, total, passingPct }
-  }, [frameworks])
+  // Hero stats are derived in src/lib/frameworksHero and pinned by
+  // frameworksHero.test.ts (W0-4 UI == signed source). Same function
+  // used by Dashboard and the tests means hero values can't drift from
+  // the underlying scoring output.
+  const hero = useMemo(() => deriveFrameworksHero(frameworks), [frameworks])
 
   // Async generate-and-download:
   //   1. POST /v1/generate-report/async — enqueues a worker job and
