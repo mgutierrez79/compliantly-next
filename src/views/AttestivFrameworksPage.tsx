@@ -367,7 +367,15 @@ export function AttestivFrameworksPage() {
     setReevalDone(null)
     try {
       setReevalPhase('refreshing')
-      const refreshResp = await apiFetch('/inventory/import?refresh=true', { method: 'POST' })
+      // Body MUST be a JSON object — the backend handler uses readJSON
+      // which returns io.EOF on an empty body (renders as "EOF" in the
+      // UI). The ?refresh=true query string is not read; the Refresh
+      // flag has to come from the body.
+      const refreshResp = await apiFetch('/inventory/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: true }),
+      })
       if (!refreshResp.ok) {
         const text = await refreshResp.text().catch(() => '')
         throw new Error(text || `refresh: ${refreshResp.status} ${refreshResp.statusText}`)
