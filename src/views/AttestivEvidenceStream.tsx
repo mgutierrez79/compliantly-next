@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiJson } from '../lib/api'
 import { Badge, Banner, Card, CardTitle, EmptyState, GhostButton, HeroBand, PaginatedList, PrimaryButton, Pulse, Skeleton, StatPill, Topbar } from '../components/AttestivUi'
+import { deriveEvidenceHero, evidenceHasSignature, isDLQEntry } from '../lib/evidenceHero'
 import { loadPublicKeys, verifyManifest, type ManifestPayload, type VerifyResult } from '../lib/verify'
 
 import { useI18n } from '../lib/i18n';
@@ -87,10 +88,11 @@ function evidenceMeta(entry: EvidenceLogEntry): string {
   return parts.join(' · ')
 }
 
-function isDLQ(entry: EvidenceLogEntry): boolean {
-  const status = (entry.status || '').toLowerCase()
-  return status === 'dead_letter' || status === 'dlq' || status === 'failed'
-}
+// isDLQ moved into src/lib/evidenceHero — re-export under the local
+// name so the rest of this file keeps using the short identifier
+// without growing a long-rename diff. The exported version is what the
+// vitest contract tests pin (W0-4: UI == signed source).
+const isDLQ = isDLQEntry
 
 export function AttestivEvidenceStream() {
   const {
@@ -163,24 +165,13 @@ export function AttestivEvidenceStream() {
     }
   }
 
-  // Hero composition over the loaded (recent) records. "signed" means a
-  // real Ed25519 signature is present (envelope or report signature) —
-  // NOT merely "not dead-lettered". Distinct connector sources exclude
-  // the synthetic run_report/core buckets so the count reflects actual
-  // evidence sources, not the scoring-run feed.
-  const hero = useMemo(() => {
-    const loaded = items.length
-    const hasSignature = (e: EvidenceLogEntry) => Boolean(e.signature || e.report_signature)
-    const dlq = items.filter(isDLQ).length
-    const signed = items.filter((e) => hasSignature(e) && !isDLQ(e)).length
-    const unsigned = Math.max(0, loaded - signed - dlq)
-    const sources = new Set(
-      items
-        .map((e) => (e.source ? e.source.split(/[:\/]/)[0] : ''))
-        .filter((s) => s && s !== 'run_report' && s !== 'core'),
-    ).size
-    return { loaded, dlq, signed, unsigned, sources }
-  }, [items])
+  // Hero composition: delegated to the pure derivation in
+  // src/lib/evidenceHero (W0-4 contract-tested under
+  // src/lib/evidenceHero.test.ts). Keeping the displayed values in a
+  // shared, tested function is what stops the dashboard-vs-signed-
+  // source drift class of bug (e.g. the prior "100% / 1 source" that
+  // counted unsigned run reports as signed).
+  const hero = useMemo(() => deriveEvidenceHero(items), [items])
 
   const verifyStatusLine = useMemo(() => {
     const {
@@ -351,7 +342,10 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
   const dlq = isDLQ(entry)
   const id = entry.evidence_id || entry.run_id || ''
   const signature = entry.signature || entry.report_signature || ''
-  const signed = Boolean(signature)
+  // signed uses the same predicate the hero's contract test pins, so a
+  // row's badge ("Signed" / "Unsigned") can't disagree with the hero's
+  // aggregate count over the same data.
+  const signed = evidenceHasSignature(entry)
   const algoPrefix = signature ? 'ed25519' : 'no-sig'
   const tags = entry.frameworks && entry.frameworks.length ? entry.frameworks.join(' · ') : ''
   return (
