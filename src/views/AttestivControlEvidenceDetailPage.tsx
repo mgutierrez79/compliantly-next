@@ -68,7 +68,14 @@ type ControlExplanation = {
   findings?: { severity: string; code: string; description: string; remediation: string; tag: string }[]
 }
 
-type Response = {
+// WireResponse mirrors what the backend actually sends: records and
+// requirements come back as `null` for controls with no_data. Don't
+// let the rest of the component see these nullables — normalise once
+// at the fetch boundary into Response (non-null arrays) so .length /
+// .map / .filter can't TypeError and crash the whole page (the bug
+// that took control-detail pages out for every CIS / NIST / GxP /
+// PCI control on the pilot).
+type WireResponse = {
   tenant_id: string
   framework_id: string
   control_id: string
@@ -76,9 +83,14 @@ type Response = {
   status: string
   score: number
   evidence_count: number
+  records: EvidenceRecord[] | null
+  requirements: RequirementRow[] | null
+  explanation?: ControlExplanation
+}
+
+type Response = Omit<WireResponse, 'records' | 'requirements'> & {
   records: EvidenceRecord[]
   requirements: RequirementRow[]
-  explanation?: ControlExplanation
 }
 
 export function AttestivControlEvidenceDetailPage({
@@ -101,7 +113,14 @@ export function AttestivControlEvidenceDetailPage({
       try {
         const r = await apiFetch(`/scoring/frameworks/${encodeURIComponent(frameworkId)}/controls/${encodeURIComponent(controlId)}/evidence`)
         if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
-        const body = (await r.json()) as Response
+        const wire = (await r.json()) as WireResponse
+        // Boundary normalisation — backend returns null for these on
+        // no_data controls; the component assumes arrays everywhere.
+        const body: Response = {
+          ...wire,
+          records: wire.records ?? [],
+          requirements: wire.requirements ?? [],
+        }
         if (!cancelled) setData(body)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load evidence detail')
