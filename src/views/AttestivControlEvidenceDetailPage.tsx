@@ -86,6 +86,11 @@ type WireResponse = {
   records: EvidenceRecord[] | null
   requirements: RequirementRow[] | null
   explanation?: ControlExplanation
+  // W2-1 per-control replay fields, populated only when ?at= was set
+  as_of?: string
+  is_replay?: boolean
+  framework_evaluated_at?: string
+  reason?: string
 }
 
 type Response = Omit<WireResponse, 'records' | 'requirements'> & {
@@ -104,6 +109,10 @@ export function AttestivControlEvidenceDetailPage({
   const [data, setData] = useState<Response | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // W2-1 per-control replay: when set, the page queries the
+  // historical state. Empty = live latest evaluation.
+  const [asOfInput, setAsOfInput] = useState<string>('')
+  const [activeAsOf, setActiveAsOf] = useState<string>('')
 
   useEffect(() => {
     let cancelled = false
@@ -111,7 +120,9 @@ export function AttestivControlEvidenceDetailPage({
       setLoading(true)
       setError(null)
       try {
-        const r = await apiFetch(`/scoring/frameworks/${encodeURIComponent(frameworkId)}/controls/${encodeURIComponent(controlId)}/evidence`)
+        const base = `/scoring/frameworks/${encodeURIComponent(frameworkId)}/controls/${encodeURIComponent(controlId)}/evidence`
+        const url = activeAsOf ? `${base}?at=${encodeURIComponent(activeAsOf)}` : base
+        const r = await apiFetch(url)
         if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
         const wire = (await r.json()) as WireResponse
         // Boundary normalisation — backend returns null for these on
@@ -130,7 +141,24 @@ export function AttestivControlEvidenceDetailPage({
     }
     void load()
     return () => { cancelled = true }
-  }, [frameworkId, controlId])
+  }, [frameworkId, controlId, activeAsOf])
+
+  function applyReplay() {
+    if (!asOfInput) return
+    // datetime-local emits "2026-04-15T12:00" (no tz). Convert via Date
+    // to a real UTC ISO so the backend's RFC3339 parser accepts it.
+    const parsed = new Date(asOfInput)
+    if (Number.isNaN(parsed.getTime())) {
+      setError(t('Enter a valid date and time', 'Enter a valid date and time'))
+      return
+    }
+    setActiveAsOf(parsed.toISOString())
+  }
+
+  function exitReplay() {
+    setActiveAsOf('')
+    setAsOfInput('')
+  }
 
   const statusTone = (status: string): 'green' | 'amber' | 'red' | 'gray' => {
     switch ((status || '').toLowerCase()) {
@@ -154,11 +182,92 @@ export function AttestivControlEvidenceDetailPage({
       <Topbar
         title={`${frameworkId.toUpperCase()} · ${controlId}`}
         left={data ? (
-          <Badge tone={statusTone(data.status)}>{(data.status || '—').toUpperCase()}</Badge>
+          <>
+            <Badge tone={statusTone(data.status)}>{(data.status || '—').toUpperCase()}</Badge>
+            {data.is_replay ? <Badge tone="navy">{t('historical replay', 'historical replay')}</Badge> : null}
+          </>
         ) : null}
       />
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
+
+        {/* W2-1 per-control replay control. Empty datetime = live
+            latest. When set, the page re-fetches against ?at= and
+            renders the historical state. */}
+        <Card>
+          <CardTitle right={data?.is_replay ? (
+            <Badge tone="navy">{t('as of', 'as of')} {new Date(data.as_of || '').toLocaleString()}</Badge>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{t('live latest', 'live latest')}</span>
+          )}>
+            {t('Point-in-time replay', 'Point-in-time replay')}
+          </CardTitle>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px' }}>
+            {t(
+              "Pick a past timestamp to see this control's status, score, and requirement breakdown as the engine recorded it then. Evidence-record hydration is skipped in replay (live stream may have rolled off) — the run manifest carries the historical records.",
+              "Pick a past timestamp to see this control's status, score, and requirement breakdown as the engine recorded it then. Evidence-record hydration is skipped in replay (live stream may have rolled off) — the run manifest carries the historical records.",
+            )}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              type="datetime-local"
+              value={asOfInput}
+              onChange={(e) => setAsOfInput(e.target.value)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 'var(--border-radius-sm)',
+                border: '1px solid var(--color-border-secondary)',
+                background: 'var(--color-background-secondary)',
+                color: 'var(--color-text-primary)',
+                fontSize: 13,
+              }}
+            />
+            <button
+              type="button"
+              onClick={applyReplay}
+              disabled={!asOfInput || loading}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--border-radius-sm)',
+                border: '1px solid var(--color-border-secondary)',
+                background: 'var(--color-brand-primary)',
+                color: 'var(--color-on-brand)',
+                fontSize: 13,
+                cursor: !asOfInput || loading ? 'default' : 'pointer',
+                opacity: !asOfInput || loading ? 0.5 : 1,
+              }}
+            >
+              {t('Replay this control', 'Replay this control')}
+            </button>
+            {data?.is_replay ? (
+              <button
+                type="button"
+                onClick={exitReplay}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--border-radius-sm)',
+                  border: '1px solid var(--color-border-secondary)',
+                  background: 'var(--color-background-secondary)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                {t('Back to live', 'Back to live')}
+              </button>
+            ) : null}
+            {data?.framework_evaluated_at ? (
+              <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                {t('Framework evaluated at', 'Framework evaluated at')}: {new Date(data.framework_evaluated_at).toLocaleString()}
+              </span>
+            ) : null}
+          </div>
+          {data?.is_replay && data?.reason ? (
+            <div style={{ marginTop: 8 }}>
+              <Banner tone="warning">{data.reason}</Banner>
+            </div>
+          ) : null}
+        </Card>
 
         <Banner tone="info" title={t('What this page is', 'What this page is')}>
           {t(
