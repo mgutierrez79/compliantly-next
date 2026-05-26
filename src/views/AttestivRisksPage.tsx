@@ -474,13 +474,20 @@ function RiskRow({ risk, onOpen }: { risk: Risk; onOpen: () => void }) {
   const source = (risk.source || 'manual').toLowerCase()
   const tone = STATUS_TONE[status] ?? 'gray'
   const meta = (risk.metadata as Record<string, unknown>) || {}
+  // Closed risks show their close timestamp (from metadata.closed_at),
+  // others show when they opened. Relative time hint helps the
+  // operator scan stale-open vs recently-closed at a glance.
+  const closedAt = status === 'closed' && typeof meta['closed_at'] === 'string'
+    ? (meta['closed_at'] as string)
+    : ''
+  const displayedTime = closedAt || risk.created_at || risk.updated_at || ''
   return (
     <button
       type="button"
       onClick={onOpen}
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 130px 110px 100px 90px',
+        gridTemplateColumns: '1fr 130px 110px 100px 120px 90px',
         gap: 10,
         alignItems: 'center',
         padding: '10px 0',
@@ -522,11 +529,48 @@ function RiskRow({ risk, onOpen }: { risk: Risk; onOpen: () => void }) {
       <div>
         <Badge tone={tone}>{status.replace(/_/g, ' ')}</Badge>
       </div>
+      <div
+        style={{ fontSize: 11, color: 'var(--color-text-secondary)', minWidth: 0 }}
+        title={displayedTime ? new Date(displayedTime).toLocaleString() : ''}
+      >
+        {displayedTime ? (
+          <>
+            <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {closedAt ? 'closed' : 'opened'}
+            </div>
+            <div>{formatRiskTime(displayedTime)}</div>
+          </>
+        ) : (
+          <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+        )}
+      </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
         {risk.owner || 'unassigned'}
       </div>
     </button>
   )
+}
+
+// formatRiskTime renders an ISO timestamp as a compact relative-to-now
+// string ("3d ago", "8mo ago"). Hover the parent cell to see the
+// absolute value via the title attribute.
+function formatRiskTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const delta = Date.now() - d.getTime()
+  if (delta < 0) return 'future'
+  const sec = Math.floor(delta / 1000)
+  if (sec < 60) return `${sec}s ago`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const days = Math.floor(hr / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  const years = Math.floor(days / 365)
+  return `${years}y ago`
 }
 
 function CreateRiskModal({

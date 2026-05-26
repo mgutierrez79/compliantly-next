@@ -248,6 +248,29 @@ export function AttestivRiskDetailPage() {
             {typeof meta['score_percent'] === 'string' ? (
               <Field label={t('Last evaluation', 'Last evaluation')}>{meta['score_percent'] as string}%</Field>
             ) : null}
+            {/* Timeline timestamps — auditor needs to see when the risk
+                opened, when it last moved, and when it closed. The data
+                was on the wire already; the page just wasn't surfacing it. */}
+            {risk.created_at ? (
+              <Field label={t('Opened', 'Opened')}>
+                <RiskTimestamp iso={risk.created_at} />
+              </Field>
+            ) : null}
+            {risk.updated_at && risk.updated_at !== risk.created_at ? (
+              <Field label={t('Last updated', 'Last updated')}>
+                <RiskTimestamp iso={risk.updated_at} />
+              </Field>
+            ) : null}
+            {(risk.status || '').toLowerCase() === 'closed' && typeof meta['closed_at'] === 'string' ? (
+              <Field label={t('Closed', 'Closed')}>
+                <RiskTimestamp iso={meta['closed_at'] as string} />
+                {typeof meta['closure_reason'] === 'string' ? (
+                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+                    {t('reason', 'reason')}: {(meta['closure_reason'] as string).replace(/_/g, ' ')}
+                  </div>
+                ) : null}
+              </Field>
+            ) : null}
           </div>
           {risk.description ? (
             <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 12, marginBottom: 0, whiteSpace: 'pre-wrap' }}>
@@ -409,6 +432,41 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <div style={{ fontSize: 13, marginTop: 2 }}>{children}</div>
     </div>
   )
+}
+
+// RiskTimestamp renders an ISO timestamp as both the absolute local
+// date+time AND a relative-to-now hint ("3d ago"). Auditors need the
+// absolute value (for SLA math); operators glance at the relative
+// for at-a-glance "how stale is this".
+function RiskTimestamp({ iso }: { iso: string }) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) {
+    return <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{iso}</span>
+  }
+  const delta = Date.now() - d.getTime()
+  const relative = formatRelativeMs(delta)
+  return (
+    <>
+      <span>{d.toLocaleString()}</span>
+      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>{relative}</div>
+    </>
+  )
+}
+
+function formatRelativeMs(deltaMs: number): string {
+  if (deltaMs < 0) return 'in the future'
+  const sec = Math.floor(deltaMs / 1000)
+  if (sec < 60) return `${sec}s ago`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const days = Math.floor(hr / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  const years = Math.floor(days / 365)
+  return `${years}y ago`
 }
 
 function FormGrid({ children }: { children: React.ReactNode }) {
