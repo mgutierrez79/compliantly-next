@@ -147,6 +147,7 @@ const sections: Record<SectionKey, Section> = {
       { to: '/connectors',             label: 'Registry',    icon: 'ti-layout-grid' },
       { to: '/connectors/health',      label: 'Health',      icon: 'ti-activity' },
       { to: '/connectors/dead-letter', label: 'Dead-letter', icon: 'ti-inbox', badge: 'dlq' },
+      { to: '/connectors/coverage',    label: 'Coverage',    icon: 'ti-checks' },
     ],
   },
   evidence: {
