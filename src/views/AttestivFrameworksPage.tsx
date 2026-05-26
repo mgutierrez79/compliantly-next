@@ -147,6 +147,14 @@ export function AttestivFrameworksPage() {
   const [elapsed, setElapsed] = useState(0)
   const cancelRef = useRef<{ cancelled: boolean; jobID: string | null }>({ cancelled: false, jobID: null })
   const [generated, setGenerated] = useState<{ id: string; path: string } | null>(null)
+  // Re-evaluate state: 'idle' | 'refreshing' (inventory poll) | 'scoring'
+  // (engine running). Two-phase because manual /scoring/evaluate against a
+  // cold connector snapshot halves the score — see feedback_cold_snapshot
+  // _eval_clobber. We force a connector refresh first so the engine reads
+  // fresh evidence.
+  const [reevalPhase, setReevalPhase] = useState<'idle' | 'refreshing' | 'scoring'>('idle')
+  const [reevalDone, setReevalDone] = useState<{ at: string; frameworks: number } | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -195,7 +203,7 @@ export function AttestivFrameworksPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadKey])
 
   const overallTotals = useMemo(() => {
     if (frameworks.length === 0) return { passing: 0, total: 0 }
@@ -347,6 +355,42 @@ export function AttestivFrameworksPage() {
     }
   }
 
+  // Two-phase manual re-evaluate. Refresh connector snapshots first so the
+  // engine doesn't score against stale/empty inventory (cold-snapshot
+  // clobber), then trigger /scoring/evaluate. NOT chained to a report — a
+  // synchronous report run OOM'd the pilot host previously. User reads the
+  // refreshed cards; if they want a PDF, the per-card Generate button
+  // already does that.
+  async function reevaluate() {
+    if (reevalPhase !== 'idle') return
+    setError(null)
+    setReevalDone(null)
+    try {
+      setReevalPhase('refreshing')
+      const refreshResp = await apiFetch('/inventory/import?refresh=true', { method: 'POST' })
+      if (!refreshResp.ok) {
+        const text = await refreshResp.text().catch(() => '')
+        throw new Error(text || `refresh: ${refreshResp.status} ${refreshResp.statusText}`)
+      }
+      setReevalPhase('scoring')
+      const evalResp = await apiFetch('/scoring/evaluate', { method: 'POST' })
+      if (!evalResp.ok) {
+        const text = await evalResp.text().catch(() => '')
+        throw new Error(text || `evaluate: ${evalResp.status} ${evalResp.statusText}`)
+      }
+      const body = await evalResp.json().catch(() => ({}))
+      const count = typeof body?.frameworks_evaluated === 'number'
+        ? body.frameworks_evaluated
+        : Array.isArray(body?.results) ? body.results.length : 0
+      setReevalDone({ at: new Date().toISOString(), frameworks: count })
+      setReloadKey((k) => k + 1)
+    } catch (err: any) {
+      setError(err?.message ?? 'Re-evaluation failed')
+    } finally {
+      setReevalPhase('idle')
+    }
+  }
+
   return (
     <>
       <Topbar
@@ -358,13 +402,41 @@ export function AttestivFrameworksPage() {
           )}</Badge> : null
         }
         right={
-          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-            {overallTotals.passing}/{overallTotals.total} {t('frameworks ≥95%', 'frameworks ≥95%')}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              {overallTotals.passing}/{overallTotals.total} {t('frameworks ≥95%', 'frameworks ≥95%')}
+            </span>
+            <PrimaryButton onClick={reevaluate} disabled={reevalPhase !== 'idle'}>
+              {reevalPhase === 'refreshing' ? (
+                <>
+                  <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
+                  {t('Refreshing connectors…', 'Refreshing connectors…')}
+                </>
+              ) : reevalPhase === 'scoring' ? (
+                <>
+                  <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
+                  {t('Scoring…', 'Scoring…')}
+                </>
+              ) : (
+                <>
+                  <i className="ti ti-refresh" aria-hidden="true" />
+                  {t('Re-evaluate now', 'Re-evaluate now')}
+                </>
+              )}
+            </PrimaryButton>
+          </div>
         }
       />
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
+        {reevalDone ? (
+          <Banner tone="success" title={t('Scoring refreshed', 'Scoring refreshed')}>
+            <span>
+              {t('Evaluated', 'Evaluated')} <strong>{reevalDone.frameworks}</strong> {t('frameworks at', 'frameworks at')}{' '}
+              {new Date(reevalDone.at).toLocaleTimeString()}.
+            </span>
+          </Banner>
+        ) : null}
         {generated ? (
           <Banner tone="success" title={t('Report downloaded', 'Report downloaded')}>
             <span>
