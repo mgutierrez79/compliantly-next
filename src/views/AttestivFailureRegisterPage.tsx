@@ -31,7 +31,7 @@ import { apiFetch } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
 type Item = {
-  risk_id: string
+  risk_id?: string
   framework_id: string
   framework_name?: string
   control_id: string
@@ -45,6 +45,11 @@ type Item = {
   owner?: string
   score: number
   title?: string
+  // True when the backend couldn't find a matching risk for a
+  // currently-failing control — failing_since anchors to the latest
+  // evaluation rather than a known streak start. The UI flags this so
+  // an auditor reads "we know it's failing, history starts here".
+  tracking_started_this_evaluation?: boolean
 }
 
 type Summary = {
@@ -209,7 +214,7 @@ export function AttestivFailureRegisterPage() {
           ) : (
             <PaginatedList
               items={items}
-              itemKey={(item) => item.risk_id}
+              itemKey={(item) => item.risk_id || `${item.framework_id}|${item.control_id}`}
               renderItem={(item) => <Row item={item} onOpen={() => router.push(`/risks/${item.risk_id}`)} />}
             />
           )}
@@ -224,16 +229,17 @@ function Row({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const tone = STATUS_TONE[item.current_status] ?? 'gray'
   const dTone = durationTone(item.consecutive_days)
   const repeat = item.previous_streaks > 0
+  const clickable = Boolean(item.risk_id)
   return (
     <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
+      onClick={clickable ? onOpen : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : -1}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onOpen()
+        if (clickable && (e.key === 'Enter' || e.key === ' ')) onOpen()
       }}
       style={{
-        cursor: 'pointer',
+        cursor: clickable ? 'pointer' : 'default',
         padding: '10px 12px',
         borderRadius: 'var(--border-radius-sm)',
         display: 'grid',
@@ -254,7 +260,9 @@ function Row({ item, onOpen }: { item: Item; onOpen: () => void }) {
         </div>
       </div>
       <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-        {t('Failing since', 'Failing since')} {humanizeSince(item.failing_since, item.consecutive_days)}
+        {item.tracking_started_this_evaluation
+          ? t('Just detected this evaluation', 'Just detected this evaluation')
+          : `${t('Failing since', 'Failing since')} ${humanizeSince(item.failing_since, item.consecutive_days)}`}
       </div>
       <Badge tone={tone}>{item.current_status || '—'}</Badge>
       <Badge tone={dTone}>
