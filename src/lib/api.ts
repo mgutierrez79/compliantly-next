@@ -145,9 +145,17 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   } else if (settings.apiKey) {
     headers.set('Authorization', `Bearer ${settings.apiKey}`)
   }
-  if (settings.tenantId) {
-    headers.set('X-Tenant-ID', settings.tenantId)
-  }
+  // Phase 2B multi-tenancy removal: do NOT send X-Tenant-ID from the
+  // browser. The backend's tenantScopeMiddleware overrides whatever
+  // the client sends to the pinned DefaultTenant in SingleTenant
+  // mode, so a frontend-sent header is dead weight — but it was the
+  // exact failure shape that produced empty CIS PDFs (a misconfig
+  // could let the wrong tenant header slip past pinning). Server-
+  // side pinning is the single source of truth; remove the client-
+  // side input. The settings.tenantId field is kept in the type
+  // (used by onboarding + login UI for display) but no longer
+  // travels in API requests.
+  // Intentionally NOT sending X-Tenant-ID.
 
   let response: Response | null = null
   let networkError: unknown = null
