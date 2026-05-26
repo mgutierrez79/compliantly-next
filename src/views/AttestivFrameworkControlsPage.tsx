@@ -26,6 +26,7 @@ import {
 } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 import { isDemoMode } from '../lib/demoMode'
+import { frameworkLabelToId } from '../lib/frameworkId'
 
 import { useI18n } from '../lib/i18n';
 
@@ -55,18 +56,12 @@ const DEMO: Control[] = [
 type TaskRow = { framework_id: string; control_id: string; status?: string; priority?: string }
 type ExceptionRow = { framework_id: string; control_id: string; expires_at?: string; severity?: string }
 
-// keyFor matches the (framework, control) tuple between the
-// controls library (which uses humanised framework labels like "ISO
-// 27001") and the GRC stores (which key by lowercased ids like
-// "iso27001"). The library row carries the human label; we lower-
-// case + strip spaces + drop version suffixes (e.g. "v8", "4.0") to
-// match the canonical id used by /v1/remediation and /v1/exceptions.
+// keyFor returns the canonical "<framework_id>/<control_id>" key the
+// GRC stores (tasks, exceptions) use for per-control bookkeeping. The
+// framework-id derivation lives in src/lib/frameworkId so vitest can
+// pin it without pulling React (frameworkId.test.ts).
 function keyFor(framework: string, controlID: string): string {
-  const fw = framework
-    .toLowerCase()
-    .replace(/\s+v?[\d.]+/g, '')
-    .replace(/\s+/g, '')
-  return `${fw}/${controlID}`
+  return `${frameworkLabelToId(framework)}/${controlID}`
 }
 
 export function AttestivFrameworkControlsPage() {
@@ -311,7 +306,7 @@ export function AttestivFrameworkControlsPage() {
                       </td>
                       <td style={{ padding: '10px' }}>
                         <Link
-                          href={`/scoring/frameworks/${encodeURIComponent(keyFor(control.framework, control.control_id).split('/')[0])}/controls/${encodeURIComponent(control.control_id)}`}
+                          href={`/scoring/frameworks/${encodeURIComponent(frameworkLabelToId(control.framework))}/controls/${encodeURIComponent(control.control_id)}`}
                           style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                           title="View evidence detail"
                         >
