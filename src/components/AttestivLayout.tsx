@@ -263,6 +263,7 @@ const sections: Record<SectionKey, Section> = {
       { to: '/dr',           label: 'Schedules',  icon: 'ti-calendar' },
       { to: '/dr/runs',      label: 'Test runs',  icon: 'ti-history' },
       { to: '/dr/approvals', label: 'Approvals',  icon: 'ti-user-check' },
+      { to: '/dr/restore-verifications', label: 'Restore verifs', icon: 'ti-database-check' },
     ],
   },
   audit: {
