@@ -201,16 +201,29 @@ function TrendChart({
   // Build the timeseries.
   //
   // Prefer score-bearing events (framework_scored / status_changed /
-  // score_dropped — each carries a backend-stamped Score so we can
-  // plot at event resolution). Falls back to the monthly aggregate
-  // when no events have scores (older data or postgres backend
-  // before this migration). Without this, a tenant with 80 events
-  // in one month renders as a single dot at the monthly average.
+  // score_dropped). Score comes from either the backend-stamped Score
+  // field (new path) or — for events stored before that field landed
+  // — by parsing the trailing percentage out of the description. The
+  // text patterns:
+  //   "{fw} scored 47.3% (PASS)"            → 47.3
+  //   "{fw} status changed: FAIL → WARN (42.3%)" → 42.3
+  //   "{fw} score dropped 42.3% → 20.8%"   → 20.8
+  // For all three patterns the "current" score is the LAST percentage
+  // in the string, so a regex that returns the last match is enough
+  // to cover every event type without case-splitting.
   type Point = { t: number; score: number }
+  function scoreFromEvent(e: TrendEvent): number | undefined {
+    if (typeof e.Score === 'number' && e.Score > 0) return e.Score
+    const matches = e.Description.match(/(\d+(?:\.\d+)?)\s*%/g)
+    if (!matches || matches.length === 0) return undefined
+    const last = matches[matches.length - 1]
+    const num = Number.parseFloat(last)
+    if (!Number.isFinite(num)) return undefined
+    return num / 100
+  }
   const scoredEvents: Point[] = events
-    .filter((e) => typeof e.Score === 'number')
-    .map((e) => ({ t: Date.parse(e.OccurredAt), score: e.Score as number }))
-    .filter((p) => Number.isFinite(p.t))
+    .map((e) => ({ t: Date.parse(e.OccurredAt), score: scoreFromEvent(e) }))
+    .filter((p): p is Point => Number.isFinite(p.t) && typeof p.score === 'number')
     .sort((a, b) => a.t - b.t)
   const monthlyPoints: Point[] = items.map((p) => ({
     t: Date.UTC(p.Year, p.Month - 1, 15),
