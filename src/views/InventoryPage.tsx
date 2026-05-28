@@ -1338,6 +1338,7 @@ function orderedAssetTypeTiles(counts: Record<string, number>): Array<[string, n
     'storage_array',
     'firewall',
     'firewall_manager',
+    'network_device',
     'server',
     'backup_appliance',
   ]

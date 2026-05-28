@@ -204,6 +204,7 @@ const sections: Record<SectionKey, Section> = {
       { to: '/inventory?asset_type=storage_volume',    label: 'Storage volumes',  icon: 'ti-stack-2' },
       { to: '/inventory?asset_type=server',            label: 'Servers',          icon: 'ti-server' },
       { to: '/inventory?asset_type=firewall',          label: 'Firewalls',        icon: 'ti-wall' },
+      { to: '/inventory?asset_type=network_device',    label: 'Network devices',  icon: 'ti-network' },
       // Tab deep-links — same Inventory page, different tab.
       { to: '/inventory?tab=applications',             label: 'Applications',    icon: 'ti-apps' },
       { to: '/inventory?tab=sites',                    label: 'Sites',           icon: 'ti-building' },
