@@ -190,32 +190,43 @@ function TrendChart({
   events: TrendEvent[]
   frameworkID: string
 }) {
-  const {
-    t
-  } = useI18n();
+  const { t } = useI18n()
 
   const width = 720
   const height = 220
-  const margin = { top: 12, right: 12, bottom: 24, left: 36 }
+  const margin = { top: 12, right: 12, bottom: 36, left: 36 }
   const innerW = width - margin.left - margin.right
   const innerH = height - margin.top - margin.bottom
 
-  // Y axis: auto-fit to the actual score range with a 10% pad so the
-  // line doesn't kiss the top/bottom. The previous hardcoded
-  // 70%-100% window flattened every point for a tenant in early
-  // posture build-out (30-60% scores all clamped to the floor).
-  // yMax always caps at 1.0; yMin floors at 0.0 — the chart never
-  // crops scores away just to look better.
-  const scores = items.map((p) => p.Score)
+  // Build the timeseries.
+  //
+  // Prefer score-bearing events (framework_scored / status_changed /
+  // score_dropped — each carries a backend-stamped Score so we can
+  // plot at event resolution). Falls back to the monthly aggregate
+  // when no events have scores (older data or postgres backend
+  // before this migration). Without this, a tenant with 80 events
+  // in one month renders as a single dot at the monthly average.
+  type Point = { t: number; score: number }
+  const scoredEvents: Point[] = events
+    .filter((e) => typeof e.Score === 'number')
+    .map((e) => ({ t: Date.parse(e.OccurredAt), score: e.Score as number }))
+    .filter((p) => Number.isFinite(p.t))
+    .sort((a, b) => a.t - b.t)
+  const monthlyPoints: Point[] = items.map((p) => ({
+    t: Date.UTC(p.Year, p.Month - 1, 15),
+    score: p.Score,
+  }))
+  const usingEvents = scoredEvents.length >= 2
+  const points: Point[] = usingEvents ? scoredEvents : monthlyPoints
+
+  // Y axis auto-fit. yMax caps at 1.0; yMin floors at 0.0 — never
+  // crop scores away just to look better.
+  const scores = points.map((p) => p.score)
   const rawMin = scores.length > 0 ? Math.min(...scores) : 0.7
   const rawMax = scores.length > 0 ? Math.max(...scores) : 1.0
-  // Pad by 5% on each side; round to nearest 5%; clamp [0, 1].
-  // When all points are equal, expand by ±10% so we still see a
-  // line instead of a dot.
   const span = Math.max(rawMax - rawMin, 0.05)
   const yMin = Math.max(0, Math.floor((rawMin - 0.05 - (span === 0.05 ? 0.05 : 0)) * 20) / 20)
   const yMax = Math.min(1, Math.ceil((rawMax + 0.05 + (span === 0.05 ? 0.05 : 0)) * 20) / 20)
-  // Generate 5 evenly-spaced ticks rounded to the nearest 5%.
   const tickCount = 5
   const ticks: number[] = []
   for (let i = 0; i < tickCount; i++) {
@@ -227,22 +238,42 @@ function TrendChart({
     const fraction = (score - yMin) / (yMax - yMin)
     return margin.top + innerH * (1 - fraction)
   }
-  function x(index: number) {
-    if (items.length === 1) return margin.left + innerW / 2
-    return margin.left + (innerW * index) / (items.length - 1)
+
+  // X axis: real timestamps. Span is min/max of the visible points
+  // (plus a small pad). When all points share one instant (degenerate
+  // single-event case) we center the single dot.
+  const tMin = points.length > 0 ? points[0].t : Date.now()
+  const tMax = points.length > 0 ? points[points.length - 1].t : Date.now()
+  const tSpan = Math.max(tMax - tMin, 1)
+  function x(t: number) {
+    if (points.length <= 1 || tMax === tMin) return margin.left + innerW / 2
+    return margin.left + (innerW * (t - tMin)) / tSpan
   }
 
   const lineColor = FRAMEWORK_COLORS[frameworkID] ?? '#185FA5'
 
-  const path = items
-    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(index).toFixed(1)} ${y(point.Score).toFixed(1)}`)
+  const path = points
+    .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${x(p.t).toFixed(1)} ${y(p.score).toFixed(1)}`)
     .join(' ')
-  // Only draw the PASS-95% guideline when it actually falls inside
-  // the visible range; otherwise it clamps to the chart edge and
-  // misleads (a line on the top axis of a 30-60% chart suggests
-  // "almost passing").
   const passThresholdVisible = 0.95 >= yMin && 0.95 <= yMax
   const passLine = y(0.95)
+
+  // X-axis date ticks — 5 evenly-spaced, formatted YYYY-MM-DD when
+  // span > 60 days, else MM-DD HH:MM. Keeps labels readable across
+  // both "12-month overview" and "single-day burst" views.
+  const xTickCount = points.length > 1 ? 5 : 1
+  const xTicks: number[] = []
+  for (let i = 0; i < xTickCount; i++) {
+    xTicks.push(tMin + (tSpan * i) / Math.max(xTickCount - 1, 1))
+  }
+  const labelMode: 'date' | 'datetime' = tSpan > 60 * 86400 * 1000 ? 'date' : 'datetime'
+  function fmtTick(ms: number): string {
+    const d = new Date(ms)
+    if (labelMode === 'date') {
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+    }
+    return `${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+  }
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -290,45 +321,70 @@ function TrendChart({
           </>
         ) : null}
 
-        {/* Event markers — vertical dotted lines at the event's month */}
-        {events.map((event, index) => {
-          const date = new Date(event.OccurredAt)
-          const monthIndex = items.findIndex(
-            (point) => point.Year === date.getUTCFullYear() && point.Month === date.getUTCMonth() + 1,
-          )
-          if (monthIndex < 0) return null
-          return (
-            <line
-              key={index}
-              x1={x(monthIndex)}
-              x2={x(monthIndex)}
-              y1={margin.top}
-              y2={margin.top + innerH}
-              stroke={severityChartColor(event.Severity)}
-              strokeDasharray="2 3"
-              strokeOpacity={0.7}
-            />
-          )
-        })}
+        {/* Event markers — vertical dotted lines at non-score
+            events (e.g. config changes, evidence imports). Score-
+            bearing events get their own dot from the points loop
+            below, so they don't need a separate marker line. */}
+        {events
+          .filter((e) => typeof e.Score !== 'number')
+          .map((event, index) => {
+            const ts = Date.parse(event.OccurredAt)
+            if (!Number.isFinite(ts) || ts < tMin || ts > tMax) return null
+            return (
+              <line
+                key={`marker-${index}`}
+                x1={x(ts)}
+                x2={x(ts)}
+                y1={margin.top}
+                y2={margin.top + innerH}
+                stroke={severityChartColor(event.Severity)}
+                strokeDasharray="2 3"
+                strokeOpacity={0.5}
+              />
+            )
+          })}
 
         {/* Score line */}
         <path d={path} stroke={lineColor} strokeWidth={2} fill="none" />
 
         {/* Score points */}
-        {items.map((point, index) => (
-          <g key={`${point.Year}-${point.Month}`}>
-            <circle cx={x(index)} cy={y(point.Score)} r={4} fill={lineColor} />
-            <text
-              x={x(index)}
-              y={margin.top + innerH + 14}
-              textAnchor="middle"
-              fontSize={10}
-              fill="var(--color-text-tertiary)"
-            >
-              {point.Year}-{String(point.Month).padStart(2, '0')}
-            </text>
-          </g>
+        {points.map((p, index) => (
+          <circle
+            key={`pt-${index}`}
+            cx={x(p.t)}
+            cy={y(p.score)}
+            r={points.length > 30 ? 2 : 3}
+            fill={lineColor}
+          />
         ))}
+
+        {/* X-axis date ticks */}
+        {xTicks.map((ts, index) => (
+          <text
+            key={`xt-${index}`}
+            x={x(ts)}
+            y={margin.top + innerH + 14}
+            textAnchor={index === 0 ? 'start' : index === xTicks.length - 1 ? 'end' : 'middle'}
+            fontSize={10}
+            fill="var(--color-text-tertiary)"
+            fontFamily="var(--font-mono)"
+          >
+            {fmtTick(ts)}
+          </text>
+        ))}
+
+        {/* Data-source hint so the operator knows what they're seeing */}
+        <text
+          x={margin.left + innerW}
+          y={margin.top + innerH + 28}
+          textAnchor="end"
+          fontSize={9}
+          fill="var(--color-text-tertiary)"
+        >
+          {usingEvents
+            ? t('{n} events', '{n} events', { n: points.length })
+            : t('{n} monthly aggregates', '{n} monthly aggregates', { n: points.length })}
+        </text>
       </svg>
     </div>
   );

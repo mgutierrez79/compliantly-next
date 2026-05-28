@@ -79,6 +79,11 @@ export type TrendEvent = {
   Type: string
   Description: string
   Severity: string
+  // Score (0..1) at the time of the event. Populated by the backend
+  // for framework_scored / status_changed / score_dropped events so
+  // the trend chart can plot a fine-grained timeseries without
+  // re-parsing the human description. Older events may lack it.
+  Score?: number
 }
 
 async function getJSON<T>(path: string): Promise<T> {
