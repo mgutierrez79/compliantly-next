@@ -265,6 +265,7 @@ const CONNECTORS: ConnectorKind[] = [
     fields: [
       { key: 'username', label: 'DNA Center admin', required: true },
       { key: 'password', label: 'Password', type: 'password', required: true },
+      { key: 'aes_key', label: 'AES-256 key (optional)', type: 'password', hint: 'Only fill this in if you turned on CSCO-AES-256 credential encryption under DNAC System Configuration → AES Key. Accepts 64-char hex or 44-char base64. Leave blank for standard Basic Auth.' },
     ],
     pollDefault: 21600,
   },
