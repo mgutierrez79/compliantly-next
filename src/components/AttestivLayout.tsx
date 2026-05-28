@@ -111,8 +111,11 @@ const railTop: RailItem[] = [
   { key: 'connectors', label: 'Connectors', icon: 'ti-plug',             prefix: '/connectors' },
   { key: 'evidence',   label: 'Evidence',   icon: 'ti-lock',             prefix: '/evidence' },
   { key: 'frameworks', label: 'Frameworks', icon: 'ti-shield-check',     prefix: '/frameworks' },
-  { key: 'apps',       label: 'Apps',       icon: 'ti-apps',             prefix: '/apps' },
-  { key: 'sites',      label: 'Sites',      icon: 'ti-building',         prefix: '/sites' },
+  // Apps + Sites moved INSIDE the Inventory page as tabs — a single
+  // entry point for "everything in scope" instead of three parallel
+  // sections in the rail. Direct routes /apps/{id} + /sites/{id}
+  // still resolve (used by deep links from detail pages and the
+  // Inventory "App tier" column).
   { key: 'inventory',  label: 'Inventory',  icon: 'ti-database',         prefix: '/inventory' },
   { key: 'risks',      label: 'Risk',       icon: 'ti-alert-octagon',    prefix: '/risks' },
   { key: 'policies',   label: 'Policies',   icon: 'ti-file-text',        prefix: '/policies' },
@@ -199,6 +202,9 @@ const sections: Record<SectionKey, Section> = {
       { to: '/inventory?asset_type=storage_volume',    label: 'Storage volumes',  icon: 'ti-stack-2' },
       { to: '/inventory?asset_type=server',            label: 'Servers',          icon: 'ti-server' },
       { to: '/inventory?asset_type=firewall',          label: 'Firewalls',        icon: 'ti-wall' },
+      // Tab deep-links — same Inventory page, different tab.
+      { to: '/inventory?tab=applications',             label: 'Applications',    icon: 'ti-apps' },
+      { to: '/inventory?tab=sites',                    label: 'Sites',           icon: 'ti-building' },
     ],
   },
   risks: {
@@ -380,6 +386,12 @@ function clearCachedRoles(): void {
 }
 
 function sectionFromPath(pathname: string): SectionKey {
+  // /apps and /sites no longer have their own rail entry — they
+  // live inside the Inventory page as tabs. Route them to the
+  // Inventory section so deep links to detail pages
+  // (/apps/{id}, /sites/{id}) still show the right sidebar.
+  if (pathname === '/apps' || pathname.startsWith('/apps/')) return 'inventory'
+  if (pathname === '/sites' || pathname.startsWith('/sites/')) return 'inventory'
   for (const item of [...railTop, ...railBottom]) {
     if (pathname === item.prefix || pathname.startsWith(`${item.prefix}/`)) {
       return item.key
