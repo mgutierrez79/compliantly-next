@@ -276,6 +276,7 @@ const CONNECTORS: ConnectorKind[] = [
     fields: [
       { key: 'client_id', label: 'PSIRT API client_id', required: true, hint: 'From apiconsole.cisco.com — Cisco PSIRT openVuln API entitlement.' },
       { key: 'client_secret', label: 'PSIRT API client_secret', type: 'password', required: true },
+      { key: 'version', label: 'IOS-XE versions', required: true, hint: 'Comma-separated list of IOS-XE versions running across your fleet, e.g. 17.9.4, 17.6.5. Get them from Inventory → Network devices → metadata.software_version.' },
     ],
     pollDefault: 86400,
     endpointOptional: true,
