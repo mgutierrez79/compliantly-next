@@ -235,6 +235,51 @@ const CONNECTORS: ConnectorKind[] = [
     pollDefault: 21600,
     endpointOptional: true,
   },
+  {
+    value: 'cisco_catalyst',
+    label: 'Cisco Catalyst 9000 (RESTCONF)',
+    category: 'Network',
+    endpointHint: 'https://sw-paris-core-01.acme.internal',
+    fields: [
+      { key: 'username', label: 'Username', required: true, hint: 'Local user (priv 15). Suggested: attestiv. Enable on the switch with `restconf` + `ip http secure-server`.' },
+      { key: 'password', label: 'Password', type: 'password', required: true },
+    ],
+    pollDefault: 21600,
+  },
+  {
+    value: 'cisco_catalyst_netconf',
+    label: 'Cisco Catalyst 9000 (NETCONF/SSH)',
+    category: 'Network',
+    endpointHint: 'sw-paris-core-01.acme.internal:830',
+    fields: [
+      { key: 'username', label: 'Username', required: true },
+      { key: 'password', label: 'Password', type: 'password', required: true },
+    ],
+    pollDefault: 21600,
+  },
+  {
+    value: 'cisco_dna_center',
+    label: 'Cisco DNA Center',
+    category: 'Network',
+    endpointHint: 'https://dnac.acme.internal',
+    fields: [
+      { key: 'username', label: 'DNA Center admin', required: true },
+      { key: 'password', label: 'Password', type: 'password', required: true },
+    ],
+    pollDefault: 21600,
+  },
+  {
+    value: 'cisco_psirt',
+    label: 'Cisco PSIRT (CVE feed)',
+    category: 'Security',
+    endpointHint: 'Not required — uses apix.cisco.com',
+    fields: [
+      { key: 'client_id', label: 'PSIRT API client_id', required: true, hint: 'From apiconsole.cisco.com — Cisco PSIRT openVuln API entitlement.' },
+      { key: 'client_secret', label: 'PSIRT API client_secret', type: 'password', required: true },
+    ],
+    pollDefault: 86400,
+    endpointOptional: true,
+  },
 ]
 
 type TestResult =
