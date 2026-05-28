@@ -25,35 +25,104 @@ type Tone =
   | 'navy'
   | 'gray'
 
-const badgePalette: Record<Tone, CSSProperties> = {
-  green: { background: 'var(--color-status-green-bg)', color: 'var(--color-status-green-deep)' },
-  amber: { background: 'var(--color-status-amber-bg)', color: 'var(--color-status-amber-deep)' },
-  red:   { background: 'var(--color-status-red-bg)',   color: 'var(--color-status-red-deep)' },
-  blue:  { background: 'var(--color-status-blue-bg)',  color: 'var(--color-status-blue-deep)' },
-  navy:  { background: 'var(--color-brand-navy)',      color: 'var(--color-brand-blue-pale)' },
-  gray:  { background: 'var(--color-background-tertiary)', color: '#444441' },
-}
-
-const baseBadge: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  fontSize: 10,
-  padding: '2px 7px',
-  borderRadius: 20,
-  fontWeight: 500,
-  whiteSpace: 'nowrap',
+// Tone palette — bg / deep / mid (mid is used for the optional 1px
+// outline + leading status dot, deep for the text, bg for the
+// surface). Enterprise-grade restraint: low-saturation tints, sharp
+// 4px corners (not the 20px pill that read as "marketing chip"),
+// 1px border that pulls the badge off the page without dominating.
+const badgePalette: Record<Tone, { bg: string; deep: string; mid: string }> = {
+  green: { bg: 'var(--color-status-green-bg)', deep: 'var(--color-status-green-deep)', mid: 'var(--color-status-green-mid)' },
+  amber: { bg: 'var(--color-status-amber-bg)', deep: 'var(--color-status-amber-deep)', mid: 'var(--color-status-amber-mid)' },
+  red:   { bg: 'var(--color-status-red-bg)',   deep: 'var(--color-status-red-deep)',   mid: 'var(--color-status-red-mid)' },
+  blue:  { bg: 'var(--color-status-blue-bg)',  deep: 'var(--color-status-blue-deep)',  mid: 'var(--color-status-blue-mid)' },
+  navy:  { bg: 'var(--color-brand-navy)',      deep: 'var(--color-brand-blue-pale)',   mid: 'var(--color-brand-blue)' },
+  gray:  { bg: 'var(--color-background-tertiary)', deep: '#444441',                    mid: '#9c9b95' },
 }
 
 export function Badge({
   tone = 'gray',
   icon,
+  dot,
   children,
-}: PropsWithChildren<{ tone?: Tone; icon?: string }>) {
+}: PropsWithChildren<{ tone?: Tone; icon?: string; dot?: boolean }>) {
+  const colors = badgePalette[tone]
+  const baseBadge: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 10.5,
+    lineHeight: 1,
+    padding: '4px 9px',
+    borderRadius: 4,
+    fontWeight: 500,
+    letterSpacing: '0.01em',
+    whiteSpace: 'nowrap',
+    background: colors.bg,
+    color: colors.deep,
+    border: `1px solid ${colors.mid}33`, // 33 = 20% alpha — visible only on close inspection
+  }
   return (
-    <span style={{ ...baseBadge, ...badgePalette[tone] }}>
+    <span style={baseBadge}>
+      {dot ? (
+        <span
+          aria-hidden="true"
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: colors.mid,
+          }}
+        />
+      ) : null}
       {icon ? <i className={`ti ${icon}`} aria-hidden="true" style={{ fontSize: 11 }} /> : null}
       {children}
+    </span>
+  )
+}
+
+// ScoreBadge — for the framework cards. Shows the percentage with a
+// leading status dot + the number in a slightly heavier weight than
+// the regular Badge, so an auditor scanning the page reads "85%"
+// before they read the framework name. Stays inside the same tone
+// system so the visual language is consistent with StatusBadge.
+export function ScoreBadge({
+  tone,
+  value,
+}: {
+  tone: Tone
+  value: string
+}) {
+  const colors = badgePalette[tone]
+  const style: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'baseline',
+    gap: 6,
+    fontSize: 12,
+    lineHeight: 1,
+    padding: '5px 11px',
+    borderRadius: 4,
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    whiteSpace: 'nowrap',
+    background: colors.bg,
+    color: colors.deep,
+    border: `1px solid ${colors.mid}40`,
+  }
+  return (
+    <span style={style}>
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'inline-block',
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: colors.mid,
+          alignSelf: 'center',
+        }}
+      />
+      {value}
     </span>
   )
 }

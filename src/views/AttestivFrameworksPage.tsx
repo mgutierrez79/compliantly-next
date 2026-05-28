@@ -20,6 +20,7 @@ import {
   Banner,
   Card,
   CardTitle,
+  ScoreBadge,
   FrameworkBar,
   GhostButton,
   HeroBand,
@@ -563,10 +564,18 @@ function FrameworkCard({
       : framework.overall >= 85
         ? 'amber'
         : 'red'
-  const badgeText = noData ? t('not evaluated', 'not evaluated') : `${framework.overall}%`
+  // ScoreBadge for evaluated frameworks (number + status dot reads
+  // as a single auditor-friendly chip); fall back to a quiet Badge
+  // with a dot for the "not evaluated" state so the visual language
+  // stays consistent.
+  const headerBadge = noData ? (
+    <Badge tone="gray" dot>{t('not evaluated', 'not evaluated')}</Badge>
+  ) : (
+    <ScoreBadge tone={tone} value={`${framework.overall}%`} />
+  )
   return (
     <Card>
-      <CardTitle right={<Badge tone={tone}>{badgeText}</Badge>}>
+      <CardTitle right={headerBadge}>
         {framework.name}
       </CardTitle>
       <div style={{ marginBottom: 10 }}>

@@ -421,12 +421,13 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
 
   // Pull current tenant + subject from /auth/me so the footer pill
   // reflects the bound principal, not whatever the user typed in
-  // settings. Falls back to localStorage if /auth/me hasn't returned
-  // yet (cold load).
+  // settings. Re-runs on pathname change so the post-login redirect
+  // (login → /dashboard) refetches once the session cookie is set —
+  // previously the [] dep meant the first call ran while still
+  // unauthenticated and the user pill stayed empty until a manual
+  // refresh.
   useEffect(() => {
     setTenantId(loadSettings().tenantId)
-    // Seed from the cached roles first (instant correct nav for a
-    // returning user), then reconcile with the authoritative /auth/me.
     setRoles(loadCachedRoles())
     let cancelled = false
     apiJson<{ subject?: string; roles?: string[]; tenant_id?: string | null }>('/auth/me')
@@ -446,7 +447,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [pathname])
 
   // DLQ count for the Issues / Dead-letter badges. Same source as
   // the previous Layout — Phase 3 has the count tenant-scoped at the
