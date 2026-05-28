@@ -14,6 +14,7 @@ import {
   Card,
   CardTitle,
   GhostButton,
+  Pagination,
   Topbar,
 } from '../components/AttestivUi'
 import {
@@ -48,6 +49,11 @@ export function AttestivScoringTrendPage() {
   const [data, setData] = useState<{ items: MonthlyScore[]; events: TrendEvent[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Events table: pagination + scroll, per the platform-wide list
+  // primitive standard. Newest first so a fresh recompute appears
+  // at the top of page 1 instead of buried at the end.
+  const [eventsPage, setEventsPage] = useState(0)
+  const [eventsPageSize, setEventsPageSize] = useState<number>(20)
 
   useEffect(() => {
     if (!frameworkID) return
@@ -136,32 +142,16 @@ export function AttestivScoringTrendPage() {
             {t('Events', 'Events')}
           </CardTitle>
           {data && data.events.length > 0 ? (
-            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-tertiary)', textAlign: 'left' }}>
-                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Date', 'Date')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Severity', 'Severity')}</th>
-                  <th style={{ padding: '6px 0 6px 10px' }}>{t('Description', 'Description')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.events.map((event, index) => (
-                  <tr key={`${event.OccurredAt}-${index}`} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                    <td style={{ padding: '10px 10px 10px 0', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                      {formatTimestamp(event.OccurredAt)}
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <Badge tone="gray">{event.Type}</Badge>
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <Badge tone={severityTone(event.Severity)}>{event.Severity}</Badge>
-                    </td>
-                    <td style={{ padding: '10px 0 10px 10px', color: 'var(--color-text-secondary)' }}>{event.Description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <EventsTable
+              events={data.events}
+              page={eventsPage}
+              pageSize={eventsPageSize}
+              onPage={setEventsPage}
+              onPageSize={(s) => {
+                setEventsPageSize(s)
+                setEventsPage(0)
+              }}
+            />
           ) : (
             <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t(
               'No events recorded for this window.',
@@ -401,6 +391,91 @@ function TrendChart({
       </svg>
     </div>
   );
+}
+
+// EventsTable renders the trend events list with the platform-wide
+// pagination + scroll pattern: newest first, page-size selector
+// (10/20/50/100), bounded scroll height so the page never grows
+// without bound.
+function EventsTable({
+  events,
+  page,
+  pageSize,
+  onPage,
+  onPageSize,
+}: {
+  events: TrendEvent[]
+  page: number
+  pageSize: number
+  onPage: (n: number) => void
+  onPageSize: (n: number) => void
+}) {
+  const { t } = useI18n()
+  // Sort newest first without mutating the prop. Date.parse returns
+  // NaN on malformed input; treat NaN as oldest so it sinks to the
+  // bottom rather than scrambling the order.
+  const sorted = [...events].sort((a, b) => {
+    const ta = Date.parse(a.OccurredAt)
+    const tb = Date.parse(b.OccurredAt)
+    return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0)
+  })
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const current = Math.min(page, pageCount - 1)
+  const paged = sorted.slice(current * pageSize, current * pageSize + pageSize)
+  return (
+    <>
+      <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr
+              style={{
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: 'var(--color-text-tertiary)',
+                textAlign: 'left',
+                position: 'sticky',
+                top: 0,
+                background: 'var(--color-background-primary)',
+                zIndex: 1,
+              }}
+            >
+              <th style={{ padding: '6px 10px 6px 0' }}>{t('Date', 'Date')}</th>
+              <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
+              <th style={{ padding: '6px 10px' }}>{t('Severity', 'Severity')}</th>
+              <th style={{ padding: '6px 0 6px 10px' }}>{t('Description', 'Description')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.map((event, index) => (
+              <tr key={`${event.OccurredAt}-${current}-${index}`} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                <td style={{ padding: '10px 10px 10px 0', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                  {formatTimestamp(event.OccurredAt)}
+                </td>
+                <td style={{ padding: '10px' }}>
+                  <Badge tone="gray">{event.Type}</Badge>
+                </td>
+                <td style={{ padding: '10px' }}>
+                  <Badge tone={severityTone(event.Severity)}>{event.Severity}</Badge>
+                </td>
+                <td style={{ padding: '10px 0 10px 10px', color: 'var(--color-text-secondary)' }}>{event.Description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <Pagination
+          page={current}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={onPage}
+          onPageSizeChange={onPageSize}
+          label={t('Events', 'Events')}
+        />
+      </div>
+    </>
+  )
 }
 
 function severityTone(severity: string): 'red' | 'amber' | 'gray' | 'blue' {
