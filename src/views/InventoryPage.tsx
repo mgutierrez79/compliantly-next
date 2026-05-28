@@ -465,6 +465,8 @@ export function InventoryPage() {
         {error ? <Banner tone="error">{error}</Banner> : null}
         {info ? <Banner tone="success">{info}</Banner> : null}
 
+        <RegistryOverviewStrip router={router} />
+
         <div
           style={{
             display: 'grid',
@@ -1202,4 +1204,164 @@ function orderedAssetTypeTiles(counts: Record<string, number>): Array<[string, n
     .sort(([, a], [, b]) => b - a)
     .slice(0, 12 - out.length)
   return out.concat(rest)
+}
+
+// RegistryOverviewStrip — sits at the top of /inventory and gives the
+// auditor a one-glance view of EVERYTHING in scope: physical assets +
+// declared applications + declared sites. Each chip is clickable;
+// Assets stays on this page (we're already here), Applications jumps
+// to /apps, Sites to /sites. Counts come from the new
+// /v1/registry/overview endpoint.
+type RegistryOverview = {
+  assets?: { count?: number; by_type?: Record<string, number> }
+  applications?: { count?: number; gxp_validated?: number }
+  sites?: { count?: number; with_dr?: number }
+}
+
+function RegistryOverviewStrip({ router }: { router: ReturnType<typeof useRouter> }) {
+  const { t } = useI18n()
+  const [overview, setOverview] = useState<RegistryOverview | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    apiFetch('/registry/overview')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: RegistryOverview | null) => {
+        if (!cancelled && body) setOverview(body)
+      })
+      .catch(() => {
+        // Endpoint is brand-new; older backends 404. Silent failure
+        // keeps the page functional on a partial deploy.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  if (!overview) return null
+  const chips: Array<{
+    label: string
+    count: number
+    sub: string
+    icon: string
+    onClick: () => void
+    active?: boolean
+  }> = [
+    {
+      label: t('Assets', 'Assets'),
+      count: overview.assets?.count ?? 0,
+      sub: t('Discovered by connectors', 'Discovered by connectors'),
+      icon: 'ti-stack',
+      onClick: () => {},
+      active: true,
+    },
+    {
+      label: t('Applications', 'Applications'),
+      count: overview.applications?.count ?? 0,
+      sub:
+        (overview.applications?.gxp_validated ?? 0) > 0
+          ? t('{n} GxP-validated', '{n} GxP-validated', { n: overview.applications?.gxp_validated ?? 0 })
+          : t('Operator-declared', 'Operator-declared'),
+      icon: 'ti-apps',
+      onClick: () => router.push('/apps'),
+    },
+    {
+      label: t('Sites', 'Sites'),
+      count: overview.sites?.count ?? 0,
+      sub:
+        (overview.sites?.with_dr ?? 0) > 0
+          ? t('{n} with DR pair', '{n} with DR pair', { n: overview.sites?.with_dr ?? 0 })
+          : t('Operator-declared', 'Operator-declared'),
+      icon: 'ti-building',
+      onClick: () => router.push('/sites'),
+    },
+  ]
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 10,
+        marginBottom: 14,
+      }}
+    >
+      {chips.map((c) => (
+        <button
+          key={c.label}
+          type="button"
+          onClick={c.onClick}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 16px',
+            background: c.active
+              ? 'var(--color-status-blue-bg)'
+              : 'var(--color-background-primary)',
+            border: `1px solid ${c.active ? 'var(--color-status-blue-mid)' : 'var(--color-border-soft, rgba(0,0,0,0.10))'}`,
+            borderRadius: 6,
+            cursor: c.active ? 'default' : 'pointer',
+            textAlign: 'left',
+            color: 'inherit',
+            fontFamily: 'inherit',
+            transition: 'background 0.12s',
+          }}
+        >
+          <i
+            className={`ti ${c.icon}`}
+            aria-hidden="true"
+            style={{
+              fontSize: 22,
+              color: c.active ? 'var(--color-status-blue-deep)' : 'var(--color-text-secondary)',
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 8,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: 'var(--color-text-primary)',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {c.count}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: 'var(--color-text-tertiary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {c.label}
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 10.5,
+                color: 'var(--color-text-tertiary)',
+                marginTop: 2,
+              }}
+            >
+              {c.sub}
+            </div>
+          </div>
+          {!c.active ? (
+            <i
+              className="ti ti-arrow-right"
+              aria-hidden="true"
+              style={{ fontSize: 14, color: 'var(--color-text-tertiary)' }}
+            />
+          ) : null}
+        </button>
+      ))}
+    </div>
+  )
 }
