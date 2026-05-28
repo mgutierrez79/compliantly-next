@@ -118,12 +118,23 @@ const CONNECTORS: ConnectorKind[] = [
   },
   {
     value: 'dell_datadomain',
-    label: 'Dell DataDomain',
+    label: 'Dell DataDomain (REST)',
     category: 'Storage',
     endpointHint: 'https://dd-prod.acme.internal',
     fields: [
       { key: 'username', label: 'Username', required: true },
       { key: 'password', label: 'Password', type: 'password', required: true },
+    ],
+    pollDefault: 1800,
+  },
+  {
+    value: 'dell_datadomain_ssh',
+    label: 'Dell Data Domain (SSH/CLI)',
+    category: 'Storage',
+    endpointHint: 'dd-prod.acme.internal',
+    fields: [
+      { key: 'username', label: 'SSH username (sysadmin or admin role)', required: true },
+      { key: 'password', label: 'SSH password', type: 'password', required: true },
     ],
     pollDefault: 1800,
   },
