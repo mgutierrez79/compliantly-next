@@ -60,6 +60,12 @@ type InventoryAsset = {
   // included this asset. Independent of external_refs (which only
   // reflects the connector that originally inserted the row).
   present_in?: string[]
+  // Derived by the backend from the Cisco MAC address table joined
+  // against this asset's known MAC addresses. Format:
+  // "<switch>:<interface>" with optional " VLAN <n>" suffix. Empty
+  // when there's no Cisco connector polling the relevant switch, or
+  // no MAC is known for this asset.
+  switch_port?: string | null
 }
 
 type SiteOption = { site_id: string; display_name?: string }
@@ -724,6 +730,7 @@ export function InventoryPage() {
                   <th style={{ padding: '6px 10px' }}>{t('App tier', 'App tier')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Source', 'Source')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Location', 'Location')}</th>
+                  <th style={{ padding: '6px 10px' }}>{t('Switch port', 'Switch port')}</th>
                   <th style={{ padding: '6px 0 6px 10px' }}>{t('Tags', 'Tags')}</th>
                 </tr>
               </thead>
@@ -1081,6 +1088,26 @@ function AssetRow({
               </option>
             ))}
           </select>
+        )}
+      </td>
+      <td style={{ padding: '10px' }}>
+        {asset.switch_port ? (
+          <span
+            style={{
+              fontSize: 11,
+              padding: '2px 6px',
+              background: 'var(--color-status-blue-bg)',
+              color: 'var(--color-status-blue-deep)',
+              borderRadius: 'var(--border-radius-sm)',
+              fontFamily: 'var(--font-mono)',
+              display: 'inline-block',
+            }}
+            title={t('Discovered via Cisco MAC address table', 'Discovered via Cisco MAC address table')}
+          >
+            {asset.switch_port}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
         )}
       </td>
       <td style={{ padding: '10px 0 10px 10px' }}>
