@@ -83,6 +83,7 @@ export function AttestivNetworkTopology() {
   const [showStorage, setShowStorage] = useState(true)
   const [showBackup, setShowBackup] = useState(false)
   const [showAppMembership, setShowAppMembership] = useState(false)
+  const [showNetworkPort, setShowNetworkPort] = useState(true)
   // Focus controls — narrow the graph to one application's blast
   // radius OR to N hops around a single asset. Defaults: no focus,
   // entire graph visible.
@@ -176,11 +177,13 @@ export function AttestivNetworkTopology() {
           return showBackup
         case 'app_membership':
           return showAppMembership
+        case 'network_port':
+          return showNetworkPort
         default:
           return true
       }
     })
-  }, [data, focusedIDs, showHostPorts, showHypervisor, showStorage, showBackup, showAppMembership])
+  }, [data, focusedIDs, showHostPorts, showHypervisor, showStorage, showBackup, showAppMembership, showNetworkPort])
 
   // The set of node IDs actually wired up.
   const referenced = useMemo(() => {
@@ -265,7 +268,8 @@ export function AttestivNetworkTopology() {
             <EdgeToggle checked={showStorage} onChange={setShowStorage} label={t('VM↔Storage', 'VM↔Storage')} color="var(--color-status-green-mid)" />
             <EdgeToggle checked={showBackup} onChange={setShowBackup} label={t('Backup', 'Backup')} color="var(--color-status-blue-deep)" />
             <EdgeToggle checked={showAppMembership} onChange={setShowAppMembership} label={t('App↔VM', 'App↔VM')} color="var(--color-status-red-mid)" />
-            <EdgeToggle checked={showHostPorts} onChange={setShowHostPorts} label={t('Host ports', 'Host ports')} color="var(--color-border-tertiary)" />
+            <EdgeToggle checked={showNetworkPort} onChange={setShowNetworkPort} label={t('Network ports', 'Network ports')} color="var(--color-status-blue-deep)" />
+            <EdgeToggle checked={showHostPorts} onChange={setShowHostPorts} label={t('Unresolved MACs', 'Unresolved MACs')} color="var(--color-border-tertiary)" />
             <label style={{ display: 'flex', gap: 4, alignItems: 'center', marginLeft: 8 }}>
               <input
                 type="checkbox"
@@ -491,19 +495,43 @@ function TopologySVG({
               strokeWidth = 1
               dash = '4 2'
               break
+            case 'network_port':
+              stroke = 'var(--color-status-blue-deep)'
+              strokeWidth = 1.5
+              break
           }
+          // Show port + VLAN as a tiny label at the midpoint when
+          // the edge has it. Auditor question this answers:
+          // "which VLAN is this VM trunked on?"
+          const label =
+            edge.kind === 'network_port' && (edge.source_interface || edge.vlan)
+              ? `${edge.source_interface || ''}${edge.vlan ? ' v' + edge.vlan : ''}`
+              : ''
           return (
-            <line
-              key={edge.id}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeDasharray={dash}
-              opacity={0.7}
-            />
+            <g key={edge.id}>
+              <line
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                strokeDasharray={dash}
+                opacity={0.7}
+              />
+              {label ? (
+                <text
+                  x={(a.x + b.x) / 2}
+                  y={(a.y + b.y) / 2 - 3}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="var(--color-status-blue-deep)"
+                  fontFamily="var(--font-mono)"
+                >
+                  {label}
+                </text>
+              ) : null}
+            </g>
           )
         })}
         {/* Nodes. */}

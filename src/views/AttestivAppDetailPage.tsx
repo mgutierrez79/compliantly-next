@@ -481,7 +481,15 @@ function AppTopologyEmbed({
     health?: string
     backup_state?: string
   }
-  type Edge = { id: string; source: string; target: string; kind: string }
+  type Edge = {
+    id: string
+    source: string
+    target: string
+    kind: string
+    source_interface?: string
+    target_interface?: string
+    vlan?: string
+  }
 
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
@@ -555,7 +563,24 @@ function AppTopologyEmbed({
   const innerR = 80
   const outerR = 160
   const components = nodes.filter((n) => n.asset_type === 'vm')
-  const others = nodes.filter((n) => !n.id.startsWith('app:') && n.asset_type !== 'vm')
+  // Switches/firewalls go on a dedicated outer arc so the network
+  // plane reads distinctly from hosts/storage/backup. Other neighbours
+  // (host, storage_volume, backup_appliance) fill the remaining outer
+  // ring.
+  const network = nodes.filter(
+    (n) =>
+      n.asset_type === 'network_device' ||
+      n.asset_type === 'firewall' ||
+      n.asset_type === 'firewall_manager',
+  )
+  const others = nodes.filter(
+    (n) =>
+      !n.id.startsWith('app:') &&
+      n.asset_type !== 'vm' &&
+      n.asset_type !== 'network_device' &&
+      n.asset_type !== 'firewall' &&
+      n.asset_type !== 'firewall_manager',
+  )
 
   const positions = new Map<string, { x: number; y: number }>()
   positions.set(`app:${appID}`, { x: cx, y: cy })
@@ -566,6 +591,13 @@ function AppTopologyEmbed({
   others.forEach((n, i) => {
     const angle = (i / Math.max(others.length, 1)) * 2 * Math.PI - Math.PI / 2 + Math.PI / others.length
     positions.set(n.id, { x: cx + Math.cos(angle) * outerR, y: cy + Math.sin(angle) * outerR })
+  })
+  // Network devices on a slightly wider radius so port labels don't
+  // collide with the hosts/storage ring.
+  const networkR = outerR + 50
+  network.forEach((n, i) => {
+    const angle = (i / Math.max(network.length, 1)) * 2 * Math.PI - Math.PI / 2 + Math.PI / 2
+    positions.set(n.id, { x: cx + Math.cos(angle) * networkR, y: cy + Math.sin(angle) * networkR })
   })
 
   function fillFor(node: Node): string {
@@ -582,6 +614,10 @@ function AppTopologyEmbed({
         return 'var(--color-status-green-mid)'
       case 'backup_appliance':
         return 'var(--color-status-blue-deep)'
+      case 'network_device':
+      case 'firewall':
+      case 'firewall_manager':
+        return 'var(--color-status-red-deep)'
     }
     return 'var(--color-background-tertiary)'
   }
@@ -596,6 +632,8 @@ function AppTopologyEmbed({
         return 'var(--color-status-green-mid)'
       case 'backup_coverage':
         return 'var(--color-status-blue-deep)'
+      case 'network_port':
+        return 'var(--color-status-red-deep)'
     }
     return 'var(--color-border-tertiary)'
   }
@@ -607,18 +645,37 @@ function AppTopologyEmbed({
           const a = positions.get(e.source)
           const b = positions.get(e.target)
           if (!a || !b) return null
+          // Port + VLAN label on network_port edges so the operator
+          // sees "Gi1/0/12 v100" without opening the full map.
+          const label =
+            e.kind === 'network_port' && (e.source_interface || e.vlan)
+              ? `${e.source_interface || ''}${e.vlan ? ' v' + e.vlan : ''}`
+              : ''
           return (
-            <line
-              key={e.id}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              stroke={strokeFor(e.kind)}
-              strokeWidth={1.5}
-              opacity={0.7}
-              strokeDasharray={e.kind === 'app_membership' ? '4 2' : '0'}
-            />
+            <g key={e.id}>
+              <line
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke={strokeFor(e.kind)}
+                strokeWidth={1.5}
+                opacity={0.7}
+                strokeDasharray={e.kind === 'app_membership' ? '4 2' : '0'}
+              />
+              {label ? (
+                <text
+                  x={(a.x + b.x) / 2}
+                  y={(a.y + b.y) / 2 - 3}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="var(--color-status-red-deep)"
+                  fontFamily="var(--font-mono)"
+                >
+                  {label}
+                </text>
+              ) : null}
+            </g>
           )
         })}
         {nodes.map((n) => {
@@ -645,6 +702,7 @@ function AppTopologyEmbed({
         <Legend swatch="var(--color-status-amber-mid)" label={t('Component VM', 'Component VM')} />
         <Legend swatch="var(--color-status-blue-deep)" label={t('Host / Backup', 'Host / Backup')} />
         <Legend swatch="var(--color-status-green-mid)" label={t('Storage', 'Storage')} />
+        <Legend swatch="var(--color-status-red-deep)" label={t('Switch / VLAN port', 'Switch / VLAN port')} />
       </div>
     </div>
   )
