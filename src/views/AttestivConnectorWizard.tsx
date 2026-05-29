@@ -659,6 +659,19 @@ export function AttestivConnectorWizard() {
         body: JSON.stringify({ kind, endpoint, credentials: probeCredentials }),
       })
       const body = await response.json().catch(() => ({}))
+      // Backend now returns 200 + {status: 'fail', error: '...'} on
+      // collector failures (instead of 502, which the reverse proxy
+      // intercepts with HTML and masks the real error). Distinguish
+      // success vs failure on the body's status field.
+      if (body && typeof body.status === 'string' && body.status === 'fail') {
+        setTestResult({
+          state: 'fail',
+          details: typeof body.error === 'string' && body.error.trim()
+            ? body.error.trim()
+            : 'Connection test failed',
+        })
+        return
+      }
       setTestResult({
         state: 'pass',
         details: typeof body?.detail === 'string' ? body.detail : 'Endpoint reachable, credentials accepted.',
