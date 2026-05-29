@@ -44,6 +44,18 @@ type BulkResult = {
 
 type Source = 'inventory' | 'snapshot'
 
+type DNACProbe = {
+  source?: string
+  base_url?: string
+  auth_ok?: boolean
+  auth_mode?: string
+  status_code?: number
+  host_count?: number
+  sample_macs?: string[]
+  error?: string
+  hint?: string
+}
+
 export function AttestivConnectorBulkRestconfPage() {
   const { t } = useI18n()
   const router = useRouter()
@@ -58,6 +70,9 @@ export function AttestivConnectorBulkRestconfPage() {
   // persisted store — better when you have multiple connectors
   // discovering the same switches.
   const [source, setSource] = useState<Source>('snapshot')
+  const [dnacProbe, setDnacProbe] = useState<DNACProbe | null>(null)
+  const [dnacProbing, setDnacProbing] = useState(false)
+  const [dnacProbeError, setDnacProbeError] = useState<string | null>(null)
   const [preview, setPreview] = useState<BulkResult | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -100,6 +115,36 @@ export function AttestivConnectorBulkRestconfPage() {
       }
     } finally {
       setPreviewLoading(false)
+    }
+  }
+
+  async function probeDNAC() {
+    setDnacProbing(true)
+    setDnacProbeError(null)
+    setDnacProbe(null)
+    try {
+      const resp = await apiFetch('/admin/connectors/cisco-dna/host-probe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!resp.ok) {
+        let detail = `${resp.status} ${resp.statusText}`
+        try {
+          const data = await resp.json()
+          if (data?.detail) detail = data.detail
+        } catch {
+          /* ignore */
+        }
+        throw new Error(detail)
+      }
+      const data: DNACProbe = await resp.json()
+      setDnacProbe(data)
+    } catch (err) {
+      if (err instanceof Error) setDnacProbeError(err.message)
+      else setDnacProbeError('DNAC probe failed')
+    } finally {
+      setDnacProbing(false)
     }
   }
 
@@ -168,6 +213,78 @@ export function AttestivConnectorBulkRestconfPage() {
               "Scans every network_device asset already in inventory (the switches DNA Center / Panorama discovered) and creates a single cisco_restconf connector whose devices array references each one. The credentials you enter here apply to every device; you can override individual entries later by editing the connector row. After the next poll, each switch's MAC table feeds VM↔switch edges on the per-application topology view.",
             )}
           </p>
+        </Card>
+
+        <Card style={{ marginTop: 12 }}>
+          <CardTitle
+            right={
+              <GhostButton onClick={() => void probeDNAC()} disabled={dnacProbing}>
+                <i
+                  className={dnacProbing ? 'ti ti-loader' : 'ti ti-stethoscope'}
+                  aria-hidden="true"
+                />{' '}
+                {dnacProbing
+                  ? t('Probing…', 'Probing…')
+                  : t('Probe DNA Center', 'Probe DNA Center')}
+              </GhostButton>
+            }
+          >
+            {t('Diagnose DNA Center first', 'Diagnose DNA Center first')}
+          </CardTitle>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0 }}>
+            {t(
+              'Before adding RESTCONF rows per switch, check whether DNAC already has the host-to-port mapping you need. If DNAC reports hosts, you do not need RESTCONF at all — refresh the cisco_dna_center connector and the topology will populate from that single source.',
+              'Before adding RESTCONF rows per switch, check whether DNAC already has the host-to-port mapping you need. If DNAC reports hosts, you do not need RESTCONF at all — refresh the cisco_dna_center connector and the topology will populate from that single source.',
+            )}
+          </p>
+          {dnacProbeError ? (
+            <div style={{ marginTop: 10 }}>
+              <Banner tone="error">{dnacProbeError}</Banner>
+            </div>
+          ) : null}
+          {dnacProbe ? (
+            <div style={{ marginTop: 10 }}>
+              <Banner
+                tone={
+                  !dnacProbe.auth_ok
+                    ? 'error'
+                    : (dnacProbe.host_count ?? 0) > 0
+                      ? 'success'
+                      : 'warning'
+                }
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <Badge tone={dnacProbe.auth_ok ? 'green' : 'red'}>
+                      {dnacProbe.auth_ok
+                        ? t('Auth OK', 'Auth OK')
+                        : t('Auth failed', 'Auth failed')}
+                    </Badge>
+                    <Badge tone={(dnacProbe.host_count ?? 0) > 0 ? 'green' : 'amber'}>
+                      {t('{n} hosts', '{n} hosts', { n: dnacProbe.host_count ?? 0 })}
+                    </Badge>
+                    {dnacProbe.source ? (
+                      <code style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                        {dnacProbe.source}
+                      </code>
+                    ) : null}
+                  </div>
+                  {dnacProbe.error ? (
+                    <div style={{ fontSize: 12 }}>{dnacProbe.error}</div>
+                  ) : null}
+                  {dnacProbe.hint ? (
+                    <div style={{ fontSize: 12 }}>{dnacProbe.hint}</div>
+                  ) : null}
+                  {dnacProbe.sample_macs && dnacProbe.sample_macs.length > 0 ? (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                      {t('Sample MACs:', 'Sample MACs:')}{' '}
+                      <code>{dnacProbe.sample_macs.join(', ')}</code>
+                    </div>
+                  ) : null}
+                </div>
+              </Banner>
+            </div>
+          ) : null}
         </Card>
 
         <Card style={{ marginTop: 12 }}>
