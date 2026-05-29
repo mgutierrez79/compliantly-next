@@ -68,6 +68,15 @@ export function AttestivNetworkTopology() {
   const [overlay, setOverlay] = useState<Overlay>('criticality')
   const [showHostPorts, setShowHostPorts] = useState(false)
   const [showOrphans, setShowOrphans] = useState(false)
+  // Edge-kind toggles. Backbone (device_link) + host_port come from
+  // network_adjacency; hypervisor_host / storage_attachment /
+  // backup_coverage / app_membership are cross-source joins computed
+  // server-side. Defaults match the "auditor first look" — backbone
+  // + hypervisor + storage on; backup + app off (denser graphs).
+  const [showHypervisor, setShowHypervisor] = useState(true)
+  const [showStorage, setShowStorage] = useState(true)
+  const [showBackup, setShowBackup] = useState(false)
+  const [showAppMembership, setShowAppMembership] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -98,9 +107,23 @@ export function AttestivNetworkTopology() {
   // is backbone first).
   const visibleEdges = useMemo(() => {
     if (!data) return []
-    if (showHostPorts) return data.edges
-    return data.edges.filter((e) => e.kind !== 'host_port')
-  }, [data, showHostPorts])
+    return data.edges.filter((e) => {
+      switch (e.kind) {
+        case 'host_port':
+          return showHostPorts
+        case 'hypervisor_host':
+          return showHypervisor
+        case 'storage_attachment':
+          return showStorage
+        case 'backup_coverage':
+          return showBackup
+        case 'app_membership':
+          return showAppMembership
+        default:
+          return true
+      }
+    })
+  }, [data, showHostPorts, showHypervisor, showStorage, showBackup, showAppMembership])
 
   // The set of node IDs actually wired up.
   const referenced = useMemo(() => {
@@ -141,21 +164,18 @@ export function AttestivNetworkTopology() {
         }
         right={
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
-            <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input
-                type="checkbox"
-                checked={showHostPorts}
-                onChange={(e) => setShowHostPorts(e.target.checked)}
-              />
-              {t('Show host ports', 'Show host ports')}
-            </label>
-            <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <EdgeToggle checked={showHypervisor} onChange={setShowHypervisor} label={t('VM↔Host', 'VM↔Host')} color="var(--color-status-amber-mid)" />
+            <EdgeToggle checked={showStorage} onChange={setShowStorage} label={t('VM↔Storage', 'VM↔Storage')} color="var(--color-status-green-mid)" />
+            <EdgeToggle checked={showBackup} onChange={setShowBackup} label={t('Backup', 'Backup')} color="var(--color-status-blue-deep)" />
+            <EdgeToggle checked={showAppMembership} onChange={setShowAppMembership} label={t('App↔VM', 'App↔VM')} color="var(--color-status-red-mid)" />
+            <EdgeToggle checked={showHostPorts} onChange={setShowHostPorts} label={t('Host ports', 'Host ports')} color="var(--color-border-tertiary)" />
+            <label style={{ display: 'flex', gap: 4, alignItems: 'center', marginLeft: 8 }}>
               <input
                 type="checkbox"
                 checked={showOrphans}
                 onChange={(e) => setShowOrphans(e.target.checked)}
               />
-              {t('Show orphans', 'Show orphans')}
+              {t('Orphans', 'Orphans')}
             </label>
             <select
               value={overlay}
@@ -224,6 +244,28 @@ export function AttestivNetworkTopology() {
         </div>
       </div>
     </>
+  )
+}
+
+// EdgeToggle renders a checkbox + colored swatch so the operator can
+// see which edge kind the toggle maps to without consulting the legend.
+function EdgeToggle({
+  checked,
+  onChange,
+  label,
+  color,
+}: {
+  checked: boolean
+  onChange: (next: boolean) => void
+  label: string
+  color: string
+}) {
+  return (
+    <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span style={{ display: 'inline-block', width: 10, height: 2, background: color, borderRadius: 1 }} />
+      {label}
+    </label>
   )
 }
 
@@ -304,13 +346,42 @@ function TopologySVG({
             </g>
           )
         })}
-        {/* Edges first so nodes sit on top. */}
+        {/* Edges first so nodes sit on top. Per-kind stroke +
+            dash pattern so the operator can tell a backbone link
+            from a hypervisor mapping at a glance. */}
         {edges.map((edge) => {
           const a = positions.get(edge.source)
           const b = positions.get(edge.target)
           if (!a || !b) return null
-          const stroke = edge.kind === 'host_port' ? 'var(--color-border-tertiary)' : 'var(--color-status-blue-mid)'
-          const strokeWidth = edge.kind === 'host_port' ? 1 : 2
+          let stroke = 'var(--color-status-blue-mid)'
+          let strokeWidth = 2
+          let dash = '0'
+          switch (edge.kind) {
+            case 'host_port':
+              stroke = 'var(--color-border-tertiary)'
+              strokeWidth = 1
+              break
+            case 'hypervisor_host':
+              stroke = 'var(--color-status-amber-mid)'
+              strokeWidth = 1.5
+              dash = '6 3'
+              break
+            case 'storage_attachment':
+              stroke = 'var(--color-status-green-mid)'
+              strokeWidth = 1.5
+              dash = '2 3'
+              break
+            case 'backup_coverage':
+              stroke = 'var(--color-status-blue-deep)'
+              strokeWidth = 1
+              dash = '1 4'
+              break
+            case 'app_membership':
+              stroke = 'var(--color-status-red-mid)'
+              strokeWidth = 1
+              dash = '4 2'
+              break
+          }
           return (
             <line
               key={edge.id}
@@ -320,6 +391,7 @@ function TopologySVG({
               y2={b.y}
               stroke={stroke}
               strokeWidth={strokeWidth}
+              strokeDasharray={dash}
               opacity={0.7}
             />
           )
