@@ -113,6 +113,10 @@ export function InventoryPage() {
   // /inventory/assets so the table can show a Tier column without
   // blocking the primary asset fetch.
   const [tierByAssetID, setTierByAssetID] = useState<Record<string, AppTierLink>>({})
+  // CMDB gap count for the summary tile. Pulled separately so the
+  // chip is present even before the main asset list loads. 30s
+  // refresh cadence matches the rest of the page's polling.
+  const [cmdbGapCount, setCmdbGapCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -197,6 +201,31 @@ export function InventoryPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Poll the CMDB gap count for the summary tile. Server-side filter
+  // is cheap (one boolean check per asset) so 30s cadence is comfy.
+  useEffect(() => {
+    let cancelled = false
+    async function pull() {
+      try {
+        const response = await apiFetch('/inventory/assets?not_in_cmdb=true&limit=1')
+        if (!response.ok) {
+          if (!cancelled) setCmdbGapCount(null)
+          return
+        }
+        const body = await response.json()
+        if (!cancelled) setCmdbGapCount(typeof body?.count === 'number' ? body.count : 0)
+      } catch {
+        if (!cancelled) setCmdbGapCount(null)
+      }
+    }
+    void pull()
+    const handle = window.setInterval(() => void pull(), 30_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(handle)
+    }
+  }, [])
 
   // Populate tier-by-asset map from the unified registry endpoint.
   // Failure is silent — the Tier column degrades to "—" but the
@@ -596,6 +625,20 @@ export function InventoryPage() {
           }}
         >
           <SummaryTile label={t('Total assets', 'Total assets')} value={assets.length} active={!assetTypeFilter} onClick={() => pushFilter('asset_type', '')} />
+          {cmdbGapCount !== null ? (
+            <CMDBGapTile
+              count={cmdbGapCount}
+              active={notInCMDB}
+              onClick={() => {
+                const params = new URLSearchParams(searchParams?.toString() ?? '')
+                if (notInCMDB) params.delete('not_in_cmdb')
+                else params.set('not_in_cmdb', 'true')
+                const qs = params.toString()
+                router.push(qs ? `/inventory?${qs}` : '/inventory')
+              }}
+              t={t}
+            />
+          ) : null}
           {orderedAssetTypeTiles(counts).map(([type, count]) => (
             <SummaryTile
               key={type}
@@ -1154,6 +1197,59 @@ function AssetRow({
         )}
       </td>
     </tr>
+  )
+}
+
+// CMDBGapTile is a special SummaryTile variant for the "Not in CMDB"
+// filter — amber when there's a registration gap, green when every
+// discovered asset is also in GLPI / ServiceNow. Active state pins
+// the tile background so it's clear the table below is filtered.
+function CMDBGapTile({
+  count,
+  active,
+  onClick,
+  t,
+}: {
+  count: number
+  active: boolean
+  onClick: () => void
+  t: (key: string, defaultText?: string, vars?: Record<string, string | number>) => string
+}) {
+  const tone = count > 0 ? 'amber' : 'green'
+  const bgColor = active
+    ? tone === 'amber'
+      ? 'var(--color-status-amber-bg)'
+      : 'var(--color-status-green-bg)'
+    : 'var(--color-background-primary)'
+  const valueColor = tone === 'amber'
+    ? 'var(--color-status-amber-mid)'
+    : 'var(--color-status-green-deep)'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={t(
+        'Click to toggle filter: assets discovered by connectors but NOT observed by any CMDB source (GLPI, ServiceNow). Registration gap.',
+        'Click to toggle filter: assets discovered by connectors but NOT observed by any CMDB source (GLPI, ServiceNow). Registration gap.',
+      )}
+      style={{
+        textAlign: 'left',
+        padding: '10px 12px',
+        border: `1px solid ${tone === 'amber' ? 'var(--color-status-amber-mid)' : 'var(--color-border-tertiary)'}`,
+        borderRadius: 'var(--border-radius-md)',
+        background: bgColor,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}
+    >
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-tertiary)' }}>
+        {t('Not in CMDB', 'Not in CMDB')}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 600, color: valueColor, marginTop: 4 }}>{count}</div>
+      <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+        {count > 0 ? t('registration gap', 'registration gap') : t('all registered', 'all registered')}
+      </div>
+    </button>
   )
 }
 

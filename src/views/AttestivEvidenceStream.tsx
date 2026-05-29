@@ -107,11 +107,6 @@ export function AttestivEvidenceStream() {
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [publicKeyUrl, setPublicKeyUrl] = useState<string | null>(null)
-  // Inventory-vs-CMDB gap count for the hero pill. Pulled on the same
-  // 10s cadence as the evidence reload — when count > 0, the pill
-  // tone goes amber and clicking jumps to /inventory?not_in_cmdb=true
-  // so the operator can drill in to the actual rows.
-  const [notInCMDBCount, setNotInCMDBCount] = useState<number | null>(null)
 
   const reload = useCallback(async () => {
     try {
@@ -131,29 +126,6 @@ export function AttestivEvidenceStream() {
     const handle = window.setInterval(() => void reload(), 10_000)
     return () => window.clearInterval(handle)
   }, [reload])
-
-  // Poll the CMDB gap count alongside the evidence log. Cheap (one
-  // query-param flag on the inventory endpoint that the backend
-  // already filters server-side) so the 30s cadence is comfortable.
-  useEffect(() => {
-    let cancelled = false
-    async function pull() {
-      try {
-        const response = await apiJson<{ count?: number }>('/inventory/assets?not_in_cmdb=true&limit=1')
-        if (!cancelled) setNotInCMDBCount(typeof response?.count === 'number' ? response.count : 0)
-      } catch {
-        // Endpoint may not be on older backends or the snapshot is
-        // empty — surface as "unknown" rather than failing the page.
-        if (!cancelled) setNotInCMDBCount(null)
-      }
-    }
-    void pull()
-    const handle = window.setInterval(() => void pull(), 30_000)
-    return () => {
-      cancelled = true
-      window.clearInterval(handle)
-    }
-  }, [])
 
   // Pre-warm the public-key cache so the first verify click is fast.
   // We also stash the active key id for the sig-box display.
@@ -273,23 +245,6 @@ export function AttestivEvidenceStream() {
                   value={String(hero.sources)}
                   sub={hero.sources === 0 ? t('run reports only', 'run reports only') : undefined}
                 />
-                {/* CMDB gap — click drills into the filtered inventory
-                    view. Hidden while we don't have a count yet so the
-                    pill row doesn't flash a placeholder. */}
-                {notInCMDBCount !== null ? (
-                  <a
-                    href="/inventory?not_in_cmdb=true"
-                    style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
-                    title={t('Click to view the inventory rows that no CMDB source observed', 'Click to view the inventory rows that no CMDB source observed')}
-                  >
-                    <StatPill
-                      label={t('Not in CMDB', 'Not in CMDB')}
-                      value={String(notInCMDBCount)}
-                      sub={notInCMDBCount > 0 ? t('registration gap', 'registration gap') : t('all registered', 'all registered')}
-                      valueColor={notInCMDBCount > 0 ? 'var(--color-status-amber-mid)' : 'var(--color-status-green-deep)'}
-                    />
-                  </a>
-                ) : null}
               </>
             }
           />
