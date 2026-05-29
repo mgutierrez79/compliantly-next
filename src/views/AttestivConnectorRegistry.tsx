@@ -307,8 +307,8 @@ export function AttestivConnectorRegistry() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: 14,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 8,
           }}
         >
           {visibleConnectors.map((connector) => {
@@ -326,8 +326,8 @@ export function AttestivConnectorRegistry() {
                 style={{
                   border: 'none',
                   borderLeft: `3px solid ${state.border}`,
-                  borderRadius: 'var(--border-radius-lg)',
-                  padding: '16px 18px',
+                  borderRadius: 'var(--border-radius-md)',
+                  padding: '8px 10px',
                   background: 'var(--color-background-primary)',
                   boxShadow: 'var(--shadow-card)',
                   opacity: isDisabled ? 0.7 : 1,
@@ -337,40 +337,54 @@ export function AttestivConnectorRegistry() {
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: 12,
+                    alignItems: 'center',
+                    marginBottom: 4,
+                    gap: 8,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: brandHex ? `${brandHex}14` : 'var(--color-background-tertiary)',
-                    }}
-                  >
-                    <ConnectorLogo name={connector.name} size={28} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: brandHex ? `${brandHex}14` : 'var(--color-background-tertiary)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <ConnectorLogo name={connector.name} size={16} />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minWidth: 0,
+                      }}
+                      title={connector.label || connector.name}
+                    >
+                      {connector.label || connector.name}
+                    </div>
                   </div>
                   <Badge tone={state.badge.tone}>{state.badge.label}</Badge>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>
-                  {connector.label || connector.name}
-                </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     color: 'var(--color-text-tertiary)',
-                    marginBottom: 8,
+                    marginBottom: 2,
                   }}
                 >
                   {categoryLabel(connector)}
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     color:
                       state.badge.tone === 'amber' || state.badge.tone === 'red'
                         ? 'var(--color-status-red-deep)'
@@ -382,16 +396,16 @@ export function AttestivConnectorRegistry() {
                 {connector.connector_version ? (
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: 9,
                       fontFamily: 'var(--font-mono)',
                       color: 'var(--color-text-tertiary)',
-                      marginTop: 6,
+                      marginTop: 2,
                     }}
                   >
                     {connector.connector_version}
                   </div>
                 ) : null}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginTop: 6 }}>
                   {/* Disable / Enable only applies to bare catalog rows.
                      Instance rows (name = "palo_alto:new-fw-lan") have
                      no on/off state in the backend - the items[] entry
@@ -442,22 +456,22 @@ export function AttestivConnectorRegistry() {
             onClick={() => router.push('/connectors/new')}
             style={{
               border: '0.5px dashed var(--color-border-secondary)',
-              borderRadius: 'var(--border-radius-lg)',
-              padding: '12px 14px',
+              borderRadius: 'var(--border-radius-md)',
+              padding: '6px 10px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              minHeight: 130,
+              minHeight: 80,
               cursor: 'pointer',
               background: 'var(--color-background-secondary)',
               color: 'var(--color-text-tertiary)',
               fontFamily: 'inherit',
             }}
           >
-            <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 22, marginBottom: 6 }} />
-            <div style={{ fontSize: 12 }}>{t('connectors.add_card_label')}</div>
-            <div style={{ fontSize: 10, marginTop: 2 }}>{t('connectors.add_card_sub', { count: 8 })}</div>
+            <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 16, marginBottom: 2 }} />
+            <div style={{ fontSize: 11 }}>{t('connectors.add_card_label')}</div>
+            <div style={{ fontSize: 9, marginTop: 1 }}>{t('connectors.add_card_sub', { count: 8 })}</div>
           </button>
           ) : null}
         </div>
