@@ -135,6 +135,12 @@ export function InventoryPage() {
   const sourceFilter = (searchParams?.get('source') ?? '').toLowerCase()
   const criticalityFilter = (searchParams?.get('criticality') ?? '').toLowerCase()
   const search = (searchParams?.get('q') ?? '').toLowerCase()
+  // not_in_cmdb shortcut filter — backend cross-references each
+  // asset against the cached CMDB connector snapshot (GLPI etc.)
+  // and drops rows already registered. Drives the Evidence stream's
+  // "Not in CMDB" hero pill click-through and a visible chip on this
+  // page so the operator knows the table is filtered.
+  const notInCMDB = String(searchParams?.get('not_in_cmdb') ?? '').toLowerCase() === 'true'
 
   // tab drives the registry view: 'assets' is the existing rich
   // asset table; 'applications' and 'sites' surface the operator-
@@ -165,8 +171,9 @@ export function InventoryPage() {
       const all: InventoryAsset[] = []
       let offset = 0
       let total = Infinity
+      const filterSuffix = notInCMDB ? '&not_in_cmdb=true' : ''
       while (offset < total && offset < MAX) {
-        const response = await apiFetch(`/inventory/assets?limit=${PAGE}&offset=${offset}`)
+        const response = await apiFetch(`/inventory/assets?limit=${PAGE}&offset=${offset}${filterSuffix}`)
         if (!response.ok) {
           const body = await response.json().catch(() => ({}))
           throw new Error(body?.detail || body?.error || `${response.status} ${response.statusText}`)
@@ -185,7 +192,7 @@ export function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [notInCMDB])
 
   useEffect(() => {
     void load()
@@ -564,6 +571,17 @@ export function InventoryPage() {
         {info ? <Banner tone="success">{info}</Banner> : null}
 
         <RegistryTabs tab={tab} onTab={pushTab} />
+
+        {notInCMDB ? (
+          <Banner tone="warning" title={t('Filtered: assets NOT registered in CMDB', 'Filtered: assets NOT registered in CMDB')}>
+            {t(
+              'Showing inventory rows discovered by connectors (vCenter, PowerStore, Cisco, etc.) that no CMDB source (GLPI, ServiceNow) has observed. These are the registration gaps an auditor will flag.',
+              'Showing inventory rows discovered by connectors (vCenter, PowerStore, Cisco, etc.) that no CMDB source (GLPI, ServiceNow) has observed. These are the registration gaps an auditor will flag.',
+            )}
+            {' '}
+            <a href="/inventory" style={{ color: 'var(--color-status-blue-deep)', textDecoration: 'underline' }}>{t('Clear filter', 'Clear filter')}</a>
+          </Banner>
+        ) : null}
 
         {tab === 'applications' ? <ApplicationsTab /> : null}
         {tab === 'sites' ? <SitesTab /> : null}
