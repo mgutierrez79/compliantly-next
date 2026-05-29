@@ -966,68 +966,143 @@ function PickStep({ kind, onChange }: { kind: string; onChange: (next: string) =
         </span>
         <i className="ti ti-arrow-right" aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }} />
       </button>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 10,
-        }}
-      >
-        {CONNECTORS.map((connector) => {
-          const active = connector.value === kind
-          const brandHex = connectorBrandHex(connector.value)
-          return (
-            <button
-              key={connector.value}
-              type="button"
-              onClick={() => onChange(connector.value)}
-              style={{
-                textAlign: 'left',
-                background: active ? 'var(--color-status-blue-bg)' : 'var(--color-background-primary)',
-                border: active
-                  ? '1px solid var(--color-brand-blue)'
-                  : '0.5px solid var(--color-border-tertiary)',
-                borderRadius: 'var(--border-radius-md)',
-                padding: '10px 12px',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                color: 'var(--color-text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  background: brandHex ? `${brandHex}1A` : 'var(--color-background-tertiary)',
-                }}
-              >
-                <ConnectorLogo name={connector.value} size={20} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {connector.label}
-                  </span>
-                  {active ? <i className="ti ti-check" aria-hidden="true" style={{ color: 'var(--color-brand-blue)', flexShrink: 0 }} /> : null}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
-                  {connector.category}
-                </div>
-              </div>
-            </button>
-          )
-        })}
-      </div>
+      {renderCategorisedConnectors(CONNECTORS, kind, onChange)}
     </>
   );
+}
+
+// renderCategorisedConnectors groups the catalog by category, drops
+// a small header per group, and renders compact cards inside. The
+// flat grid grew unscannable as the catalog expanded past ~20
+// connectors; grouping + smaller cards puts roughly 3× more in the
+// same viewport.
+function renderCategorisedConnectors(
+  connectors: ConnectorKind[],
+  selected: string,
+  onChange: (next: string) => void,
+) {
+  // Deterministic category order — Network first since that's what
+  // most operators land on the wizard to configure, followed by the
+  // remaining bands by rough frequency-of-use.
+  const ORDER = [
+    'Network',
+    'Virtualization',
+    'Storage',
+    'Backup',
+    'Hardware',
+    'Security',
+    'Identity',
+    'Observability',
+    'ITSM',
+  ]
+  const groups = new Map<string, ConnectorKind[]>()
+  for (const c of connectors) {
+    const cat = c.category || 'Other'
+    if (!groups.has(cat)) groups.set(cat, [])
+    groups.get(cat)!.push(c)
+  }
+  const ordered = Array.from(groups.entries()).sort((a, b) => {
+    const ai = ORDER.indexOf(a[0])
+    const bi = ORDER.indexOf(b[0])
+    return (ai === -1 ? ORDER.length : ai) - (bi === -1 ? ORDER.length : bi)
+  })
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {ordered.map(([cat, members]) => (
+        <section key={cat}>
+          <div
+            style={{
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-text-tertiary)',
+              marginBottom: 6,
+              fontWeight: 600,
+            }}
+          >
+            {cat} <span style={{ opacity: 0.6 }}>· {members.length}</span>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+              gap: 6,
+            }}
+          >
+            {members.map((connector) => {
+              const active = connector.value === selected
+              const brandHex = connectorBrandHex(connector.value)
+              return (
+                <button
+                  key={connector.value}
+                  type="button"
+                  onClick={() => onChange(connector.value)}
+                  title={connector.label}
+                  style={{
+                    textAlign: 'left',
+                    background: active
+                      ? 'var(--color-status-blue-bg)'
+                      : 'var(--color-background-primary)',
+                    border: active
+                      ? '1px solid var(--color-brand-blue)'
+                      : '0.5px solid var(--color-border-tertiary)',
+                    borderRadius: 'var(--border-radius-md)',
+                    padding: '6px 8px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    color: 'var(--color-text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    minHeight: 32,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      background: brandHex ? `${brandHex}1A` : 'var(--color-background-tertiary)',
+                    }}
+                  >
+                    <ConnectorLogo name={connector.value} size={14} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: active ? 500 : 400,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    {connector.label}
+                  </span>
+                  {active ? (
+                    <i
+                      className="ti ti-check"
+                      aria-hidden="true"
+                      style={{
+                        color: 'var(--color-brand-blue)',
+                        flexShrink: 0,
+                        fontSize: 12,
+                      }}
+                    />
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
 }
 
 function CredentialsStep(props: {
