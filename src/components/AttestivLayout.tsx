@@ -159,6 +159,8 @@ const sections: Record<SectionKey, Section> = {
     items: [
       { to: '/management/roi', label: 'Financial posture', icon: 'ti-coin' },
       { to: '/management/board-pack', label: 'Board pack', icon: 'ti-presentation-analytics' },
+      { to: '/management/sbom', label: 'Supply chain (SBOM)', icon: 'ti-package' },
+      { to: '/management/ropa', label: 'GDPR register (ROPA)', icon: 'ti-file-shield' },
     ],
   },
   connectors: {
