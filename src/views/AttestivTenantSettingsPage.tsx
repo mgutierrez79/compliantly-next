@@ -44,6 +44,18 @@ type TenantProfile = {
   rto_minutes: number
   rpo_minutes: number
   dr_frequency: 'monthly' | 'quarterly' | 'biannual' | 'annual'
+
+  // Financial profile drives /v1/roi/summary. Every field is
+  // optional — the ROI engine has industry defaults and stamps an
+  // "estimated" badge whenever they're used. Set them to get
+  // tenant-specific numbers in the financial posture view.
+  annual_revenue_eur: number
+  hourly_revenue_eur: number
+  blended_hourly_rate_eur: number
+  annual_audit_cost_eur: number
+  annual_cyber_premium_eur: number
+  annual_audit_count: number
+  jurisdiction: 'eu' | 'uk' | 'us' | 'global'
 }
 
 const PROFILE_KEY = 'compliantly.tenant.profile'
@@ -120,6 +132,15 @@ export function AttestivTenantSettingsPage() {
             dr_frequency: ['monthly', 'quarterly', 'biannual', 'annual'].includes(remote.dr_frequency)
               ? remote.dr_frequency
               : current.dr_frequency,
+            annual_revenue_eur: numericOrCurrent(remote.annual_revenue_eur, current.annual_revenue_eur),
+            hourly_revenue_eur: numericOrCurrent(remote.hourly_revenue_eur, current.hourly_revenue_eur),
+            blended_hourly_rate_eur: numericOrCurrent(remote.blended_hourly_rate_eur, current.blended_hourly_rate_eur),
+            annual_audit_cost_eur: numericOrCurrent(remote.annual_audit_cost_eur, current.annual_audit_cost_eur),
+            annual_cyber_premium_eur: numericOrCurrent(remote.annual_cyber_premium_eur, current.annual_cyber_premium_eur),
+            annual_audit_count: numericOrCurrent(remote.annual_audit_count, current.annual_audit_count),
+            jurisdiction: ['eu', 'uk', 'us', 'global'].includes(remote.jurisdiction)
+              ? remote.jurisdiction
+              : current.jurisdiction,
           }))
         }
       } catch {
@@ -160,6 +181,13 @@ export function AttestivTenantSettingsPage() {
           rto_minutes: profile.rto_minutes,
           rpo_minutes: profile.rpo_minutes,
           dr_frequency: profile.dr_frequency,
+          annual_revenue_eur: profile.annual_revenue_eur || undefined,
+          hourly_revenue_eur: profile.hourly_revenue_eur || undefined,
+          blended_hourly_rate_eur: profile.blended_hourly_rate_eur || undefined,
+          annual_audit_cost_eur: profile.annual_audit_cost_eur || undefined,
+          annual_cyber_premium_eur: profile.annual_cyber_premium_eur || undefined,
+          annual_audit_count: profile.annual_audit_count || undefined,
+          jurisdiction: profile.jurisdiction,
         }),
       })
       if (response.ok) {
@@ -304,6 +332,90 @@ export function AttestivTenantSettingsPage() {
             </FormField>
             <RecoveryPosture profile={profile} />
           </Card>
+
+          <Card>
+            <CardTitle right={<Badge tone="navy">{t('Drives Audit ▸ ROI', 'Drives Audit ▸ ROI')}</Badge>}>
+              {t('Financial profile', 'Financial profile')}
+            </CardTitle>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4, marginBottom: 8 }}>
+              {t(
+                'Optional. When set, the ROI page reports in your own numbers. Left blank, the engine uses conservative industry defaults and marks the output as "estimated".',
+                'Optional. When set, the ROI page reports in your own numbers. Left blank, the engine uses conservative industry defaults and marks the output as "estimated".',
+              )}
+            </p>
+            <FormField label={t('Annual revenue (EUR)', 'Annual revenue (EUR)')} hint={t('Drives DORA / NIS2 fine caps and the cyber-premium baseline.', 'Drives DORA / NIS2 fine caps and the cyber-premium baseline.')}>
+              <TextInput
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={profile.annual_revenue_eur || ''}
+                onChange={(e) => update('annual_revenue_eur', clampFloat(e.target.value, 0, 1e12))}
+                placeholder={t('e.g. 100000000', 'e.g. 100000000')}
+              />
+            </FormField>
+            <FormField label={t('Hourly revenue (EUR)', 'Hourly revenue (EUR)')} hint={t('Used for downtime avoidance — revenue lost per hour of outage. Leave blank to derive from annual revenue.', 'Used for downtime avoidance — revenue lost per hour of outage. Leave blank to derive from annual revenue.')}>
+              <TextInput
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={profile.hourly_revenue_eur || ''}
+                onChange={(e) => update('hourly_revenue_eur', clampFloat(e.target.value, 0, 1e9))}
+                placeholder={t('e.g. 50000', 'e.g. 50000')}
+              />
+            </FormField>
+            <FormField label={t('Blended hourly rate (EUR)', 'Blended hourly rate (EUR)')} hint={t('Loaded internal cost per hour for audit-prep labor calc.', 'Loaded internal cost per hour for audit-prep labor calc.')}>
+              <TextInput
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={profile.blended_hourly_rate_eur || ''}
+                onChange={(e) => update('blended_hourly_rate_eur', clampFloat(e.target.value, 0, 10000))}
+                placeholder={t('e.g. 100', 'e.g. 100')}
+              />
+            </FormField>
+            <FormField label={t('Annual external audit cost (EUR)', 'Annual external audit cost (EUR)')} hint={t('Anchor for ISO/SOC2/PCI remediation exposure estimates.', 'Anchor for ISO/SOC2/PCI remediation exposure estimates.')}>
+              <TextInput
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={profile.annual_audit_cost_eur || ''}
+                onChange={(e) => update('annual_audit_cost_eur', clampFloat(e.target.value, 0, 1e8))}
+                placeholder={t('e.g. 150000', 'e.g. 150000')}
+              />
+            </FormField>
+            <FormField label={t('Annual cyber insurance premium (EUR)', 'Annual cyber insurance premium (EUR)')} hint={t('Baseline against which the insurance-premium discount is projected.', 'Baseline against which the insurance-premium discount is projected.')}>
+              <TextInput
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={profile.annual_cyber_premium_eur || ''}
+                onChange={(e) => update('annual_cyber_premium_eur', clampFloat(e.target.value, 0, 1e8))}
+                placeholder={t('e.g. 400000', 'e.g. 400000')}
+              />
+            </FormField>
+            <FormField label={t('External audits per year', 'External audits per year')} hint={t('How many external audits this tenant undergoes annually (SOC2 + ISO + PCI + …).', 'How many external audits this tenant undergoes annually (SOC2 + ISO + PCI + …).')}>
+              <TextInput
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={12}
+                value={profile.annual_audit_count || ''}
+                onChange={(e) => update('annual_audit_count', clampInt(e.target.value, 0, 12))}
+                placeholder="1"
+              />
+            </FormField>
+            <FormField label={t('Jurisdiction', 'Jurisdiction')} hint={t('Gates the regulatory-fine formulas. NIS2/DORA only bite in EU/global.', 'Gates the regulatory-fine formulas. NIS2/DORA only bite in EU/global.')}>
+              <Select
+                value={profile.jurisdiction}
+                onChange={(e) => update('jurisdiction', e.target.value as TenantProfile['jurisdiction'])}
+              >
+                <option value="eu">{t('European Union', 'European Union')}</option>
+                <option value="uk">{t('United Kingdom', 'United Kingdom')}</option>
+                <option value="us">{t('United States', 'United States')}</option>
+                <option value="global">{t('Global / multi-region', 'Global / multi-region')}</option>
+              </Select>
+            </FormField>
+          </Card>
         </div>
 
         <Card style={{ marginTop: 12 }}>
@@ -406,7 +518,27 @@ function emptyProfile(): TenantProfile {
     rto_minutes: 30,
     rpo_minutes: 15,
     dr_frequency: 'quarterly',
+    annual_revenue_eur: 0,
+    hourly_revenue_eur: 0,
+    blended_hourly_rate_eur: 0,
+    annual_audit_cost_eur: 0,
+    annual_cyber_premium_eur: 0,
+    annual_audit_count: 1,
+    jurisdiction: 'eu',
   }
+}
+
+function numericOrCurrent(raw: unknown, fallback: number): number {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0) return raw
+  return fallback
+}
+
+function clampFloat(raw: string, min: number, max: number): number {
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed)) return min
+  if (parsed < min) return min
+  if (parsed > max) return max
+  return parsed
 }
 
 function clampInt(raw: string, min: number, max: number): number {
