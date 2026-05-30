@@ -140,7 +140,7 @@ export function AttestivDRRestoreVerificationsPage() {
             percent={successPct}
             caption={
               lastSuccess
-                ? `${t('Last successful verification', 'Last successful verification')}: ${lastSuccess.restored_asset_id} · ${new Date(lastSuccess.timestamp).toLocaleString()}`
+                ? `${t('Last successful verification', 'Last successful verification')}: ${lastSuccess.restored_asset_id || t('(platform-wide)', '(platform-wide)')} · ${new Date(lastSuccess.timestamp).toLocaleString()}`
                 : t('No successful verifications recorded yet', 'No successful verifications recorded yet')
             }
             pills={
@@ -231,7 +231,9 @@ function VerificationRow({ v, expanded, onToggle }: { v: Verification; expanded:
       >
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {v.restored_asset_id}
+            {v.restored_asset_id
+              ? v.restored_asset_id
+              : t('(platform-wide drill)', '(platform-wide drill)')}
             {v.restored_application_id ? ` · ${v.restored_application_id}` : ''}
           </div>
           <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
