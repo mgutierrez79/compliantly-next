@@ -115,19 +115,61 @@ function classifyConnector(connector: ConnectorStatus): RowState {
   }
   const intervalLabel = connector.poll_interval_seconds
     ? connector.poll_interval_seconds >= 60
-      ? `polling ${Math.round(connector.poll_interval_seconds / 60)}min`
-      : `polling ${connector.poll_interval_seconds}s`
-    : 'polling'
+      ? `every ${Math.round(connector.poll_interval_seconds / 60)} min`
+      : `every ${connector.poll_interval_seconds}s`
+    : ''
+  // No more "polling ... · polling" repeat. The status pill already
+  // implies it's healthy; this line shows recency + cadence only.
   return {
     border: 'var(--color-status-green-mid)',
     badge: { tone: 'green', label: 'OK' },
-    metrics: `Last poll: ${relativeTime(lastSeen)} · ${intervalLabel}`,
+    metrics: intervalLabel
+      ? `Last poll ${relativeTime(lastSeen)} · ${intervalLabel}`
+      : `Last poll ${relativeTime(lastSeen)}`,
   }
 }
 
+// ConnectorStatusPill renders a tiny status indicator: a 5-px filled
+// dot in the row's status colour, followed by the status label in
+// uppercase mono. No background, no border, no rounded fill — looks
+// audit-credible and stops competing with the left-border-colour for
+// the operator's eye.
+function ConnectorStatusPill({ border, label }: { border: string; label: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        fontSize: 9,
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: 'var(--color-text-secondary)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: '50%',
+          background: border,
+          flexShrink: 0,
+        }}
+      />
+      {label}
+    </span>
+  )
+}
+
 function categoryLabel(connector: ConnectorStatus): string {
+  // Short, single line: category + protocol, no redundant "polling"
+  // suffix (the metrics row already shows cadence). Streaming
+  // connectors keep an explicit tag so they stand out.
   const category = connector.category || ''
-  const mode = connector.delivery_mode === 'stream' ? 'streaming' : 'polling'
   const protocol = (() => {
     if (category.includes('network')) return 'Network · CEF syslog'
     if (category === 'virtualization' || connector.name === 'vcenter') return 'Virtualisation · vSphere API'
@@ -137,7 +179,10 @@ function categoryLabel(connector: ConnectorStatus): string {
     if (category === 'cmdb') return 'CMDB · REST API'
     return 'REST API'
   })()
-  return `${protocol} · ${mode}`
+  if (connector.delivery_mode === 'stream') {
+    return `${protocol} · stream`
+  }
+  return protocol
 }
 
 export function AttestivConnectorRegistry() {
@@ -324,12 +369,11 @@ export function AttestivConnectorRegistry() {
               <div
                 key={connector.name}
                 style={{
-                  border: 'none',
-                  borderLeft: `3px solid ${state.border}`,
+                  border: '0.5px solid var(--color-border-tertiary)',
+                  borderLeft: `2px solid ${state.border}`,
                   borderRadius: 'var(--border-radius-md)',
                   padding: '8px 10px',
                   background: 'var(--color-background-primary)',
-                  boxShadow: 'var(--shadow-card)',
                   opacity: isDisabled ? 0.7 : 1,
                 }}
               >
@@ -371,7 +415,7 @@ export function AttestivConnectorRegistry() {
                       {connector.label || connector.name}
                     </div>
                   </div>
-                  <Badge tone={state.badge.tone}>{state.badge.label}</Badge>
+                  <ConnectorStatusPill border={state.border} label={state.badge.label} />
                 </div>
                 <div
                   style={{
