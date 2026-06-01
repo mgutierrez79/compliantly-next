@@ -873,6 +873,12 @@ function AssetRow({
   const linkSubtype = isLinkAsset
     ? String(asset.metadata?.['link_type'] ?? '').toLowerCase()
     : ''
+  const linkMembers = isLinkAsset
+    ? (Array.isArray(asset.metadata?.['members']) ? asset.metadata!['members'] as Array<Record<string, unknown>> : [])
+    : []
+  const linkMemberCount = isLinkAsset
+    ? Number(asset.metadata?.['member_count'] ?? linkMembers.length ?? 0)
+    : 0
   const criticality = String(asset.criticality ?? '').toLowerCase()
   // Source pills: prefer the backend's cross-referenced present_in
   // list (built from the live connector snapshot — shows every
@@ -942,7 +948,16 @@ function AssetRow({
           href={`/inventory/${encodeURIComponent(asset.asset_id)}`}
           style={{ fontWeight: 500, textDecoration: 'none', color: 'var(--color-text-primary)' }}
         >
-          {isLinkAsset ? <LinkAssetEndpoints endpoints={linkEndpoints} subtype={linkSubtype} /> : displayName}
+          {isLinkAsset ? (
+            <LinkAssetEndpoints
+              endpoints={linkEndpoints}
+              subtype={linkSubtype}
+              members={linkMembers}
+              memberCount={linkMemberCount}
+            />
+          ) : (
+            displayName
+          )}
         </a>
         {outOfScope && (
           <span
@@ -1405,60 +1420,90 @@ function formatAssetTypeLabel(value: string): string {
 }
 
 // LinkAssetEndpoints renders a network_link asset as the EDGE it
-// actually represents: endpoint A ↔ endpoint B, each shown as
-// "<device-label>:<interface>". When the other side hasn't been
-// discovered yet (single-sided observation from /interface fallback
-// before /topology has populated), render "(peer pending)" so the
-// auditor sees the gap explicitly instead of a misleading single
-// label that would read as just one device.
+// actually represents, laid out in two visual columns:
+//
+//     ┌──────────────────────┐   ┌──────────────────────┐
+//     │ AssetA               │ ↔ │ AssetB               │
+//     │ Po1 (4 members) ▾    │   │ Po1 (4 members)      │
+//     └──────────────────────┘   └──────────────────────┘
+//
+// Each column shows the asset's friendly name on top and the bundle
+// summary (or single interface) underneath. Member count comes from
+// metadata.member_count when present; per-cable detail lives in
+// metadata.members and renders in the detail page.
+//
+// Legacy single-sided assets (the 130 from before the asset-to-asset
+// commit) have only metadata.endpoints[0] populated — render
+// "(peer pending)" on the right so the gap is visible rather than
+// hidden.
 function LinkAssetEndpoints({
   endpoints,
   subtype,
+  members,
+  memberCount,
 }: {
   endpoints: Array<Record<string, unknown>>
   subtype: string
+  members: Array<Record<string, unknown>>
+  memberCount: number
 }) {
   const { t } = useI18n()
-  const renderEndpoint = (ep: Record<string, unknown>) => {
-    const label = String(ep['label'] ?? '').trim()
-    const device = String(ep['device'] ?? '').trim()
-    const iface = String(ep['interface'] ?? '').trim()
-    const shown = label || device
-    if (!shown && !iface) return '(unknown)'
-    return iface ? `${shown}:${iface}` : shown
-  }
   const a = endpoints[0]
   const b = endpoints[1]
+  // Per-side interface summary. For 1-member bundles we render the
+  // physical interface name; for N-member bundles we render
+  // "<N> members" and rely on the detail page to enumerate them.
+  const ifaceSummaryA = (() => {
+    if (memberCount > 1) return `${memberCount} members`
+    if (members[0]) return String(members[0]['interface_a'] ?? '')
+    return ''
+  })()
+  const ifaceSummaryB = (() => {
+    if (memberCount > 1) return `${memberCount} members`
+    if (members[0]) return String(members[0]['interface_b'] ?? '')
+    return ''
+  })()
+  const renderSide = (ep: Record<string, unknown> | undefined, iface: string) => {
+    if (!ep) {
+      return (
+        <span style={{ fontStyle: 'italic', color: 'var(--color-text-tertiary)' }}>
+          {t('peer pending', 'peer pending')}
+        </span>
+      )
+    }
+    const label = String(ep['label'] ?? '').trim()
+    const assetID = String(ep['asset_id'] ?? ep['device'] ?? '').trim()
+    const shown = label || assetID || '(unknown)'
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 0 }}>
+        <span style={{ fontWeight: 500 }}>{shown}</span>
+        {iface && (
+          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+            {iface}
+          </span>
+        )}
+      </span>
+    )
+  }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <span>{a ? renderEndpoint(a) : '(unknown)'}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+      {renderSide(a, ifaceSummaryA)}
       <span
         aria-hidden="true"
         style={{
-          fontSize: 11,
-          padding: '0 4px',
+          fontSize: 14,
+          marginTop: 2,
           color: 'var(--color-text-tertiary)',
         }}
       >
         ↔
       </span>
-      {b ? (
-        <span>{renderEndpoint(b)}</span>
-      ) : (
-        <span
-          style={{
-            fontStyle: 'italic',
-            fontSize: 12,
-            color: 'var(--color-text-tertiary)',
-          }}
-        >
-          {t('peer pending', 'peer pending')}
-        </span>
-      )}
+      {renderSide(b, ifaceSummaryB)}
       {subtype && (
         <span
           style={{
             marginLeft: 4,
+            marginTop: 2,
             fontSize: 10,
             padding: '1px 6px',
             borderRadius: 4,
