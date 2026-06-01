@@ -860,6 +860,19 @@ function AssetRow({
   const { t } = useI18n()
   const displayName = (asset.name && asset.name.trim()) || asset.asset_id
   const assetType = String(asset.asset_type ?? '').toLowerCase()
+  // network_link assets are EDGES between two real assets, so the
+  // primary row label should visually express the A ↔ B relationship
+  // rather than just a single device:interface. Endpoints ride on
+  // metadata.endpoints; older single-sided observations (created
+  // before commit 143fca9) only have one entry and render as
+  // "A ↔ (peer pending discovery)".
+  const isLinkAsset = assetType === 'network_link'
+  const linkEndpoints = isLinkAsset
+    ? (Array.isArray(asset.metadata?.['endpoints']) ? asset.metadata!['endpoints'] as Array<Record<string, unknown>> : [])
+    : []
+  const linkSubtype = isLinkAsset
+    ? String(asset.metadata?.['link_type'] ?? '').toLowerCase()
+    : ''
   const criticality = String(asset.criticality ?? '').toLowerCase()
   // Source pills: prefer the backend's cross-referenced present_in
   // list (built from the live connector snapshot — shows every
@@ -929,7 +942,7 @@ function AssetRow({
           href={`/inventory/${encodeURIComponent(asset.asset_id)}`}
           style={{ fontWeight: 500, textDecoration: 'none', color: 'var(--color-text-primary)' }}
         >
-          {displayName}
+          {isLinkAsset ? <LinkAssetEndpoints endpoints={linkEndpoints} subtype={linkSubtype} /> : displayName}
         </a>
         {outOfScope && (
           <span
@@ -1389,6 +1402,77 @@ function formatAssetTypeLabel(value: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+// LinkAssetEndpoints renders a network_link asset as the EDGE it
+// actually represents: endpoint A ↔ endpoint B, each shown as
+// "<device-label>:<interface>". When the other side hasn't been
+// discovered yet (single-sided observation from /interface fallback
+// before /topology has populated), render "(peer pending)" so the
+// auditor sees the gap explicitly instead of a misleading single
+// label that would read as just one device.
+function LinkAssetEndpoints({
+  endpoints,
+  subtype,
+}: {
+  endpoints: Array<Record<string, unknown>>
+  subtype: string
+}) {
+  const { t } = useI18n()
+  const renderEndpoint = (ep: Record<string, unknown>) => {
+    const label = String(ep['label'] ?? '').trim()
+    const device = String(ep['device'] ?? '').trim()
+    const iface = String(ep['interface'] ?? '').trim()
+    const shown = label || device
+    if (!shown && !iface) return '(unknown)'
+    return iface ? `${shown}:${iface}` : shown
+  }
+  const a = endpoints[0]
+  const b = endpoints[1]
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span>{a ? renderEndpoint(a) : '(unknown)'}</span>
+      <span
+        aria-hidden="true"
+        style={{
+          fontSize: 11,
+          padding: '0 4px',
+          color: 'var(--color-text-tertiary)',
+        }}
+      >
+        ↔
+      </span>
+      {b ? (
+        <span>{renderEndpoint(b)}</span>
+      ) : (
+        <span
+          style={{
+            fontStyle: 'italic',
+            fontSize: 12,
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          {t('peer pending', 'peer pending')}
+        </span>
+      )}
+      {subtype && (
+        <span
+          style={{
+            marginLeft: 4,
+            fontSize: 10,
+            padding: '1px 6px',
+            borderRadius: 4,
+            background: 'var(--color-surface-secondary)',
+            color: 'var(--color-text-secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
+          {subtype.replace(/_/g, ' ')}
+        </span>
+      )}
+    </span>
+  )
 }
 
 // translatedAssetTypeLabel maps the backend's asset_type string to a
