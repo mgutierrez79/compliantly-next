@@ -786,6 +786,7 @@ export function InventoryPage() {
                     />
                   </th>
                   <th style={{ padding: '6px 10px 6px 0' }}>{t('Asset', 'Asset')}</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--color-text-tertiary)' }} aria-label={t('Linked to', 'Linked to')}>↔</th>
                   <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('Criticality', 'Criticality')}</th>
                   <th style={{ padding: '6px 10px' }}>{t('App tier', 'App tier')}</th>
@@ -870,9 +871,6 @@ function AssetRow({
   const linkEndpoints = isLinkAsset
     ? (Array.isArray(asset.metadata?.['endpoints']) ? asset.metadata!['endpoints'] as Array<Record<string, unknown>> : [])
     : []
-  const linkSubtype = isLinkAsset
-    ? String(asset.metadata?.['link_type'] ?? '').toLowerCase()
-    : ''
   const linkMembers = isLinkAsset
     ? (Array.isArray(asset.metadata?.['members']) ? asset.metadata!['members'] as Array<Record<string, unknown>> : [])
     : []
@@ -949,11 +947,11 @@ function AssetRow({
           style={{ fontWeight: 500, textDecoration: 'none', color: 'var(--color-text-primary)' }}
         >
           {isLinkAsset ? (
-            <LinkAssetEndpoints
-              endpoints={linkEndpoints}
-              subtype={linkSubtype}
+            <LinkAssetEndpoint
+              endpoint={linkEndpoints[0]}
               members={linkMembers}
               memberCount={linkMemberCount}
+              side="a"
             />
           ) : (
             displayName
@@ -978,6 +976,18 @@ function AssetRow({
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
           {asset.asset_id}
         </div>
+      </td>
+      <td style={{ padding: '10px', verticalAlign: 'top' }}>
+        {isLinkAsset ? (
+          <LinkAssetEndpoint
+            endpoint={linkEndpoints[1]}
+            members={linkMembers}
+            memberCount={linkMemberCount}
+            side="b"
+          />
+        ) : (
+          <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+        )}
       </td>
       <td style={{ padding: '10px' }}>
         {assetType ? <Badge tone="navy">{translatedAssetTypeLabel(t, assetType)}</Badge> : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}
@@ -1419,101 +1429,54 @@ function formatAssetTypeLabel(value: string): string {
     .join(' ')
 }
 
-// LinkAssetEndpoints renders a network_link asset as the EDGE it
-// actually represents, laid out in two visual columns:
+// LinkAssetEndpoint renders ONE side of a network_link asset. The
+// inventory table places it twice (once in the Asset cell for side
+// "a", once in a dedicated ↔ partner cell for side "b") so the two
+// endpoints occupy proper table columns rather than stacking inside
+// a single cell.
 //
-//     ┌──────────────────────┐   ┌──────────────────────┐
-//     │ AssetA               │ ↔ │ AssetB               │
-//     │ Po1 (4 members) ▾    │   │ Po1 (4 members)      │
-//     └──────────────────────┘   └──────────────────────┘
+// Each side shows the friendly asset name on top and, beneath it,
+// either the physical interface name (1-member bundle) or
+// "<N> members" (multi-member bundle). Per-cable detail lives in
+// metadata.members and renders in the asset detail page.
 //
-// Each column shows the asset's friendly name on top and the bundle
-// summary (or single interface) underneath. Member count comes from
-// metadata.member_count when present; per-cable detail lives in
-// metadata.members and renders in the detail page.
-//
-// Legacy single-sided assets (the 130 from before the asset-to-asset
-// commit) have only metadata.endpoints[0] populated — render
-// "(peer pending)" on the right so the gap is visible rather than
-// hidden.
-function LinkAssetEndpoints({
-  endpoints,
-  subtype,
+// When the side is missing (legacy single-sided observation, the
+// 130 old assets), the "b" side renders italic "(peer pending)"
+// so the gap stays visible.
+function LinkAssetEndpoint({
+  endpoint,
   members,
   memberCount,
+  side,
 }: {
-  endpoints: Array<Record<string, unknown>>
-  subtype: string
+  endpoint: Record<string, unknown> | undefined
   members: Array<Record<string, unknown>>
   memberCount: number
+  side: 'a' | 'b'
 }) {
   const { t } = useI18n()
-  const a = endpoints[0]
-  const b = endpoints[1]
-  // Per-side interface summary. For 1-member bundles we render the
-  // physical interface name; for N-member bundles we render
-  // "<N> members" and rely on the detail page to enumerate them.
-  const ifaceSummaryA = (() => {
-    if (memberCount > 1) return `${memberCount} members`
-    if (members[0]) return String(members[0]['interface_a'] ?? '')
-    return ''
-  })()
-  const ifaceSummaryB = (() => {
-    if (memberCount > 1) return `${memberCount} members`
-    if (members[0]) return String(members[0]['interface_b'] ?? '')
-    return ''
-  })()
-  const renderSide = (ep: Record<string, unknown> | undefined, iface: string) => {
-    if (!ep) {
-      return (
-        <span style={{ fontStyle: 'italic', color: 'var(--color-text-tertiary)' }}>
-          {t('peer pending', 'peer pending')}
-        </span>
-      )
-    }
-    const label = String(ep['label'] ?? '').trim()
-    const assetID = String(ep['asset_id'] ?? ep['device'] ?? '').trim()
-    const shown = label || assetID || '(unknown)'
+  if (!endpoint) {
     return (
-      <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 0 }}>
-        <span style={{ fontWeight: 500 }}>{shown}</span>
-        {iface && (
-          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
-            {iface}
-          </span>
-        )}
+      <span style={{ fontStyle: 'italic', color: 'var(--color-text-tertiary)' }}>
+        {t('peer pending', 'peer pending')}
       </span>
     )
   }
+  const ifaceKey = side === 'a' ? 'interface_a' : 'interface_b'
+  const ifaceSummary = (() => {
+    if (memberCount > 1) return `${memberCount} ${t('members', 'members')}`
+    if (members[0]) return String(members[0][ifaceKey] ?? '')
+    return ''
+  })()
+  const label = String(endpoint['label'] ?? '').trim()
+  const assetID = String(endpoint['asset_id'] ?? endpoint['device'] ?? '').trim()
+  const shown = label || assetID || '(unknown)'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-      {renderSide(a, ifaceSummaryA)}
-      <span
-        aria-hidden="true"
-        style={{
-          fontSize: 14,
-          marginTop: 2,
-          color: 'var(--color-text-tertiary)',
-        }}
-      >
-        ↔
-      </span>
-      {renderSide(b, ifaceSummaryB)}
-      {subtype && (
-        <span
-          style={{
-            marginLeft: 4,
-            marginTop: 2,
-            fontSize: 10,
-            padding: '1px 6px',
-            borderRadius: 4,
-            background: 'var(--color-surface-secondary)',
-            color: 'var(--color-text-secondary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
-          {subtype.replace(/_/g, ' ')}
+    <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 0 }}>
+      <span style={{ fontWeight: 500 }}>{shown}</span>
+      {ifaceSummary && (
+        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+          {ifaceSummary}
         </span>
       )}
     </span>
