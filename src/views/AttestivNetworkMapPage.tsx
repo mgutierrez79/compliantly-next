@@ -44,6 +44,12 @@ export function AttestivNetworkMapPage() {
   // inferAndPersistSwitchSites filled the gap).
   const [siteByAssetID, setSiteByAssetID] = useState<Record<string, string>>({})
   const [typeByAssetID, setTypeByAssetID] = useState<Record<string, string>>({})
+  // Standalone devices: firewalls, switches, etc. that exist in
+  // inventory with a known site but aren't endpoints of any link
+  // asset. Without these, Panorama-discovered firewalls were
+  // invisible on the map because Panorama doesn't emit cable-level
+  // adjacency to the switches they sit on.
+  const [orphanDevices, setOrphanDevices] = useState<MapNode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'Intersite_Link' | 'Port_Channel' | 'Host_Trunk' | 'Switch_Link'>('all')
@@ -75,6 +81,18 @@ export function AttestivNetworkMapPage() {
         const invItems = Array.isArray(invBody?.items) ? (invBody.items as LinkAsset[]) : []
         const sm: Record<string, string> = {}
         const tm: Record<string, string> = {}
+        // Asset types that belong on the topology map even when no
+        // link asset references them. Firewalls are the common case
+        // (Panorama doesn't emit cable-level adjacency); switches,
+        // routers, and firewall managers round out the set.
+        const STANDALONE_DEVICE_TYPES = new Set([
+          'firewall',
+          'firewall_manager',
+          'network_device',
+          'switch',
+          'router',
+        ])
+        const orphans: MapNode[] = []
         for (const a of invItems) {
           const id = String(a.asset_id ?? '').trim()
           if (!id) continue
@@ -82,9 +100,18 @@ export function AttestivNetworkMapPage() {
           const type = String(a.asset_type ?? '').trim()
           if (site) sm[id] = site
           if (type) tm[id] = type
+          if (site && STANDALONE_DEVICE_TYPES.has(type.toLowerCase())) {
+            orphans.push({
+              id,
+              label: String(a.name ?? id),
+              site,
+              assetType: type,
+            })
+          }
         }
         setSiteByAssetID(sm)
         setTypeByAssetID(tm)
+        setOrphanDevices(orphans)
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
@@ -129,7 +156,10 @@ export function AttestivNetworkMapPage() {
     return out
   }, [links])
 
-  const mapData = useMemo(() => buildMapData(links, siteByAssetID, typeByAssetID), [links, siteByAssetID, typeByAssetID])
+  const mapData = useMemo(
+    () => buildMapData(links, siteByAssetID, typeByAssetID, orphanDevices),
+    [links, siteByAssetID, typeByAssetID, orphanDevices],
+  )
 
   return (
     <>
@@ -335,6 +365,7 @@ function buildMapData(
   links: LinkAsset[],
   siteByAssetID: Record<string, string>,
   typeByAssetID: Record<string, string>,
+  orphanDevices: MapNode[],
 ): { nodes: MapNode[]; edges: MapEdge[]; siteOrder: string[] } {
   const nodes = new Map<string, MapNode>()
   const edges: MapEdge[] = []
@@ -370,6 +401,16 @@ function buildMapData(
       nodes.set(bID, { id: bID, label: bLabel, site: bSite, assetType: typeByAssetID[bID] ?? '' })
     }
     edges.push({ from: aID, to: bID, subtype: label })
+  }
+  // Standalone devices: inventory rows that didn't appear as an
+  // endpoint of any link (typical for firewalls — Panorama doesn't
+  // emit cable-level adjacency to the switches they sit on). Show
+  // them inside their site so the operator at least sees the
+  // device + which DC it lives in, even without edges.
+  for (const orphan of orphanDevices) {
+    if (nodes.has(orphan.id)) continue
+    sites.add(orphan.site)
+    nodes.set(orphan.id, orphan)
   }
   // Site order: real sites first (alphabetical), "unassigned" last so
   // the columns operators care about appear first.
