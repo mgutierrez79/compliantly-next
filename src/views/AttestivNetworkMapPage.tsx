@@ -528,12 +528,35 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     cursor += w + SITE_GAP
   }
   const svgWidth = Math.max(cursor - SITE_GAP, 400) + 24
-  const svgHeight = Math.max(...sites.map((s) => s.h), 240) + 24
+  const svgContentHeight = Math.max(...sites.map((s) => s.h), 240) + 24
+
+  // Reserve vertical space ABOVE the site boxes so intersite edges
+  // can arc over them instead of cutting through whatever site
+  // happens to sit between the two endpoints. Only allocated when
+  // the data actually has at least one cross-site edge (otherwise
+  // a single-site map wastes the headroom).
+  const hasIntersiteEdge = data.edges.some((e) => e.subtype === 'Intersite_Link')
+  const ARC_HEADROOM = hasIntersiteEdge ? 160 : 0
+  const svgInitialY = -ARC_HEADROOM
+  const svgHeight = svgContentHeight + ARC_HEADROOM
+
+  // Site-index lookup so edge routing can tell intra-site from
+  // inter-site edges + measure how many columns an intersite edge
+  // spans. Used to pick the arc lift.
+  const siteIndexByNodeId = useMemo(() => {
+    const map = new Map<string, number>()
+    data.siteOrder.forEach((site, idx) => {
+      for (const node of data.nodes) {
+        if (node.site === site) map.set(node.id, idx)
+      }
+    })
+    return map
+  }, [data.nodes, data.siteOrder])
 
   // Initialise the view to the content bounds on first render.
   useEffect(() => {
     if (view === null) {
-      setView({ x: 0, y: 0, w: svgWidth, h: svgHeight })
+      setView({ x: 0, y: svgInitialY, w: svgWidth, h: svgHeight })
     }
     // Intentionally dependent only on size — we don't reset the
     // operator's pan/zoom when data refreshes underneath them.
@@ -561,7 +584,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   }
 
   function fitToContent() {
-    setView({ x: 0, y: 0, w: svgWidth, h: svgHeight })
+    setView({ x: 0, y: svgInitialY, w: svgWidth, h: svgHeight })
   }
 
   function screenToSvg(clientX: number, clientY: number): { x: number; y: number } | null {
@@ -654,9 +677,20 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   })
   const visibleEdges = Array.from(grouped.values())
 
-  // Edge routing: smooth quadratic Bezier with a small perpendicular
-  // offset so parallel bundles between the same pair draw to both
-  // sides.
+  // Edge routing.
+  //
+  // Intra-site edges (both endpoints in the same site column) use a
+  // small perpendicular Bezier offset so parallel bundles between
+  // the same pair draw to both sides.
+  //
+  // Inter-site edges arc OVER the top of the site boxes — the
+  // control point is pulled into the ARC_HEADROOM region above the
+  // columns so the line never passes through an intervening site
+  // box. The lift scales with how many columns the edge spans so a
+  // long-haul DCA → SENS edge clears more headroom than a DCA → DCB
+  // hop between adjacent columns. Parallel intersite bundles between
+  // the same pair stack at slightly different lifts so the chip
+  // labels don't overlap.
   const parallelTally: Record<string, number> = {}
   const edgePath = (
     edge: MapEdge,
@@ -670,6 +704,23 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     const ay = a.y + a.h / 2
     const bx = b.x + b.w / 2
     const by = b.y + b.h / 2
+
+    const fromIdx = siteIndexByNodeId.get(edge.from) ?? -1
+    const toIdx = siteIndexByNodeId.get(edge.to) ?? -1
+    const isIntersite = fromIdx >= 0 && toIdx >= 0 && fromIdx !== toIdx
+    if (isIntersite) {
+      // Arc above the site boxes. Lift = base headroom + extra per
+      // spanned column + a small per-parallel offset.
+      const sitesSpanned = Math.abs(fromIdx - toIdx)
+      const baseLift = 70 + sitesSpanned * 16
+      const parallelLift = parallel * 14
+      const cx = (ax + bx) / 2
+      const cy = -baseLift - parallelLift
+      const mx = 0.25 * ax + 0.5 * cx + 0.25 * bx
+      const my = 0.25 * ay + 0.5 * cy + 0.25 * by
+      return { d: `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`, mx, my }
+    }
+
     const dx = bx - ax
     const dy = by - ay
     const len = Math.max(Math.sqrt(dx * dx + dy * dy), 1)
@@ -677,7 +728,6 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     const magnitude = 22 + Math.floor(parallel / 2) * 16
     const cx = (ax + bx) / 2 + sign * magnitude * (-dy / len)
     const cy = (ay + by) / 2 + sign * magnitude * (dx / len)
-    // Midpoint of the Bezier curve (t = 0.5) for the chip position.
     const mx = 0.25 * ax + 0.5 * cx + 0.25 * bx
     const my = 0.25 * ay + 0.5 * cy + 0.25 * by
     return { d: `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`, mx, my }
