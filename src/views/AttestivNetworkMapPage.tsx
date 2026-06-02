@@ -396,19 +396,25 @@ function buildMapData(
 //     edge highlights both endpoints and surfaces a tooltip with
 //     site_a ↔ site_b + member count.
 //
-// Layout still uses fixed site columns + a 2-wide node grid per
-// column — same data shape, just dressed properly.
+// Layout: each site is a column. Within each column the per-site
+// star-topology layout places the highest-degree switch at the
+// geometric centre and arranges the other devices on a ring around
+// it — the radius scales with the spoke count so labels never
+// overlap. Sites with a single node sit alone at the centre.
 
 function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; siteOrder: string[] } }) {
   const SITE_PAD_X = 16
-  const SITE_PAD_TOP = 44
-  const SITE_GAP = 68
+  const SITE_PAD_TOP = 60
+  const SITE_PAD_BOTTOM = 24
+  const SITE_GAP = 80
   const NODE_W = 188
   const NODE_H = 38
-  const NODE_GAP_X = 14
-  const NODE_GAP_Y = 12
-  const NODES_PER_ROW = 2
-  const VIEWPORT_H = 520
+  // Star-layout tunables. RING_NODE_PITCH controls how much arc
+  // length each spoke node consumes — bumping it spreads spokes
+  // further apart at the cost of a bigger ring.
+  const RING_MIN_R = 130
+  const RING_NODE_PITCH = NODE_W + 22
+  const VIEWPORT_H = 560
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null)
@@ -436,24 +442,88 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     nodes: data.nodes.filter((n) => n.site === site),
   }))
 
+  // Degree (edge count) per node — used to pick the per-site hub
+  // for the star layout. The most-connected node in a site is the
+  // natural backbone switch; placing it at the centre matches what
+  // operators read on a real topology diagram.
+  const degree = new Map<string, number>()
+  for (const n of data.nodes) degree.set(n.id, 0)
+  for (const e of data.edges) {
+    degree.set(e.from, (degree.get(e.from) ?? 0) + 1)
+    degree.set(e.to, (degree.get(e.to) ?? 0) + 1)
+  }
+
   const nodePos: Record<string, { x: number; y: number; w: number; h: number }> = {}
   const sites: Array<{ site: string; nodeCount: number; x: number; w: number; h: number; accent: string }> = []
   let cursor = 0
   for (const { site, nodes } of sitesWithNodes) {
-    const cols = Math.min(NODES_PER_ROW, Math.max(nodes.length, 1))
-    const rows = Math.ceil(Math.max(nodes.length, 1) / cols)
-    const w = SITE_PAD_X * 2 + cols * NODE_W + (cols - 1) * NODE_GAP_X
-    const h = SITE_PAD_TOP + rows * NODE_H + (rows - 1) * NODE_GAP_Y + SITE_PAD_X
-    nodes.forEach((node, idx) => {
-      const col = idx % cols
-      const row = Math.floor(idx / cols)
+    // Special-case singletons: just centre the lone node in a small
+    // box. Avoids a giant empty ring around one device.
+    if (nodes.length <= 1) {
+      const w = SITE_PAD_X * 2 + NODE_W + 20
+      const h = SITE_PAD_TOP + NODE_H + SITE_PAD_BOTTOM
+      if (nodes[0]) {
+        nodePos[nodes[0].id] = {
+          x: cursor + SITE_PAD_X + 10,
+          y: SITE_PAD_TOP,
+          w: NODE_W,
+          h: NODE_H,
+        }
+      }
+      sites.push({ site, nodeCount: nodes.length, x: cursor, w, h, accent: siteAccent(site) })
+      cursor += w + SITE_GAP
+      continue
+    }
+
+    // Star layout: highest-degree node = hub at centre, rest on a ring.
+    // Stable tie-break by id so layout doesn't jitter between renders
+    // when two nodes share the same degree.
+    const sorted = [...nodes].sort((a, b) => {
+      const da = degree.get(a.id) ?? 0
+      const db = degree.get(b.id) ?? 0
+      if (db !== da) return db - da
+      return a.id.localeCompare(b.id)
+    })
+    const hub = sorted[0]
+    const spokes = sorted.slice(1)
+
+    // Ring radius: scale by spoke count so labels don't collide on
+    // the circumference. Arc length per spoke = 2π·R/n; pin that at
+    // RING_NODE_PITCH (a node width plus padding) so a busy site
+    // grows a fatter ring instead of stacking nodes.
+    const ringR = Math.max(
+      RING_MIN_R,
+      (RING_NODE_PITCH * spokes.length) / (2 * Math.PI),
+    )
+
+    // Site box: hub + ring radius + node width on each side + padding.
+    const siteRadiusPx = ringR + NODE_W / 2 + 16
+    const w = SITE_PAD_X * 2 + siteRadiusPx * 2
+    const h = SITE_PAD_TOP + siteRadiusPx * 2 + SITE_PAD_BOTTOM
+
+    const centerX = cursor + w / 2
+    const centerY = SITE_PAD_TOP + siteRadiusPx
+
+    // Hub at centre.
+    nodePos[hub.id] = {
+      x: centerX - NODE_W / 2,
+      y: centerY - NODE_H / 2,
+      w: NODE_W,
+      h: NODE_H,
+    }
+
+    // Spokes evenly around the ring, starting at the top (12 o'clock)
+    // and going clockwise for a predictable read order.
+    spokes.forEach((node, i) => {
+      const angle = (i / spokes.length) * Math.PI * 2 - Math.PI / 2
       nodePos[node.id] = {
-        x: cursor + SITE_PAD_X + col * (NODE_W + NODE_GAP_X),
-        y: SITE_PAD_TOP + row * (NODE_H + NODE_GAP_Y),
+        x: centerX + Math.cos(angle) * ringR - NODE_W / 2,
+        y: centerY + Math.sin(angle) * ringR - NODE_H / 2,
         w: NODE_W,
         h: NODE_H,
       }
     })
+
     sites.push({ site, nodeCount: nodes.length, x: cursor, w, h, accent: siteAccent(site) })
     cursor += w + SITE_GAP
   }
