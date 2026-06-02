@@ -488,7 +488,16 @@ export function InventoryPage() {
 
   const filtered = useMemo(() => {
     return assets.filter((asset) => {
-      if (assetTypeFilter && String(asset.asset_type ?? '').toLowerCase() !== assetTypeFilter) return false
+      const assetTypeRaw = String(asset.asset_type ?? '').toLowerCase()
+      // Hide network_link_member child rows by default so the list
+      // stays clean (one parent bundle = one visible row). Operators
+      // can drill into members from the bundle's detail page; the
+      // explicit asset_type=network_link_member filter reveals them
+      // in the list when needed.
+      if (assetTypeRaw === 'network_link_member' && assetTypeFilter !== 'network_link_member') {
+        return false
+      }
+      if (assetTypeFilter && assetTypeRaw !== assetTypeFilter) return false
       if (criticalityFilter && String(asset.criticality ?? '').toLowerCase() !== criticalityFilter) return false
       if (sourceFilter) {
         const refs = (asset.external_refs ?? []).map((r) => r.source.toLowerCase().split(':')[0])
