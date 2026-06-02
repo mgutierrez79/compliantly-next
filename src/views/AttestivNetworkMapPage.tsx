@@ -421,12 +421,29 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<number | null>(null)
 
+  // Free-form drag offsets. Sites + nodes can each be displaced from
+  // their algorithmic positions; offsets persist across re-layouts
+  // until the operator clicks "Reset layout" or refreshes the page.
+  // Site offsets apply to the whole column (header + all nodes); node
+  // offsets apply ON TOP, so dragging a node inside a moved site
+  // works as expected. Stored in SVG coordinate units.
+  const [siteOffsets, setSiteOffsets] = useState<Record<string, { dx: number; dy: number }>>({})
+  const [nodeOffsets, setNodeOffsets] = useState<Record<string, { dx: number; dy: number }>>({})
+
   // Pan/zoom state expressed as an SVG viewBox. Initialised to the
   // full content bounds once the layout is computed. wheel = zoom
   // (centered on cursor), drag = pan, +/− buttons + "Fit" reset.
   type ViewBox = { x: number; y: number; w: number; h: number }
   const [view, setView] = useState<ViewBox | null>(null)
-  const [dragging, setDragging] = useState<{ startX: number; startY: number; viewX: number; viewY: number } | null>(null)
+  // Drag is a discriminated union — pan, site move, or node move are
+  // mutually exclusive. The 'moved' flag distinguishes a drag from a
+  // click: small-delta mouseup on a node fires the existing
+  // selection handler instead of leaving it stuck in place.
+  type DragState =
+    | { kind: 'pan'; startX: number; startY: number; viewX: number; viewY: number }
+    | { kind: 'site'; site: string; startX: number; startY: number; initialDx: number; initialDy: number; moved: boolean }
+    | { kind: 'node'; node: string; startX: number; startY: number; initialDx: number; initialDy: number; moved: boolean }
+  const [dragging, setDragging] = useState<DragState | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -587,6 +604,27 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     setView({ x: 0, y: svgInitialY, w: svgWidth, h: svgHeight })
   }
 
+  function resetLayout() {
+    setSiteOffsets({})
+    setNodeOffsets({})
+    fitToContent()
+  }
+
+  // Effective coordinates: base layout + site offset + (for nodes) own
+  // offset. Sites carry their nodes when moved; individual nodes can
+  // still be dragged on top.
+  function siteOffset(site: string) {
+    return siteOffsets[site] ?? { dx: 0, dy: 0 }
+  }
+  function nodeOffset(nodeId: string) {
+    return nodeOffsets[nodeId] ?? { dx: 0, dy: 0 }
+  }
+  function nodeCombinedOffset(nodeId: string, site: string) {
+    const s = siteOffset(site)
+    const n = nodeOffset(nodeId)
+    return { dx: s.dx + n.dx, dy: s.dy + n.dy }
+  }
+
   function screenToSvg(clientX: number, clientY: number): { x: number; y: number } | null {
     const svg = svgRef.current
     if (!svg || !view) return null
@@ -608,35 +646,113 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   function handleMouseDown(e: ReactMouseEvent<SVGSVGElement>) {
     if (!view) return
     if (e.button !== 0) return
-    // Click on an empty backdrop starts a pan + deselects. Walk up
-    // the SVG tree so a click on the text/icon inside a node group
-    // (the parent g carries data-role="node") doesn't get mistaken
-    // for a backdrop click.
+    // Walk up the SVG tree to find the first ancestor carrying a
+    // data-role attribute. Three kinds matter:
+    //   site-header → drag the whole site
+    //   node        → drag this node alone, OR click-to-select if
+    //                 the mouse barely moves
+    //   edge        → click-to-select (no drag)
+    // Anything else → pan the canvas.
     let el: Element | null = e.target as Element
+    let role: string | undefined
+    let roleTarget: string | undefined
     while (el && el !== e.currentTarget) {
-      const role = (el as HTMLElement).dataset?.role
-      if (role === 'node' || role === 'edge') return
+      const r = (el as HTMLElement).dataset?.role
+      if (r === 'site-header' || r === 'node' || r === 'edge') {
+        role = r
+        roleTarget = (el as HTMLElement).dataset?.target
+        break
+      }
       el = el.parentElement
+    }
+    if (role === 'edge') {
+      return
+    }
+    if (role === 'site-header' && roleTarget) {
+      const start = siteOffset(roleTarget)
+      setDragging({
+        kind: 'site',
+        site: roleTarget,
+        startX: e.clientX,
+        startY: e.clientY,
+        initialDx: start.dx,
+        initialDy: start.dy,
+        moved: false,
+      })
+      e.preventDefault()
+      return
+    }
+    if (role === 'node' && roleTarget) {
+      const start = nodeOffset(roleTarget)
+      setDragging({
+        kind: 'node',
+        node: roleTarget,
+        startX: e.clientX,
+        startY: e.clientY,
+        initialDx: start.dx,
+        initialDy: start.dy,
+        moved: false,
+      })
+      e.preventDefault()
+      return
     }
     setSelectedNode(null)
     setSelectedEdge(null)
-    setDragging({ startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y })
+    setDragging({ kind: 'pan', startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y })
   }
 
   useEffect(() => {
     if (!dragging) return
+    const DRAG_THRESHOLD = 4 // px of mouse movement before "drag" overrides "click"
+
     function onMove(e: MouseEvent) {
-      setView((prev) => {
-        if (!prev || !dragging) return prev
-        const svg = svgRef.current
-        if (!svg) return prev
-        const rect = svg.getBoundingClientRect()
-        const dx = ((e.clientX - dragging.startX) / rect.width) * prev.w
-        const dy = ((e.clientY - dragging.startY) / rect.height) * prev.h
-        return { ...prev, x: dragging.viewX - dx, y: dragging.viewY - dy }
-      })
+      if (!dragging) return
+      const dxPx = e.clientX - dragging.startX
+      const dyPx = e.clientY - dragging.startY
+      if (dragging.kind === 'pan') {
+        setView((prev) => {
+          if (!prev) return prev
+          const svg = svgRef.current
+          if (!svg) return prev
+          const rect = svg.getBoundingClientRect()
+          const dx = (dxPx / rect.width) * prev.w
+          const dy = (dyPx / rect.height) * prev.h
+          return { ...prev, x: dragging.viewX - dx, y: dragging.viewY - dy }
+        })
+        return
+      }
+      // Site + node drag: convert pixel delta to SVG-unit delta
+      // using the current view scale.
+      const svg = svgRef.current
+      if (!svg || !view) return
+      const rect = svg.getBoundingClientRect()
+      const dx = (dxPx / rect.width) * view.w
+      const dy = (dyPx / rect.height) * view.h
+      const moved = Math.hypot(dxPx, dyPx) >= DRAG_THRESHOLD
+      if (dragging.kind === 'site') {
+        setSiteOffsets((prev) => ({
+          ...prev,
+          [dragging.site]: { dx: dragging.initialDx + dx, dy: dragging.initialDy + dy },
+        }))
+      } else if (dragging.kind === 'node') {
+        setNodeOffsets((prev) => ({
+          ...prev,
+          [dragging.node]: { dx: dragging.initialDx + dx, dy: dragging.initialDy + dy },
+        }))
+      }
+      if (moved && !dragging.moved) {
+        setDragging({ ...dragging, moved: true })
+      }
     }
     function onUp() {
+      // If the user clicked without moving, treat as a click on the
+      // node (selection) — site headers don't have a click action so
+      // a stationary mouseup on one is just a no-op.
+      if (dragging && dragging.kind === 'node' && !dragging.moved) {
+        const nodeId = dragging.node
+        setSelectedNode(nodeId)
+        setSelectedEdge(null)
+      }
       setDragging(null)
     }
     window.addEventListener('mousemove', onMove)
@@ -645,7 +761,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-  }, [dragging])
+  }, [dragging, view])
 
   // Zoom-to-fit a single node when it's selected (only if the node
   // is currently outside the viewport).
@@ -661,6 +777,28 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     setView({ x: cx - view.w / 2, y: cy - view.h / 2, w: view.w, h: view.h })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNode])
+
+  // Effective node positions: base layout + any drag offsets. Used
+  // for both rendering and edge routing so a moved node carries its
+  // edges with it.
+  const effectiveNodePos: typeof nodePos = {}
+  for (const node of data.nodes) {
+    const base = nodePos[node.id]
+    if (!base) continue
+    const off = nodeCombinedOffset(node.id, node.site)
+    effectiveNodePos[node.id] = {
+      x: base.x + off.dx,
+      y: base.y + off.dy,
+      w: base.w,
+      h: base.h,
+    }
+  }
+  // Effective site positions: same, minus the per-node offset (sites
+  // only carry the site-level offset).
+  const effectiveSites = sites.map((s) => {
+    const off = siteOffset(s.site)
+    return { ...s, x: s.x + off.dx, y: off.dy }
+  })
 
   // Bundle parallel edges between the same pair into a single
   // visible line and remember the count so we can stamp a chip
@@ -765,6 +903,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         <ZoomButton onClick={() => applyZoom(1.25)} title="Zoom in">+</ZoomButton>
         <ZoomButton onClick={() => applyZoom(1 / 1.25)} title="Zoom out">−</ZoomButton>
         <ZoomButton onClick={fitToContent} title="Fit to screen">⤢</ZoomButton>
+        <ZoomButton onClick={resetLayout} title="Reset layout (undo all moves + zoom to fit)">↺</ZoomButton>
         <div
           style={{
             padding: '0 8px',
@@ -831,11 +970,11 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         </defs>
 
         {/* Site containers */}
-        {sites.map((s) => (
+        {effectiveSites.map((s) => (
           <g key={s.site}>
             <rect
               x={s.x}
-              y={0}
+              y={s.y}
               width={s.w}
               height={s.h}
               fill="url(#nm-site-bg)"
@@ -844,30 +983,33 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
               rx={12}
             />
             {/* Coloured top stripe */}
-            <rect x={s.x} y={0} width={s.w} height={4} fill={s.accent} rx={2} />
-            {/* Site title pill */}
+            <rect x={s.x} y={s.y} width={s.w} height={4} fill={s.accent} rx={2} />
+            {/* Site title pill — drag handle for the whole site */}
             <rect
               x={s.x + SITE_PAD_X}
-              y={14}
+              y={s.y + 14}
               width={Math.max(s.site.length * 6.5 + 28, 90)}
               height={22}
               fill="#03234A"
               rx={11}
+              data-role="site-header"
+              data-target={s.site}
+              style={{ cursor: dragging?.kind === 'site' && dragging.site === s.site ? 'grabbing' : 'grab' }}
             />
             <text
               x={s.x + SITE_PAD_X + 12}
-              y={29}
+              y={s.y + 29}
               fill="#ffffff"
               fontWeight={600}
               fontSize={11}
-              style={{ letterSpacing: '0.02em' }}
+              style={{ letterSpacing: '0.02em', pointerEvents: 'none' }}
             >
               {s.site}
             </text>
             {/* Node count chip */}
             <rect
               x={s.x + s.w - SITE_PAD_X - 62}
-              y={14}
+              y={s.y + 14}
               width={62}
               height={22}
               fill="#ffffff"
@@ -877,7 +1019,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
             />
             <text
               x={s.x + s.w - SITE_PAD_X - 31}
-              y={29}
+              y={s.y + 29}
               textAnchor="middle"
               fill="#54534e"
               fontSize={10}
@@ -890,8 +1032,8 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
 
         {/* Edges */}
         {visibleEdges.map(({ edge, count }, i) => {
-          const a = nodePos[edge.from]
-          const b = nodePos[edge.to]
+          const a = effectiveNodePos[edge.from]
+          const b = effectiveNodePos[edge.to]
           if (!a || !b) return null
           const { d, mx, my } = edgePath(edge, a, b)
           const style = edgeStyle(edge.subtype)
@@ -983,7 +1125,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
 
         {/* Nodes (drawn last so they sit ON TOP of edges) */}
         {data.nodes.map((node, nodeIdx) => {
-          const pos = nodePos[node.id]
+          const pos = effectiveNodePos[node.id]
           if (!pos) return null
           const accent = nodeAccent(node.assetType)
           const isSelected = node.id === selectedNode
@@ -1012,12 +1154,8 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
               }}
               onMouseEnter={() => setHoveredNode(node.id)}
               onMouseLeave={() => setHoveredNode(null)}
-              onClick={(e) => {
-                e.stopPropagation()
-                setSelectedNode(node.id)
-                setSelectedEdge(null)
-              }}
               data-role="node"
+              data-target={node.id}
             >
               {/* Selection halo */}
               {isSelected && (
@@ -1046,9 +1184,11 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
                 rx={8}
                 filter="url(#nm-card-shadow)"
                 data-role="node"
+                data-target={node.id}
+                style={{ cursor: dragging?.kind === 'node' && dragging.node === node.id ? 'grabbing' : 'grab' }}
               />
               {/* Left accent stripe */}
-              <rect x={pos.x} y={pos.y} width={3} height={pos.h} fill={accent} rx={1.5} data-role="node" />
+              <rect x={pos.x} y={pos.y} width={3} height={pos.h} fill={accent} rx={1.5} data-role="node" data-target={node.id} />
               {/* Icon */}
               <g transform={`translate(${pos.x + 12}, ${pos.y + (pos.h - 16) / 2})`}>
                 <NodeIcon kind={nodeKind(node.assetType)} color={accent} />
@@ -1121,7 +1261,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         <LegendItem gradientId="nm-edge-portchannel" label="Port channel" />
         <LegendItem gradientId="nm-edge-switchlink" label="Switch link" dashed />
         <span style={{ marginLeft: 'auto', color: '#807e76' }}>
-          Scroll to zoom · drag empty space to pan · click a node or edge to inspect
+          Scroll to zoom · drag site header to move a site · drag a node to reposition · drag empty space to pan · ↺ resets
         </span>
       </div>
     </div>
