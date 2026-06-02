@@ -730,14 +730,36 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
       const dy = (dyPx / rect.height) * view.h
       const moved = Math.hypot(dxPx, dyPx) >= DRAG_THRESHOLD
       if (dragging.kind === 'site') {
+        // Sites move freely — no clamp.
         setSiteOffsets((prev) => ({
           ...prev,
           [dragging.site]: { dx: dragging.initialDx + dx, dy: dragging.initialDy + dy },
         }))
       } else if (dragging.kind === 'node') {
+        // Nodes stay inside their parent site box: compute the
+        // unoffset site bounds + base node position, then clamp the
+        // node's offset so the node card never bleeds past the site
+        // border or the title pill on top.
+        const node = data.nodes.find((n) => n.id === dragging.node)
+        const base = nodePos[dragging.node]
+        const siteBox = sites.find((s) => node && s.site === node.site)
+        const rawDx = dragging.initialDx + dx
+        const rawDy = dragging.initialDy + dy
+        let clampedDx = rawDx
+        let clampedDy = rawDy
+        if (base && siteBox) {
+          const minDx = siteBox.x + SITE_PAD_X - base.x
+          const maxDx = siteBox.x + siteBox.w - SITE_PAD_X - base.x - base.w
+          const minDy = SITE_PAD_TOP - base.y
+          const maxDy = siteBox.h - SITE_PAD_BOTTOM - base.y - base.h
+          // Guard against degenerate boxes (min > max means the site
+          // is too small to hold the node + padding; just don't move).
+          if (minDx <= maxDx) clampedDx = Math.max(minDx, Math.min(maxDx, rawDx))
+          if (minDy <= maxDy) clampedDy = Math.max(minDy, Math.min(maxDy, rawDy))
+        }
         setNodeOffsets((prev) => ({
           ...prev,
-          [dragging.node]: { dx: dragging.initialDx + dx, dy: dragging.initialDy + dy },
+          [dragging.node]: { dx: clampedDx, dy: clampedDy },
         }))
       }
       if (moved && !dragging.moved) {
@@ -1261,7 +1283,7 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         <LegendItem gradientId="nm-edge-portchannel" label="Port channel" />
         <LegendItem gradientId="nm-edge-switchlink" label="Switch link" dashed />
         <span style={{ marginLeft: 'auto', color: '#807e76' }}>
-          Scroll to zoom · drag site header to move a site · drag a node to reposition · drag empty space to pan · ↺ resets
+          Scroll to zoom · drag site header to move the whole site freely · drag a node inside its site · drag empty space to pan · ↺ resets
         </span>
       </div>
     </div>
