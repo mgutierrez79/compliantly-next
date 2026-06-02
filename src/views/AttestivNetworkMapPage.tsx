@@ -16,7 +16,7 @@
 // Children (network_link_member) are filtered out of the list — they
 // surface via the parent's detail page.
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react'
 
 import { Badge, Banner, Card, CardTitle, EmptyState, Skeleton, Topbar } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
@@ -376,9 +376,28 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   const NODE_GAP_X = 14
   const NODE_GAP_Y = 12
   const NODES_PER_ROW = 2
+  const VIEWPORT_H = 520
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [hoveredEdge, setHoveredEdge] = useState<number | null>(null)
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
+  const [selectedEdge, setSelectedEdge] = useState<number | null>(null)
+
+  // Pan/zoom state expressed as an SVG viewBox. Initialised to the
+  // full content bounds once the layout is computed. wheel = zoom
+  // (centered on cursor), drag = pan, +/− buttons + "Fit" reset.
+  type ViewBox = { x: number; y: number; w: number; h: number }
+  const [view, setView] = useState<ViewBox | null>(null)
+  const [dragging, setDragging] = useState<{ startX: number; startY: number; viewX: number; viewY: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Entry animation: nodes + edges fade/scale in once mounted.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 30)
+    return () => clearTimeout(t)
+  }, [])
 
   const sitesWithNodes = data.siteOrder.map((site) => ({
     site,
@@ -408,6 +427,115 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   }
   const svgWidth = Math.max(cursor - SITE_GAP, 400) + 24
   const svgHeight = Math.max(...sites.map((s) => s.h), 240) + 24
+
+  // Initialise the view to the content bounds on first render.
+  useEffect(() => {
+    if (view === null) {
+      setView({ x: 0, y: 0, w: svgWidth, h: svgHeight })
+    }
+    // Intentionally dependent only on size — we don't reset the
+    // operator's pan/zoom when data refreshes underneath them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [svgWidth, svgHeight])
+
+  // Clamp zoom to a sensible range. Below 0.25× is unreadable, above
+  // 4× is just empty white.
+  const MIN_ZOOM = 0.25
+  const MAX_ZOOM = 4
+  const baseScale = view ? svgWidth / view.w : 1
+
+  function applyZoom(factor: number, anchor?: { x: number; y: number }) {
+    setView((prev) => {
+      if (!prev) return prev
+      const newW = clamp(prev.w / factor, svgWidth / MAX_ZOOM, svgWidth / MIN_ZOOM)
+      const newH = newW * (svgHeight / svgWidth)
+      // Keep the anchor point under the cursor stable when zooming.
+      const ax = anchor ? anchor.x : prev.x + prev.w / 2
+      const ay = anchor ? anchor.y : prev.y + prev.h / 2
+      const newX = ax - (ax - prev.x) * (newW / prev.w)
+      const newY = ay - (ay - prev.y) * (newH / prev.h)
+      return { x: newX, y: newY, w: newW, h: newH }
+    })
+  }
+
+  function fitToContent() {
+    setView({ x: 0, y: 0, w: svgWidth, h: svgHeight })
+  }
+
+  function screenToSvg(clientX: number, clientY: number): { x: number; y: number } | null {
+    const svg = svgRef.current
+    if (!svg || !view) return null
+    const rect = svg.getBoundingClientRect()
+    return {
+      x: view.x + ((clientX - rect.left) / rect.width) * view.w,
+      y: view.y + ((clientY - rect.top) / rect.height) * view.h,
+    }
+  }
+
+  function handleWheel(e: ReactWheelEvent<SVGSVGElement>) {
+    if (!view) return
+    e.preventDefault()
+    const anchor = screenToSvg(e.clientX, e.clientY)
+    const factor = e.deltaY < 0 ? 1.18 : 1 / 1.18
+    applyZoom(factor, anchor ?? undefined)
+  }
+
+  function handleMouseDown(e: ReactMouseEvent<SVGSVGElement>) {
+    if (!view) return
+    if (e.button !== 0) return
+    // Click on an empty backdrop starts a pan + deselects. Walk up
+    // the SVG tree so a click on the text/icon inside a node group
+    // (the parent g carries data-role="node") doesn't get mistaken
+    // for a backdrop click.
+    let el: Element | null = e.target as Element
+    while (el && el !== e.currentTarget) {
+      const role = (el as HTMLElement).dataset?.role
+      if (role === 'node' || role === 'edge') return
+      el = el.parentElement
+    }
+    setSelectedNode(null)
+    setSelectedEdge(null)
+    setDragging({ startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y })
+  }
+
+  useEffect(() => {
+    if (!dragging) return
+    function onMove(e: MouseEvent) {
+      setView((prev) => {
+        if (!prev || !dragging) return prev
+        const svg = svgRef.current
+        if (!svg) return prev
+        const rect = svg.getBoundingClientRect()
+        const dx = ((e.clientX - dragging.startX) / rect.width) * prev.w
+        const dy = ((e.clientY - dragging.startY) / rect.height) * prev.h
+        return { ...prev, x: dragging.viewX - dx, y: dragging.viewY - dy }
+      })
+    }
+    function onUp() {
+      setDragging(null)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [dragging])
+
+  // Zoom-to-fit a single node when it's selected (only if the node
+  // is currently outside the viewport).
+  useEffect(() => {
+    if (!selectedNode || !view) return
+    const pos = nodePos[selectedNode]
+    if (!pos) return
+    const cx = pos.x + pos.w / 2
+    const cy = pos.y + pos.h / 2
+    const inView = cx >= view.x && cx <= view.x + view.w && cy >= view.y && cy <= view.y + view.h
+    if (inView) return
+    // Pan to centre the node; preserve current zoom.
+    setView({ x: cx - view.w / 2, y: cy - view.h / 2, w: view.w, h: view.h })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNode])
 
   // Bundle parallel edges between the same pair into a single
   // visible line and remember the count so we can stamp a chip
@@ -465,11 +593,63 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
   const hoveredEdgeData = hoveredEdge !== null ? visibleEdges[hoveredEdge] : null
 
   return (
-    <div style={{ overflow: 'auto', maxWidth: '100%', marginTop: 8, position: 'relative' }}>
+    <div ref={wrapperRef} style={{ position: 'relative', marginTop: 8 }}>
+      {/* Top-right floating zoom controls */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 3,
+          display: 'flex',
+          gap: 4,
+          background: '#ffffff',
+          border: '0.5px solid rgba(20,30,60,0.18)',
+          padding: 3,
+          borderRadius: 8,
+          boxShadow: '0 2px 8px rgba(3,35,74,0.08)',
+        }}
+      >
+        <ZoomButton onClick={() => applyZoom(1.25)} title="Zoom in">+</ZoomButton>
+        <ZoomButton onClick={() => applyZoom(1 / 1.25)} title="Zoom out">−</ZoomButton>
+        <ZoomButton onClick={fitToContent} title="Fit to screen">⤢</ZoomButton>
+        <div
+          style={{
+            padding: '0 8px',
+            fontSize: 10,
+            color: '#807e76',
+            display: 'flex',
+            alignItems: 'center',
+            fontFamily: 'var(--font-mono)',
+            minWidth: 38,
+            justifyContent: 'center',
+          }}
+        >
+          {Math.round(baseScale * 100)}%
+        </div>
+      </div>
+
       <svg
-        width={svgWidth}
-        height={svgHeight}
-        style={{ minWidth: svgWidth, fontSize: 11, fontFamily: 'var(--font-sans)' }}
+        ref={svgRef}
+        width="100%"
+        height={VIEWPORT_H}
+        viewBox={view ? `${view.x} ${view.y} ${view.w} ${view.h}` : `0 0 ${svgWidth} ${svgHeight}`}
+        preserveAspectRatio="xMidYMid meet"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        style={{
+          width: '100%',
+          height: VIEWPORT_H,
+          fontSize: 11,
+          fontFamily: 'var(--font-sans)',
+          background:
+            'radial-gradient(ellipse at 30% 0%, rgba(28,104,199,0.06), transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(83,74,183,0.05), transparent 55%), #ffffff',
+          border: '0.5px solid rgba(20,30,60,0.08)',
+          borderRadius: 12,
+          cursor: dragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
+          touchAction: 'none',
+        }}
       >
         <defs>
           {/* Card drop shadow */}
@@ -563,19 +743,38 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
           if (!a || !b) return null
           const { d, mx, my } = edgePath(edge, a, b)
           const style = edgeStyle(edge.subtype)
-          const dimmed = hoveredNode !== null && edge.from !== hoveredNode && edge.to !== hoveredNode
-          const highlighted = hoveredEdge === i || (hoveredNode !== null && (edge.from === hoveredNode || edge.to === hoveredNode))
+          const isSelected = selectedEdge === i
+          const isSelectedNodeEdge =
+            selectedNode !== null && (edge.from === selectedNode || edge.to === selectedNode)
+          const dimmed =
+            (hoveredNode !== null && edge.from !== hoveredNode && edge.to !== hoveredNode) ||
+            (selectedNode !== null && !isSelectedNodeEdge && selectedEdge === null)
+          const highlighted =
+            hoveredEdge === i ||
+            isSelected ||
+            isSelectedNodeEdge ||
+            (hoveredNode !== null && (edge.from === hoveredNode || edge.to === hoveredNode))
           return (
-            <g key={i} opacity={dimmed ? 0.18 : 1}>
-              {/* Wide invisible hit area for hover */}
+            <g
+              key={i}
+              opacity={mounted ? (dimmed ? 0.18 : 1) : 0}
+              style={{ transition: 'opacity 360ms ease' }}
+            >
+              {/* Wide invisible hit area for hover + click */}
               <path
                 d={d}
                 fill="none"
                 stroke="transparent"
                 strokeWidth={14}
+                data-role="edge"
                 style={{ cursor: 'pointer' }}
                 onMouseEnter={() => setHoveredEdge(i)}
                 onMouseLeave={() => setHoveredEdge(null)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedEdge(i)
+                  setSelectedNode(null)
+                }}
               />
               {/* Faint glow under intersite + highlighted */}
               {(edge.subtype === 'Intersite_Link' || highlighted) && (
@@ -631,20 +830,59 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         })}
 
         {/* Nodes (drawn last so they sit ON TOP of edges) */}
-        {data.nodes.map((node) => {
+        {data.nodes.map((node, nodeIdx) => {
           const pos = nodePos[node.id]
           if (!pos) return null
           const accent = nodeAccent(node.assetType)
-          const dimmed = hoveredNode !== null && !connectedNodeIds.has(node.id)
-          const highlighted = node.id === hoveredNode
+          const isSelected = node.id === selectedNode
+          const isNeighbor =
+            selectedNode !== null &&
+            visibleEdges.some(
+              ({ edge }) =>
+                (edge.from === selectedNode && edge.to === node.id) ||
+                (edge.to === selectedNode && edge.from === node.id),
+            )
+          const dimmed =
+            (hoveredNode !== null && !connectedNodeIds.has(node.id)) ||
+            (selectedNode !== null && !isSelected && !isNeighbor)
+          const highlighted = node.id === hoveredNode || isSelected
+          // Stagger the entry animation so the columns reveal left-to-
+          // right rather than popping in all at once.
+          const delay = mounted ? 0 : nodeIdx * 12
           return (
             <g
               key={node.id}
-              opacity={dimmed ? 0.25 : 1}
-              style={{ cursor: 'pointer' }}
+              opacity={mounted ? (dimmed ? 0.25 : 1) : 0}
+              transform={mounted ? 'translate(0,0)' : `translate(0,8)`}
+              style={{
+                cursor: 'pointer',
+                transition: `opacity 380ms ease ${delay}ms, transform 380ms cubic-bezier(0.2, 0.7, 0.2, 1) ${delay}ms`,
+              }}
               onMouseEnter={() => setHoveredNode(node.id)}
               onMouseLeave={() => setHoveredNode(null)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedNode(node.id)
+                setSelectedEdge(null)
+              }}
+              data-role="node"
             >
+              {/* Selection halo */}
+              {isSelected && (
+                <rect
+                  x={pos.x - 4}
+                  y={pos.y - 4}
+                  width={pos.w + 8}
+                  height={pos.h + 8}
+                  fill="none"
+                  stroke={accent}
+                  strokeOpacity={0.35}
+                  strokeWidth={2}
+                  rx={11}
+                >
+                  <animate attributeName="stroke-opacity" values="0.15;0.55;0.15" dur="2s" repeatCount="indefinite" />
+                </rect>
+              )}
               <rect
                 x={pos.x}
                 y={pos.y}
@@ -655,9 +893,10 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
                 strokeWidth={highlighted ? 1.4 : 0.6}
                 rx={8}
                 filter="url(#nm-card-shadow)"
+                data-role="node"
               />
               {/* Left accent stripe */}
-              <rect x={pos.x} y={pos.y} width={3} height={pos.h} fill={accent} rx={1.5} />
+              <rect x={pos.x} y={pos.y} width={3} height={pos.h} fill={accent} rx={1.5} data-role="node" />
               {/* Icon */}
               <g transform={`translate(${pos.x + 12}, ${pos.y + (pos.h - 16) / 2})`}>
                 <NodeIcon kind={nodeKind(node.assetType)} color={accent} />
@@ -697,11 +936,225 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         />
       )}
 
+      {/* Selection side panel — slides in from the right. Shown for
+          either a selected node or a selected edge. Persistent (does
+          not close on cursor move, unlike the hover tooltip). */}
+      <SelectionPanel
+        node={selectedNode ? data.nodes.find((n) => n.id === selectedNode) : null}
+        edgeInfo={
+          selectedEdge !== null && visibleEdges[selectedEdge]
+            ? {
+                edge: visibleEdges[selectedEdge].edge,
+                count: visibleEdges[selectedEdge].count,
+                fromLabel: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.from)?.label ?? '',
+                toLabel: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.to)?.label ?? '',
+                fromSite: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.from)?.site ?? '',
+                toSite: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.to)?.site ?? '',
+              }
+            : null
+        }
+        connectedCount={
+          selectedNode
+            ? visibleEdges.filter(({ edge }) => edge.from === selectedNode || edge.to === selectedNode).length
+            : 0
+        }
+        onClose={() => {
+          setSelectedNode(null)
+          setSelectedEdge(null)
+        }}
+      />
+
       <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 11, color: '#54534e', flexWrap: 'wrap' }}>
         <LegendItem gradientId="nm-edge-intersite" label="Intersite link" animated />
         <LegendItem gradientId="nm-edge-portchannel" label="Port channel" />
         <LegendItem gradientId="nm-edge-switchlink" label="Switch link" dashed />
-        <span style={{ marginLeft: 'auto', color: '#807e76' }}>Hover a node to isolate, an edge for details</span>
+        <span style={{ marginLeft: 'auto', color: '#807e76' }}>
+          Scroll to zoom · drag empty space to pan · click a node or edge to inspect
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function ZoomButton({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      style={{
+        width: 26,
+        height: 26,
+        border: 0,
+        background: 'transparent',
+        color: '#03234A',
+        cursor: 'pointer',
+        fontSize: 14,
+        fontWeight: 600,
+        borderRadius: 6,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background 120ms ease',
+      }}
+      onMouseEnter={(e) => {
+        ;(e.currentTarget as HTMLButtonElement).style.background = '#f6f6f3'
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function SelectionPanel({
+  node,
+  edgeInfo,
+  connectedCount,
+  onClose,
+}: {
+  node: MapNode | null | undefined
+  edgeInfo: { edge: MapEdge; count: number; fromLabel: string; toLabel: string; fromSite: string; toSite: string } | null
+  connectedCount: number
+  onClose: () => void
+}) {
+  const open = Boolean(node || edgeInfo)
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        bottom: 8,
+        width: open ? 300 : 0,
+        background: '#ffffff',
+        border: open ? '0.5px solid rgba(20,30,60,0.18)' : '0 solid transparent',
+        borderRadius: 12,
+        boxShadow: open ? '0 6px 24px rgba(3,35,74,0.12)' : 'none',
+        overflow: 'hidden',
+        transition: 'width 240ms cubic-bezier(0.2, 0.7, 0.2, 1), border 240ms ease',
+        zIndex: 2,
+        marginTop: 38, // clear the zoom controls
+        marginBottom: 38, // clear the legend
+        pointerEvents: open ? 'auto' : 'none',
+      }}
+    >
+      {open && (
+        <div style={{ padding: 14, height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#807e76', marginBottom: 2 }}>
+                {node ? 'Device' : 'Link'}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#14130f', wordBreak: 'break-word' }}>
+                {node ? node.label : edgeInfo ? edgeInfo.edge.subtype.replace(/_/g, ' ') : ''}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close"
+              style={{
+                border: 0,
+                background: 'transparent',
+                color: '#807e76',
+                cursor: 'pointer',
+                fontSize: 16,
+                padding: 4,
+                borderRadius: 4,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {node && (
+            <>
+              <PanelRow label="Role" value={nodeRoleLabel(node.assetType)} accent={nodeAccent(node.assetType)} />
+              <PanelRow label="Site" value={node.site} mono />
+              <PanelRow label="Links" value={`${connectedCount} ${connectedCount === 1 ? 'connection' : 'connections'}`} />
+              <PanelRow label="Asset ID" value={node.id} mono small />
+              <a
+                href={`/inventory/${encodeURIComponent(node.id)}`}
+                style={{
+                  display: 'block',
+                  marginTop: 12,
+                  padding: '8px 12px',
+                  background: '#03234A',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                Open in inventory →
+              </a>
+            </>
+          )}
+
+          {edgeInfo && (
+            <>
+              <PanelRow label="From" value={edgeInfo.fromLabel} mono />
+              <PanelRow label="To" value={edgeInfo.toLabel} mono />
+              <PanelRow
+                label="Sites"
+                value={
+                  edgeInfo.fromSite === edgeInfo.toSite
+                    ? edgeInfo.fromSite
+                    : `${edgeInfo.fromSite} → ${edgeInfo.toSite}`
+                }
+                mono
+              />
+              <PanelRow
+                label="Bundles"
+                value={`${edgeInfo.count} ${edgeInfo.count === 1 ? 'bundle' : 'parallel bundles'}`}
+              />
+              {edgeInfo.edge.subtype === 'Intersite_Link' && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: '8px 10px',
+                    background: '#FCE7E5',
+                    color: '#6E1A1A',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Cross-DC link — DORA Art. 12 / NIS2 Art. 21 anchor. Failure here splits the two sites.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PanelRow({ label, value, mono, small, accent }: { label: string; value: string; mono?: boolean; small?: boolean; accent?: string }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 10, color: '#807e76', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: small ? 10 : 12,
+          color: accent ?? '#14130f',
+          fontFamily: mono ? 'var(--font-mono)' : 'var(--font-sans)',
+          wordBreak: 'break-all',
+        }}
+      >
+        {value || '—'}
       </div>
     </div>
   )
