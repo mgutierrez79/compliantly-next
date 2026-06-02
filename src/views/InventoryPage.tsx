@@ -1981,9 +1981,14 @@ function SitesTab() {
     <Card>
       <CardTitle
         right={
-          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-            {t('{count} sites', '{count} sites', { count: items.length })}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              {t('{count} sites', '{count} sites', { count: items.length })}
+            </span>
+            <PrimaryButton onClick={() => router.push('/sites/new')}>
+              <i className="ti ti-plus" aria-hidden="true" /> {t('Add site', 'Add site')}
+            </PrimaryButton>
+          </div>
         }
       >
         {t('Sites', 'Sites')}
@@ -1996,8 +2001,8 @@ function SitesTab() {
           icon="ti-building"
           title={t('No sites declared', 'No sites declared')}
           description={t(
-            'Sites live in policies/sites/*.yaml. Declare them to map hosted CIs, DR pairs, and concentration-risk geography.',
-            'Sites live in policies/sites/*.yaml. Declare them to map hosted CIs, DR pairs, and concentration-risk geography.',
+            'Use "Add site" above (or declare in policies/sites/*.yaml) to register DCs and map hosted CIs, DR pairs, and concentration-risk geography.',
+            'Use "Add site" above (or declare in policies/sites/*.yaml) to register DCs and map hosted CIs, DR pairs, and concentration-risk geography.',
           )}
         />
       ) : (

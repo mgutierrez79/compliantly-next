@@ -23,6 +23,7 @@ import {
   CardTitle,
   EmptyState,
   GhostButton,
+  PrimaryButton,
   Skeleton,
   Topbar,
 } from '../components/AttestivUi'
@@ -256,6 +257,9 @@ export function AttestivSiteDetailPage() {
             <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
               <code>{site.site_id}</code>
             </span>
+            <PrimaryButton onClick={() => router.push(`/sites/new?edit=${encodeURIComponent(site.site_id)}`)}>
+              <i className="ti ti-pencil" aria-hidden="true" /> {t('Edit', 'Edit')}
+            </PrimaryButton>
           </div>
         }
       />
