@@ -18,18 +18,9 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react'
 
-import dynamic from 'next/dynamic'
-
 import { Badge, Banner, Card, CardTitle, EmptyState, Pagination, Skeleton, Topbar } from '../components/AttestivUi'
 import { apiFetch } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-
-// sigma touches WebGL2RenderingContext at module evaluation, which
-// throws during Next.js SSR / prerender. Load it client-only.
-const NetworkMapSigma = dynamic(
-  () => import('./NetworkMapSigma').then((mod) => mod.NetworkMapSigma),
-  { ssr: false, loading: () => null },
-)
 
 type LinkAsset = {
   asset_id: string
@@ -161,7 +152,7 @@ export function AttestivNetworkMapPage() {
               )}
             />
           ) : (
-            <NetworkMapSigma data={mapData} />
+            <NetworkMap data={mapData} />
           )}
           <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
             {t(
