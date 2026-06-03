@@ -22,6 +22,7 @@ import {
   Skeleton,
   Topbar,
 } from '../components/AttestivUi'
+import { PolicyDocUploadWidget } from '../components/PolicyDocUploadWidget'
 import { apiFetch } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
@@ -450,6 +451,16 @@ export function AttestivControlEvidenceDetailPage({
                 />
               )}
             </Card>
+            {/* B4: in-line per-control upload affordance. Lifts a
+                control from "not-evidenced" to "attested" via a
+                signed policy doc without leaving the page. The
+                server hashes the file (B1); the linked control's
+                next register read sees attested status (C1). */}
+            <PolicyDocUploadWidget
+              frameworkId={frameworkId}
+              controlId={controlId}
+              t={t}
+            />
           </>
         )}
       </div>
