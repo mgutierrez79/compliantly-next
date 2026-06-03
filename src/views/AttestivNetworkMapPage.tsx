@@ -1756,14 +1756,50 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
         node={selectedNode ? data.nodes.find((n) => n.id === selectedNode) : null}
         edgeInfo={
           selectedEdge !== null && visibleEdges[selectedEdge]
-            ? {
-                edge: visibleEdges[selectedEdge].edge,
-                count: visibleEdges[selectedEdge].count,
-                fromLabel: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.from)?.label ?? '',
-                toLabel: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.to)?.label ?? '',
-                fromSite: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.from)?.site ?? '',
-                toSite: data.nodes.find((n) => n.id === visibleEdges[selectedEdge].edge.to)?.site ?? '',
-              }
+            ? (() => {
+                const sel = visibleEdges[selectedEdge]
+                const fromSite = data.nodes.find((n) => n.id === sel.edge.from)?.site ?? ''
+                const toSite = data.nodes.find((n) => n.id === sel.edge.to)?.site ?? ''
+                // Site-pair resilience: how many distinct intersite
+                // bundles connect the two SITES (across any device
+                // pair)? This is what answers the "single point of
+                // failure?" question — counting only this device pair
+                // (sel.count) misses redundant paths through other
+                // switches or firewalls.
+                let sitePairBundles = 0
+                let sitePairCables = 0
+                if (fromSite && toSite && fromSite !== toSite) {
+                  const nodeSite = new Map<string, string>()
+                  data.nodes.forEach((n) => nodeSite.set(n.id, n.site))
+                  const seenBundleKeys = new Set<string>()
+                  data.edges.forEach((e) => {
+                    if (e.subtype !== 'Intersite_Link') return
+                    const sa = nodeSite.get(e.from)
+                    const sb = nodeSite.get(e.to)
+                    if (!sa || !sb) return
+                    const samePair =
+                      (sa === fromSite && sb === toSite) ||
+                      (sa === toSite && sb === fromSite)
+                    if (!samePair) return
+                    sitePairCables += 1
+                    const bundleKey = [e.from, e.to].sort().join('|')
+                    if (!seenBundleKeys.has(bundleKey)) {
+                      seenBundleKeys.add(bundleKey)
+                      sitePairBundles += 1
+                    }
+                  })
+                }
+                return {
+                  edge: sel.edge,
+                  count: sel.count,
+                  sitePairBundles,
+                  sitePairCables,
+                  fromLabel: data.nodes.find((n) => n.id === sel.edge.from)?.label ?? '',
+                  toLabel: data.nodes.find((n) => n.id === sel.edge.to)?.label ?? '',
+                  fromSite,
+                  toSite,
+                }
+              })()
             : null
         }
         connectedCount={
@@ -1967,7 +2003,21 @@ function SelectionPanel({
   onClose,
 }: {
   node: MapNode | null | undefined
-  edgeInfo: { edge: MapEdge; count: number; fromLabel: string; toLabel: string; fromSite: string; toSite: string } | null
+  edgeInfo:
+    | {
+        edge: MapEdge
+        count: number
+        // Total intersite cables / distinct device-pair bundles
+        // between the two sites this edge connects. Used to decide
+        // whether the "splits the two sites" warning is accurate.
+        sitePairBundles: number
+        sitePairCables: number
+        fromLabel: string
+        toLabel: string
+        fromSite: string
+        toSite: string
+      }
+    | null
   connectedCount: number
   onClose: () => void
 }) {
@@ -2061,10 +2111,20 @@ function SelectionPanel({
                 mono
               />
               <PanelRow
-                label="Bundles"
-                value={`${edgeInfo.count} ${edgeInfo.count === 1 ? 'bundle' : 'parallel bundles'}`}
+                label="This cable / bundle"
+                value={`${edgeInfo.count} ${edgeInfo.count === 1 ? 'cable in 1 bundle' : 'parallel cables in 1 bundle'}`}
               />
-              {edgeInfo.edge.subtype === 'Intersite_Link' && (
+              {edgeInfo.edge.subtype === 'Intersite_Link' && edgeInfo.sitePairBundles > 0 && (
+                <PanelRow
+                  label="Site-pair redundancy"
+                  value={
+                    edgeInfo.sitePairBundles === 1
+                      ? `1 intersite bundle between ${edgeInfo.fromSite} and ${edgeInfo.toSite} — no alternate path`
+                      : `${edgeInfo.sitePairBundles} intersite bundles (${edgeInfo.sitePairCables} cables) between ${edgeInfo.fromSite} and ${edgeInfo.toSite}`
+                  }
+                />
+              )}
+              {edgeInfo.edge.subtype === 'Intersite_Link' && edgeInfo.sitePairBundles <= 1 && (
                 <div
                   style={{
                     marginTop: 10,
@@ -2076,7 +2136,22 @@ function SelectionPanel({
                     lineHeight: 1.4,
                   }}
                 >
-                  Cross-DC link — DORA Art. 12 / NIS2 Art. 21 anchor. Failure here splits the two sites.
+                  Sole cross-site link — DORA Art. 12 / NIS2 Art. 21 anchor. With no redundant path, failure here splits the two sites.
+                </div>
+              )}
+              {edgeInfo.edge.subtype === 'Intersite_Link' && edgeInfo.sitePairBundles >= 2 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: '8px 10px',
+                    background: '#E0F0E4',
+                    color: '#1B4D2F',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Cross-site link with redundancy — {edgeInfo.sitePairBundles} parallel intersite bundles satisfy DORA Art. 12 / NIS2 Art. 21 single-failure resilience.
                 </div>
               )}
             </>
