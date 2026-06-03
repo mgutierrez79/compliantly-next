@@ -370,6 +370,25 @@ function buildMapData(
   const nodes = new Map<string, MapNode>()
   const edges: MapEdge[] = []
   const sites = new Set<string>()
+  // Map shows ONLY network-equipment-to-network-equipment links:
+  // switch↔switch, switch↔firewall, firewall↔firewall. Cluster /
+  // hypervisor / VM endpoints are excluded — operators read the map
+  // for "how does my backbone hang together?", not "which host is
+  // plugged into which uplink?" (that question lives on the host
+  // detail page). Anything whose endpoint isn't network gear ends
+  // up as visual noise that obscures the topology question.
+  const networkGearTypes = new Set(['network_device', 'firewall', 'firewall_manager'])
+  const isNetworkGear = (assetID: string): boolean => {
+    const t = String(typeByAssetID[assetID] ?? '').toLowerCase()
+    if (t === '') {
+      // No type known → assume gear ONLY if the ID looks like a link
+      // child (network_link_member) or a link asset itself; otherwise
+      // default to non-gear so cluster nodes (which we never have a
+      // type stamp for in this dataset) drop out.
+      return false
+    }
+    return networkGearTypes.has(t)
+  }
   for (const link of links) {
     const label = String(link.metadata?.['link_type_label'] ?? '').trim()
     if (!MAIN_TYPES.has(label)) continue
@@ -392,6 +411,8 @@ function buildMapData(
     const aSite = resolveSite(a, linkSite, linkSiteA, siteByAssetID)
     const bSite = resolveSite(b, linkSite, linkSiteB, siteByAssetID)
     if (!aID || !bID) continue
+    // Drop the edge if either side isn't network gear.
+    if (!isNetworkGear(aID) || !isNetworkGear(bID)) continue
     sites.add(aSite)
     sites.add(bSite)
     if (!nodes.has(aID)) {
