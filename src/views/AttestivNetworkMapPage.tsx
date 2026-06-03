@@ -696,6 +696,123 @@ function NetworkMap({ data }: { data: { nodes: MapNode[]; edges: MapEdge[]; site
     }
   }
 
+  // Force-directed refinement. The tier-based positions above are a
+  // good seed but produce strict rows — operators read connected
+  // sites as "next to each other", which a relaxation pass produces
+  // far more naturally than a hand-coded column walker.
+  //
+  //  - Repulsion: every pair of sites pushes apart, scaled so
+  //    overlapping boxes are aggressively separated and distant ones
+  //    barely move (Coulomb-style 1/d²).
+  //  - Attraction: pairs connected via intersite edges pull together
+  //    with spring force proportional to the edge weight. The desired
+  //    rest length is roughly the average of the two boxes' half-
+  //    widths plus a small gap — gives "connected, but not touching".
+  //  - Cooling: the per-iteration force scaling decays linearly so the
+  //    layout converges instead of oscillating.
+  //
+  // Skipped when there's only one site (nothing to refine) and capped
+  // at SITE_LAYOUT_ITERATIONS so the cost stays under a millisecond
+  // even on a busy estate.
+  const SITE_LAYOUT_ITERATIONS = 180
+  if (sitePosBySite.size >= 2) {
+    const allSiteIDs = Array.from(sitePosBySite.keys())
+    type Force = { fx: number; fy: number }
+    const forces = new Map<string, Force>()
+    for (let iter = 0; iter < SITE_LAYOUT_ITERATIONS; iter++) {
+      const cooling = 1 - iter / SITE_LAYOUT_ITERATIONS
+      for (const s of allSiteIDs) forces.set(s, { fx: 0, fy: 0 })
+      // Pairwise repulsion.
+      for (let i = 0; i < allSiteIDs.length; i++) {
+        const a = allSiteIDs[i]
+        const posA = sitePosBySite.get(a)!
+        const boxA = siteBoxesBySite.get(a)!
+        for (let j = i + 1; j < allSiteIDs.length; j++) {
+          const b = allSiteIDs[j]
+          const posB = sitePosBySite.get(b)!
+          const boxB = siteBoxesBySite.get(b)!
+          const ax = posA.x + boxA.w / 2
+          const ay = posA.y + boxA.h / 2
+          const bx = posB.x + boxB.w / 2
+          const by = posB.y + boxB.h / 2
+          const dx = bx - ax
+          const dy = by - ay
+          const dist = Math.max(Math.hypot(dx, dy), 1)
+          const minClearance = (boxA.w + boxB.w) / 2 + SITE_GAP * 0.4
+          let magnitude: number
+          if (dist < minClearance) {
+            // Strong push when bounding boxes are too close / overlapping.
+            magnitude = (minClearance - dist) * 0.6
+          } else {
+            // Mild long-range repulsion so isolated sites don't drift
+            // off into the void.
+            magnitude = Math.min(40_000 / (dist * dist), 1.5)
+          }
+          const ux = dx / dist
+          const uy = dy / dist
+          const fA = forces.get(a)!
+          const fB = forces.get(b)!
+          fA.fx -= ux * magnitude
+          fA.fy -= uy * magnitude
+          fB.fx += ux * magnitude
+          fB.fy += uy * magnitude
+        }
+      }
+      // Attractive springs along intersite edges.
+      for (const [a, partners] of intersiteWeights) {
+        if (!sitePosBySite.has(a)) continue
+        for (const [b, weight] of partners) {
+          if (!sitePosBySite.has(b)) continue
+          if (a >= b) continue // each pair once
+          const posA = sitePosBySite.get(a)!
+          const posB = sitePosBySite.get(b)!
+          const boxA = siteBoxesBySite.get(a)!
+          const boxB = siteBoxesBySite.get(b)!
+          const ax = posA.x + boxA.w / 2
+          const ay = posA.y + boxA.h / 2
+          const bx = posB.x + boxB.w / 2
+          const by = posB.y + boxB.h / 2
+          const dx = bx - ax
+          const dy = by - ay
+          const dist = Math.max(Math.hypot(dx, dy), 1)
+          const restLen = (boxA.w + boxB.w) / 2 + SITE_GAP * 1.6
+          const stretch = dist - restLen
+          const magnitude = stretch * 0.04 * Math.log(1 + weight)
+          const ux = dx / dist
+          const uy = dy / dist
+          const fA = forces.get(a)!
+          const fB = forces.get(b)!
+          fA.fx += ux * magnitude
+          fA.fy += uy * magnitude
+          fB.fx -= ux * magnitude
+          fB.fy -= uy * magnitude
+        }
+      }
+      // Apply forces with cooling.
+      for (const [s, pos] of sitePosBySite) {
+        const f = forces.get(s)!
+        const stepCap = 30
+        pos.x += clamp(f.fx * cooling, -stepCap, stepCap)
+        pos.y += clamp(f.fy * cooling, -stepCap, stepCap)
+      }
+    }
+    // Normalise so the topmost / leftmost site sits at ~(20, 20) —
+    // gives the viewport a small margin without changing the relative
+    // spatial relationships.
+    let minX = Infinity
+    let minY = Infinity
+    for (const pos of sitePosBySite.values()) {
+      if (pos.x < minX) minX = pos.x
+      if (pos.y < minY) minY = pos.y
+    }
+    const shiftX = -minX + 20
+    const shiftY = -minY + 20
+    for (const pos of sitePosBySite.values()) {
+      pos.x += shiftX
+      pos.y += shiftY
+    }
+  }
+
   // Now materialise nodePos + sites[] from the placement decisions.
   const nodePos: Record<string, { x: number; y: number; w: number; h: number }> = {}
   const sites: Array<{ site: string; nodeCount: number; x: number; y: number; w: number; h: number; accent: string }> = []
