@@ -1596,11 +1596,32 @@ function orderedAssetTypeTiles(counts: Record<string, number>): Array<[string, n
     }
   }
   const rest = Object.entries(counts)
-    .filter(([type, count]) => !seen.has(type) && count > 0)
+    .filter(([type, count]) => !seen.has(type) && count > 0 && !TILE_HIDDEN_TYPES.has(type))
     .sort(([, a], [, b]) => b - a)
     .slice(0, 12 - out.length)
   return out.concat(rest)
 }
+
+// TILE_HIDDEN_TYPES are platform-synthesised topology / storage
+// artefact rows that exist as inventory entries (for graph rendering,
+// per-LUN storage drill-down, etc.) but are NOT what an auditor or
+// operator thinks of as "an asset on the estate". Showing them as
+// summary tiles inflates the dashboard with high-count noise
+// (`network_link_member` alone can be ~3× the real asset count on a
+// fully-cabled site) and pushes the actually-registerable types off
+// the breakdown.
+//
+// Mirrors the backend isCMDBRegisterableType exclusion list — same
+// rationale: a CMDB does not register cables or per-LUN volumes, so
+// the inventory dashboard shouldn't headline them either.
+const TILE_HIDDEN_TYPES = new Set<string>([
+  'network_link',
+  'network_link_member',
+  'network_adjacency',
+  'storage_volume',
+  'storage_snapshot',
+  'storage_clone',
+])
 
 // RegistryTabs — sits at the top of /inventory and gives the auditor
 // a one-glance view of EVERYTHING in scope: physical assets +
