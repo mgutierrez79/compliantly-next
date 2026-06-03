@@ -2147,14 +2147,26 @@ function SelectionPanel({
                   style={{
                     marginTop: 10,
                     padding: '8px 10px',
-                    background: '#FCE7E5',
-                    color: '#6E1A1A',
+                    background: '#FFF6E5',
+                    color: '#7A4A00',
                     borderRadius: 6,
                     fontSize: 11,
                     lineHeight: 1.4,
                   }}
                 >
-                  Sole cross-site link — DORA Art. 12 / NIS2 Art. 21 anchor. With no redundant path, failure here splits the two sites.
+                  Only 1 cross-site path discovered between {edgeInfo.fromSite} and {edgeInfo.toSite}.
+                  DORA Art. 12 / NIS2 Art. 21 expect redundancy here, so this would split the two sites
+                  on failure if no alternate exists. If you expect a second path (firewall transit,
+                  backup fibre) but it isn&apos;t showing, the platform&apos;s discovery missed it — check{' '}
+                  <a
+                    href="/v1/admin/firewall-intersite-synth-diagnostic"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: '#7A4A00', textDecoration: 'underline' }}
+                  >
+                    /firewall-intersite-synth-diagnostic
+                  </a>
+                  {' '}for the synthesiser&apos;s decision log.
                 </div>
               )}
               {edgeInfo.edge.subtype === 'Intersite_Link' && edgeInfo.sitePairBundles >= 2 && (
