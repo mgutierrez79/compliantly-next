@@ -332,7 +332,19 @@ export function AttestivNetworkMapPage() {
 // ----- Map data + rendering ----------------------------------------
 
 type MapNode = { id: string; label: string; site: string; assetType: string }
-type MapEdge = { from: string; to: string; subtype: string }
+type MapEdge = {
+  from: string
+  to: string
+  subtype: string
+  // Backend asset_id of the underlying network_link asset. Used by
+  // the panel's "✕ this isn't real" action to call the suppression
+  // API for synthesised firewall intersite links.
+  assetID?: string
+  // Where the link came from. "firewall_subnet_join" = synthesised
+  // from shared /30 transit. Anything else (or empty) is LLDP /
+  // CDP / MAC-table evidence and not suppressible.
+  discoverySource?: string
+}
 
 // resolveSite picks the best site label for one endpoint. Tries in
 // order:
@@ -421,7 +433,13 @@ function buildMapData(
     if (!nodes.has(bID)) {
       nodes.set(bID, { id: bID, label: bLabel, site: bSite, assetType: typeByAssetID[bID] ?? '' })
     }
-    edges.push({ from: aID, to: bID, subtype: label })
+    edges.push({
+      from: aID,
+      to: bID,
+      subtype: label,
+      assetID: String(link.asset_id ?? ''),
+      discoverySource: String(link.metadata?.['discovery_source'] ?? ''),
+    })
   }
   // Standalone devices: inventory rows that didn't appear as an
   // endpoint of any link (typical for firewalls — Panorama doesn't
@@ -2205,8 +2223,81 @@ function SelectionPanel({
                   Cross-site link with redundancy — {edgeInfo.sitePairBundles} parallel intersite bundles satisfy DORA Art. 12 / NIS2 Art. 21 single-failure resilience.
                 </div>
               )}
+              {edgeInfo.edge.discoverySource === 'firewall_subnet_join' && edgeInfo.edge.assetID ? (
+                <SuppressSyntheticLinkButton assetID={edgeInfo.edge.assetID} onSuppressed={onClose} />
+              ) : null}
             </>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// SuppressSyntheticLinkButton lets the operator flag a synthesised
+// firewall intersite link as a false positive. Calls the suppression
+// API which (a) deletes the link asset and (b) persists the asset_id
+// so the next synthesizer pass doesn't re-create it. The page
+// reloads on success so the map refreshes without the phantom arc.
+function SuppressSyntheticLinkButton({ assetID, onSuppressed }: { assetID: string; onSuppressed: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const handle = async () => {
+    if (busy) return
+    const reason = window.prompt(
+      "Mark this synthetic intersite link as a false positive?\n\nThe link will be deleted now and the platform won't re-create it on the next poll.\n\nOptional: short reason for the audit log (e.g. 'verified absent in datacentre walk')",
+    )
+    if (reason === null) return
+    setBusy(true)
+    setError(null)
+    try {
+      const response = await apiFetch('/admin/firewall-synth-suppress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset_id: assetID, reason: reason.trim() }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        setError(body?.detail || body?.error || `${response.status} ${response.statusText}`)
+        setBusy(false)
+        return
+      }
+      onSuppressed()
+      // Force a hard refresh — the map data is fetched at mount, so
+      // the simplest way to drop the suppressed link from view is to
+      // reload. Operators typically suppress once and move on; the
+      // refresh cost is fine.
+      window.location.reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'request failed')
+      setBusy(false)
+    }
+  }
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        type="button"
+        onClick={handle}
+        disabled={busy}
+        style={{
+          width: '100%',
+          padding: '8px 10px',
+          border: '0.5px solid #B4321E',
+          background: busy ? '#FCE7E5' : '#ffffff',
+          color: '#6E1A1A',
+          borderRadius: 6,
+          fontSize: 11,
+          fontWeight: 600,
+          cursor: busy ? 'wait' : 'pointer',
+        }}
+      >
+        {busy ? '…' : '✕ This link isn’t real (mark as false positive)'}
+      </button>
+      {error ? (
+        <div style={{ marginTop: 6, fontSize: 10, color: '#6E1A1A' }}>{error}</div>
+      ) : (
+        <div style={{ marginTop: 6, fontSize: 10, color: '#807e76', lineHeight: 1.3 }}>
+          Synthesised from a shared /30 transit subnet — Panorama doesn&apos;t expose direct cabling, so the platform infers. Suppress here when you know the cable doesn&apos;t exist.
         </div>
       )}
     </div>
