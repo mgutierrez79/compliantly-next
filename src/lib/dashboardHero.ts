@@ -42,6 +42,24 @@ export function scoreToPercent(score: FrameworkScore | undefined): number {
   return Math.max(0, Math.min(100, Math.round(pct)))
 }
 
+// frameworkPosturePercent grades a SINGLE framework against the FULL
+// regulation denominator (passing / regulation_total) — the auditor-honest
+// number the posture bars and the overall headline use — falling back to
+// the scored-subset score only when the payload lacks regulation_total
+// (older builds). Centralised so "Top framework" and the posture rows can
+// never show different numbers for the same framework (the exact drift the
+// 69%-vs-40% NIS2 mismatch was: top-framework ranked by the subset score
+// while the posture bar showed the honest denominator).
+export function frameworkPosturePercent(score: FrameworkScore | undefined): number {
+  const cs = score?.controls_summary
+  const passing = cs?.compliant
+  const regulationTotal = cs?.regulation_total
+  if (typeof passing === 'number' && typeof regulationTotal === 'number' && regulationTotal > 0) {
+    return Math.max(0, Math.min(100, Math.round((passing / regulationTotal) * 100)))
+  }
+  return scoreToPercent(score)
+}
+
 // deriveOverallPosture returns the trust-grade hero headline.
 //
 // When the backend payload carries regulation_total + compliant counts,
@@ -158,7 +176,7 @@ export function deriveTopFramework(summary: DashboardSummary | null): TopFramewo
     return { id: '', label: '—', value: '—', percent: 0, count: 0 }
   }
   const ranked = entries
-    .map(([key, score]) => ({ id: key, percent: scoreToPercent(score) }))
+    .map(([key, score]) => ({ id: key, percent: frameworkPosturePercent(score) }))
     .sort((a, b) => b.percent - a.percent)
   const winner = ranked[0]
   return {

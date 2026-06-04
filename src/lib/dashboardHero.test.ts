@@ -147,4 +147,19 @@ describe('deriveTopFramework — highest-scoring framework callout', () => {
     }
     expect(deriveTopFramework(summary).label).toBe('CUSTOM_FRAMEWORK')
   })
+  it('ranks by the full-regulation denominator (passing/regulation_total), not the scored-subset score', () => {
+    const summary: DashboardSummary = {
+      framework_scores: {
+        // NIS2: flattering subset score (0.69) but only 8 of 20 obligations
+        // pass = 40% honest coverage.
+        nis2: { score: 0.69, controls_summary: { compliant: 8, total: 18, regulation_total: 20 } },
+        // DORA: lower subset score (0.58) but 11 of 23 = 48% — must win.
+        dora: { score: 0.58, controls_summary: { compliant: 11, total: 25, regulation_total: 23 } },
+      },
+    }
+    const top = deriveTopFramework(summary)
+    expect(top.id).toBe('dora')
+    expect(top.percent).toBe(48) // 11/23, NOT 58 (the subset score)
+    expect(top.value).toBe('48%')
+  })
 })
