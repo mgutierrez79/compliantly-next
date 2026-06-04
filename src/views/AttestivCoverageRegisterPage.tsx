@@ -22,6 +22,7 @@
 // silent pass.
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 import {
   Badge,
@@ -132,7 +133,7 @@ export function AttestivCoverageRegisterPage() {
   return (
     <>
       <Topbar
-        title={t('Coverage register', 'Coverage register')}
+        title={t('Controls', 'Controls')}
         left={active ? <Badge tone="navy">{active.framework_name}</Badge> : null}
       />
       <div className="attestiv-content">
@@ -190,6 +191,7 @@ function ActiveFrameworkRegister({
   onFilter: (s: 'all' | EffectiveStatus) => void
   t: (key: string, defaultText?: string) => string
 }) {
+  const router = useRouter()
   const filteredEntries = useMemo(() => {
     if (statusFilter === 'all') return fw.entries
     return fw.entries.filter((e) => e.effective_status === statusFilter)
@@ -297,9 +299,20 @@ function ActiveFrameworkRegister({
             </tr>
           </thead>
           <tbody>
-            {filteredEntries.map((e) => (
-              <tr key={e.ref} style={{ borderBottom: '0.5px solid var(--color-border-quaternary)' }}>
-                <td style={{ padding: '6px 4px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{e.ref}</td>
+            {filteredEntries.map((e) => {
+              // Evidenced/attested units backed by a scored control drill
+              // into the full scored-control detail — this is what merges
+              // "scored controls" into the register: the register is the
+              // list, the scored control is the detail.
+              const drillable = Boolean(e.control_id)
+              return (
+              <tr
+                key={e.ref}
+                onClick={drillable ? () => router.push(`/scoring/frameworks/${encodeURIComponent(fw.framework_id)}/controls/${encodeURIComponent(e.control_id as string)}`) : undefined}
+                title={drillable ? t('View scored control detail', 'View scored control detail') : undefined}
+                style={{ borderBottom: '0.5px solid var(--color-border-quaternary)', cursor: drillable ? 'pointer' : 'default' }}
+              >
+                <td style={{ padding: '6px 4px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{e.ref}{drillable ? ' ▸' : ''}</td>
                 <td style={{ padding: '6px 4px' }}>{e.name}</td>
                 <td style={{ padding: '6px 4px', fontSize: 11, color: 'var(--color-text-tertiary)' }}>{e.category || '—'}</td>
                 <td style={{ padding: '6px 4px', fontSize: 11 }}>{e.coverage_mode}</td>
@@ -310,7 +323,8 @@ function ActiveFrameworkRegister({
                   {typeof e.score === 'number' ? `${Math.round(e.score * 100)}%` : '—'}
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         {/* Inline reasons for out-of-scope rows */}
