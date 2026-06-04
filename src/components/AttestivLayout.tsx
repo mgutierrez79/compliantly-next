@@ -115,7 +115,11 @@ const railTop: RailItem[] = [
   // auditorAllowedPrefixes — auditor tokens can NOT see this section,
   // and audit pre-packet generators MUST NOT pull from /v1/roi/* (see
   // docs/audit-management-boundary.md).
-  { key: 'management', label: 'Management', icon: 'ti-briefcase',        prefix: '/management' },
+  // Management section (Financial posture / Board pack / SBOM / ROPA)
+  // hidden from the nav for now — re-enable by un-commenting this entry.
+  // The /management/* pages + APIs stay intact; flipping it back on is a
+  // one-line change.
+  // { key: 'management', label: 'Management', icon: 'ti-briefcase',        prefix: '/management' },
   { key: 'connectors', label: 'Connectors', icon: 'ti-plug',             prefix: '/connectors' },
   { key: 'evidence',   label: 'Evidence',   icon: 'ti-lock',             prefix: '/evidence' },
   { key: 'frameworks', label: 'Frameworks', icon: 'ti-shield-check',     prefix: '/frameworks' },
