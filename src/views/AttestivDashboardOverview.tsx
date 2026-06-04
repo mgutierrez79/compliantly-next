@@ -180,6 +180,125 @@ const EMPTY_GRC: GRCMetrics = {
   policiesOverdue: null,
 }
 
+// CoverageTrend mirrors GET /v1/scoring/coverage-trend: the honest
+// aggregate coverage rollup across every framework register + a weekly
+// series of connector-evidenced coverage reconstructed from history.
+type CoverageTrendPoint = {
+  date: string
+  total: number
+  evidenced: number
+  not_evidenced: number
+  out_of_scope: number
+  evidenced_pct: number
+}
+type CoverageTrend = {
+  weeks: number
+  current: {
+    total: number
+    evidenced: number
+    attested: number
+    not_evidenced: number
+    out_of_scope: number
+    covered_pct: number
+    evidenced_pct: number
+  }
+  points: CoverageTrendPoint[]
+}
+
+const pct1 = (v: number) => `${Math.round(v * 100)}%`
+
+// CoverageChip is one labelled count in the coverage split. Colour keys
+// to the four effective-status buckets so the card reads the same as the
+// /coverage-register page (evidenced=green, attested=blue, uncovered=amber).
+function CoverageChip({ label, value, deep, bg }: { label: string; value: number; deep: string; bg: string }) {
+  return (
+    <div style={{ background: bg, borderRadius: 8, padding: '8px 12px', minWidth: 84 }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: deep, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
+// CoverageSparkline draws connector-evidenced coverage over time as a
+// filled area chart. Pure SVG (no chart lib in this project), viewBox
+// stretched to the card width via preserveAspectRatio="none".
+function CoverageSparkline({ points }: { points: CoverageTrendPoint[] }) {
+  const n = points.length
+  if (n < 2) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '12px 0' }}>
+        Not enough history yet — the trend fills in as weekly snapshots accrue.
+      </div>
+    )
+  }
+  const W = 100
+  const H = 36
+  const pad = 2
+  const x = (i: number) => (i / (n - 1)) * W
+  const y = (p: number) => H - pad - Math.max(0, Math.min(1, p)) * (H - pad * 2)
+  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(2)},${y(p.evidenced_pct).toFixed(2)}`).join(' ')
+  const area = `${line} L${W},${H} L0,${H} Z`
+  const first = points[0].evidenced_pct
+  const last = points[n - 1].evidenced_pct
+  const delta = last - first
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 60, display: 'block' }}>
+        <path d={area} fill="var(--color-status-green-bg)" />
+        <path d={line} fill="none" stroke="var(--color-status-green-deep)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+        <span>{pct1(first)}</span>
+        <span style={{ color: delta >= 0 ? 'var(--color-status-green-deep)' : 'var(--color-status-amber-deep)' }}>
+          {delta >= 0 ? '▲' : '▼'} {pct1(Math.abs(delta))} over {points.length - 1}w
+        </span>
+        <span style={{ fontWeight: 600 }}>{pct1(last)}</span>
+      </div>
+    </div>
+  )
+}
+
+// CoverageCard is the dashboard's honest-coverage headline + variation
+// graph. Reads the aggregate register rollup so the operator sees
+// "N of TOTAL auditable units" instead of a vanity framework score.
+function CoverageCard({ data, t }: { data: CoverageTrend | null; t: (a: string, b: string) => string }) {
+  if (!data) {
+    return (
+      <Card>
+        <CardTitle>{t('Compliance coverage', 'Compliance coverage')}</CardTitle>
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>{t('Loading coverage…', 'Loading coverage…')}</div>
+      </Card>
+    )
+  }
+  const c = data.current
+  return (
+    <Card>
+      <CardTitle right={<Badge tone="navy">{pct1(c.covered_pct)} {t('covered', 'covered')}</Badge>}>
+        {t('Compliance coverage', 'Compliance coverage')}
+      </CardTitle>
+      <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: -4, marginBottom: 12 }}>
+        {c.total} {t('auditable units across all frameworks', 'auditable units across all frameworks')}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        <CoverageChip label={t('Evidenced', 'Evidenced')} value={c.evidenced} deep="var(--color-status-green-deep)" bg="var(--color-status-green-bg)" />
+        <CoverageChip label={t('Attested', 'Attested')} value={c.attested} deep="var(--color-status-blue-deep)" bg="var(--color-status-blue-bg)" />
+        <CoverageChip label={t('Uncovered', 'Uncovered')} value={c.not_evidenced} deep="var(--color-status-amber-deep)" bg="var(--color-status-amber-bg)" />
+        <CoverageChip label={t('Out of scope', 'Out of scope')} value={c.out_of_scope} deep="var(--color-text-secondary)" bg="var(--color-surface-sunken)" />
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+        {t('Evidenced (connector) coverage over time', 'Evidenced (connector) coverage over time')}
+      </div>
+      <CoverageSparkline points={data.points} />
+      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 8 }}>
+        {t(
+          'Trend tracks connector-evidenced coverage (reconstructed from history). Attested coverage is point-in-time and shown in the split above only.',
+          'Trend tracks connector-evidenced coverage (reconstructed from history). Attested coverage is point-in-time and shown in the split above only.',
+        )}
+      </div>
+    </Card>
+  )
+}
+
 export function AttestivDashboardOverview() {
   const {
     t
@@ -187,6 +306,7 @@ export function AttestivDashboardOverview() {
 
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [coverage, setCoverage] = useState<CoverageTrend | null>(null)
   const [grc, setGRC] = useState<GRCMetrics>(EMPTY_GRC)
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [error, setError] = useState<ApiError | null>(null)
@@ -195,10 +315,11 @@ export function AttestivDashboardOverview() {
     let cancelled = false
     const load = async () => {
       try {
-        const [connectorsResponse, summaryResponse, auditResponse] = await Promise.allSettled([
+        const [connectorsResponse, summaryResponse, auditResponse, coverageResponse] = await Promise.allSettled([
           apiJson<ConnectorsResponse>('/connectors'),
           apiJson<DashboardSummary>('/dashboard/summary'),
           apiJson<AuditLogResponse>('/audit/log?limit=4'),
+          apiJson<CoverageTrend>('/scoring/coverage-trend?weeks=12'),
         ])
         if (cancelled) return
         if (connectorsResponse.status === 'fulfilled') {
@@ -206,6 +327,9 @@ export function AttestivDashboardOverview() {
         }
         if (summaryResponse.status === 'fulfilled') {
           setSummary(summaryResponse.value)
+        }
+        if (coverageResponse.status === 'fulfilled') {
+          setCoverage(coverageResponse.value)
         }
         if (auditResponse.status === 'fulfilled') {
           setAuditEntries(auditResponse.value.items || [])
@@ -501,6 +625,10 @@ export function AttestivDashboardOverview() {
             sub={grc.policiesOverdue && grc.policiesOverdue > 0 ? t('−10% per linked control', '−10% per linked control') : t('all current', 'all current')}
             valueColor={grc.policiesOverdue && grc.policiesOverdue > 0 ? 'var(--color-status-amber-mid)' : undefined}
           />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <CoverageCard data={coverage} t={t} />
         </div>
 
         <div
