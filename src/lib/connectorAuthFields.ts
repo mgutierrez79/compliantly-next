@@ -134,7 +134,7 @@ export type AuthMethod = {
 // pulled out of the auth list into a separate "common fields" bucket
 // so they don't get mistaken for mutually-exclusive auth methods (which
 // would render a method picker and hide them behind a tab).
-const NON_AUTH_FIELDS: ReadonlySet<string> = new Set(['serial', 'customer', 'perimeter', 'workspace_id', 'base_dn'])
+const NON_AUTH_FIELDS: ReadonlySet<string> = new Set(['serial', 'customer', 'perimeter', 'workspace_id', 'base_dn', 'site_ids'])
 
 type AuthMethodDef = {
   key: string

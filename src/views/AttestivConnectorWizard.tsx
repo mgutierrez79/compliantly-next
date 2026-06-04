@@ -230,6 +230,17 @@ const CONNECTORS: ConnectorKind[] = [
     pollDefault: 21600,
   },
   {
+    value: 'sentinelone',
+    label: 'SentinelOne Singularity',
+    category: 'Security',
+    endpointHint: 'https://acme.sentinelone.net',
+    fields: [
+      { key: 'api_token', label: 'API token', type: 'password', required: true, hint: 'Console → Settings → Users → Service Users → Create. Header is "Authorization: ApiToken <token>" — NOT Bearer.' },
+      { key: 'site_ids', label: 'Site IDs (optional)', hint: 'Comma-separated SentinelOne site IDs to scope the pull. Leave blank to pull from all sites the token can read.' },
+    ],
+    pollDefault: 21600,
+  },
+  {
     value: 'active_directory',
     label: 'Active Directory',
     category: 'Identity',

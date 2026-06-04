@@ -27,7 +27,7 @@ type LogoSpec = {
   png?: string
   // Either an SVG path (24×24 viewBox) or arbitrary inline SVG content.
   path?: string
-  inline?: 'zabbix' | 'glpi'
+  inline?: 'zabbix' | 'glpi' | 'sentinelone'
 }
 
 // One entry per registered connector name (must match the backend
@@ -44,6 +44,7 @@ const LOGOS: Record<string, LogoSpec> = {
   zabbix:                   { hex: 'D40000',               inline: 'zabbix' },
   glpi:                     { hex: 'F77B0F',               png: 'glpi.png',      inline: 'glpi' },
   advens_mysoc:             { hex: '1A1A18',               png: 'mysoc.png' },
+  sentinelone:              { hex: '6B0AEA',               inline: 'sentinelone' },
 }
 
 // Aliases for keys that appear in other call sites (wizard form values,
@@ -56,6 +57,9 @@ const ALIASES: Record<string, string> = {
   vmware_vcenter: 'vcenter',
   veeam_em: 'veeam_enterprise_manager',
   mysoc: 'advens_mysoc',
+  sentinel_one: 'sentinelone',
+  s1: 'sentinelone',
+  singularity: 'sentinelone',
 }
 
 function canonical(name: string): string {
@@ -138,6 +142,19 @@ export function ConnectorLogo({
           letterSpacing={-0.4}
         >
           GLPI
+        </text>
+      ) : null}
+      {spec.inline === 'sentinelone' ? (
+        <text
+          x="12"
+          y="17"
+          textAnchor="middle"
+          fontFamily="-apple-system, system-ui, Segoe UI, sans-serif"
+          fontWeight={800}
+          fontSize={14}
+          fill={fill}
+        >
+          S1
         </text>
       ) : null}
     </svg>
