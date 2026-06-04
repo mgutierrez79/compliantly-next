@@ -381,7 +381,7 @@ export function AttestivAssetDetailPage({ assetID }: { assetID: string }) {
               </div>
             </Card>
 
-            {asset.asset_type === 'vm' && (guest || hardware || powerState || vcenterHost) ? (
+            {guest || hardware || powerState || vcenterHost ? (
               <Card>
                 <CardTitle>{t('VM details', 'VM details')}</CardTitle>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginTop: 8, fontSize: 13 }}>
@@ -493,7 +493,7 @@ export function AttestivAssetDetailPage({ assetID }: { assetID: string }) {
               <NetworkDeviceDetails asset={asset} relatedLinks={relatedLinks} />
             ) : null}
 
-            {asset.asset_type === 'vm' && (lastBackup || replication || lastRestore) ? (
+            {lastBackup || replication || lastRestore ? (
               <Card>
                 <CardTitle>{t('Protection', 'Protection')}</CardTitle>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginTop: 8 }}>
