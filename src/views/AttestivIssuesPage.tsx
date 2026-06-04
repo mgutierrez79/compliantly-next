@@ -18,6 +18,7 @@
 // 30 seconds and after every retry.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ApiError, apiFetch, apiJson } from '../lib/api'
 import { Badge, Card, GhostButton, PrimaryButton, Topbar } from '../components/AttestivUi'
 import { formatTimestamp } from '../lib/time'
@@ -92,6 +93,8 @@ type ControlIssue = {
   control: string
   status: 'failing' | 'review'
   detail: string
+  framework_id?: string
+  control_id?: string
 }
 
 const STALE_FALLBACK_SECONDS = 24 * 3600
@@ -135,6 +138,12 @@ export function AttestivIssuesPage() {
   const [loading, setLoading] = useState(false)
   const [retrying, setRetrying] = useState<string | null>(null)
   const [retryMessage, setRetryMessage] = useState<string | null>(null)
+  // Real failing controls from the scoring engine (replaces the old
+  // connector-derived synthetic stand-in).
+  const [failing, setFailing] = useState<any[]>([])
+  const [assigningKey, setAssigningKey] = useState<string | null>(null)
+  const [assignMsg, setAssignMsg] = useState<string | null>(null)
+  const router = useRouter()
 
   const reload = useCallback(async () => {
     setError(null)
@@ -143,11 +152,12 @@ export function AttestivIssuesPage() {
       // Each endpoint is independent; allSettled keeps a 500 on the
       // GRC endpoints from blanking out the DLQ tab the operator
       // came here to triage.
-      const [dlqRes, connectorsRes, risksRes, expiringRes] = await Promise.allSettled([
+      const [dlqRes, connectorsRes, risksRes, expiringRes, failingRes] = await Promise.allSettled([
         apiJson<IngestQueueResponse>('/ingest/queue?queue=dead_letter&status=dead_letter&limit=200'),
         apiJson<ConnectorsResponse>('/connectors'),
         apiJson<{ items?: RiskRow[] }>('/risks?status=open&limit=200'),
         apiJson<{ items?: ExpiringExceptionRow[] }>('/exceptions/expiring-soon?within_days=14'),
+        apiJson<{ items?: any[] }>('/scoring/failing'),
       ])
       if (dlqRes.status === 'fulfilled') {
         setDlq(dlqRes.value.items || [])
@@ -159,6 +169,7 @@ export function AttestivIssuesPage() {
       }
       setRisks(risksRes.status === 'fulfilled' ? risksRes.value.items ?? [] : [])
       setExpiring(expiringRes.status === 'fulfilled' ? expiringRes.value.items ?? [] : [])
+      setFailing(failingRes.status === 'fulfilled' ? failingRes.value.items ?? [] : [])
     } finally {
       setLoading(false)
     }
@@ -179,24 +190,63 @@ export function AttestivIssuesPage() {
     })
   }, [connectors])
 
-  // Failing controls — until the framework engine emits per-control
-  // status, we synthesize a representative list from the connectors
-  // that have warnings. Replace with /v1/frameworks/controls when
-  // that endpoint stabilizes (Phase C).
+  // Failing controls — the REAL per-control status from the scoring
+  // engine (/v1/scoring/failing). Each item is a scored ControlResult
+  // (PascalCase keys), so we carry framework_id + control_id through to
+  // wire "Assign remediation" and "View evidence".
   const controls = useMemo<ControlIssue[]>(() => {
-    const out: ControlIssue[] = []
-    for (const connector of connectors) {
-      if ((connector.failure_count || 0) > 0) {
-        out.push({
-          framework: 'SOC2',
-          control: 'CC9.1 — Risk mitigation',
-          status: 'review',
-          detail: `${connector.label || connector.name} connector failures may break recovery-evidence completeness.`,
-        })
+    return failing.map((rec) => {
+      const fwId = String(rec?.FrameworkID ?? rec?.framework_id ?? '')
+      const ctlId = String(rec?.ControlID ?? rec?.control_id ?? '')
+      const ctlName = String(rec?.ControlName ?? rec?.control_name ?? ctlId)
+      const rawStatus = String(rec?.Status ?? rec?.status ?? '').toLowerCase()
+      const status: 'failing' | 'review' =
+        rawStatus === 'fail' || rawStatus === 'failing' ? 'failing' : 'review'
+      const findings: any[] = Array.isArray(rec?.Findings)
+        ? rec.Findings
+        : Array.isArray(rec?.findings)
+          ? rec.findings
+          : []
+      const detail =
+        findings.length > 0
+          ? String(findings[0]?.Description ?? findings[0]?.description ?? '')
+          : `Score ${Math.round(Number(rec?.Score ?? rec?.score ?? 0) * 100)}% — below the passing threshold.`
+      return {
+        framework: fwId ? fwId.toUpperCase() : 'unknown',
+        control: ctlName && ctlName !== ctlId ? `${ctlId} — ${ctlName}` : ctlId,
+        status,
+        detail,
+        framework_id: fwId || undefined,
+        control_id: ctlId || undefined,
       }
+    })
+  }, [failing])
+
+  // assignRemediation creates a real remediation task for a failing
+  // control (POST /v1/remediation), wiring the previously-dead button.
+  const assignRemediation = async (c: ControlIssue) => {
+    if (!c.framework_id || !c.control_id) return
+    const key = `${c.framework_id}/${c.control_id}`
+    setAssigningKey(key)
+    setAssignMsg(null)
+    try {
+      await apiFetch('/remediation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          framework_id: c.framework_id,
+          control_id: c.control_id,
+          title: `Remediate ${c.control}`,
+          description: c.detail,
+        }),
+      })
+      setAssignMsg(`Remediation task created for ${c.control}. See Remediation to track it.`)
+    } catch {
+      setAssignMsg(`Could not create a remediation task for ${c.control}.`)
+    } finally {
+      setAssigningKey(null)
     }
-    return out
-  }, [connectors])
+  }
 
   const counts = {
     dlq: dlq.length,
@@ -287,7 +337,19 @@ export function AttestivIssuesPage() {
 
         {tab === 'dlq' ? <DLQTab items={dlq} retrying={retrying} onRetry={retry} /> : null}
         {tab === 'stale' ? <StaleTab connectors={stale} /> : null}
-        {tab === 'controls' ? <ControlsTab controls={controls} /> : null}
+        {tab === 'controls' ? (
+          <ControlsTab
+            controls={controls}
+            onAssign={assignRemediation}
+            onView={(c) => {
+              if (c.framework_id && c.control_id) {
+                router.push(`/scoring/frameworks/${encodeURIComponent(c.framework_id)}/controls/${encodeURIComponent(c.control_id)}`)
+              }
+            }}
+            assigningKey={assigningKey}
+            assignMsg={assignMsg}
+          />
+        ) : null}
         {tab === 'risks' ? <RisksTab risks={risks} /> : null}
         {tab === 'expiring' ? <ExpiringExceptionsTab items={expiring} /> : null}
       </div>
@@ -618,7 +680,19 @@ function StaleTab({ connectors }: { connectors: ConnectorStatus[] }) {
   );
 }
 
-function ControlsTab({ controls }: { controls: ControlIssue[] }) {
+function ControlsTab({
+  controls,
+  onAssign,
+  onView,
+  assigningKey,
+  assignMsg,
+}: {
+  controls: ControlIssue[]
+  onAssign: (c: ControlIssue) => void
+  onView: (c: ControlIssue) => void
+  assigningKey: string | null
+  assignMsg: string | null
+}) {
   const {
     t
   } = useI18n();
@@ -643,6 +717,20 @@ function ControlsTab({ controls }: { controls: ControlIssue[] }) {
           'Controls that are failing or under review. Each requires attention to maintain your compliance posture.'
         )}
       </p>
+      {assignMsg ? (
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--color-status-blue-deep)',
+            background: 'var(--color-status-blue-bg)',
+            padding: '8px 12px',
+            borderRadius: 6,
+            marginBottom: 12,
+          }}
+        >
+          {assignMsg}
+        </div>
+      ) : null}
       {controls.map((control, index) => {
         const {
           t
@@ -687,8 +775,17 @@ function ControlsTab({ controls }: { controls: ControlIssue[] }) {
                   {control.detail}
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                  <PrimaryButton>{t('Assign remediation', 'Assign remediation')}</PrimaryButton>
-                  <GhostButton>{t('View evidence', 'View evidence')}</GhostButton>
+                  <PrimaryButton
+                    onClick={() => onAssign(control)}
+                    disabled={!control.control_id || assigningKey === `${control.framework_id}/${control.control_id}`}
+                  >
+                    {assigningKey === `${control.framework_id}/${control.control_id}`
+                      ? t('Assigning…', 'Assigning…')
+                      : t('Assign remediation', 'Assign remediation')}
+                  </PrimaryButton>
+                  <GhostButton onClick={() => onView(control)} disabled={!control.control_id}>
+                    {t('View evidence', 'View evidence')}
+                  </GhostButton>
                 </div>
               </div>
               <Badge tone={control.status === 'failing' ? 'red' : 'amber'}>
