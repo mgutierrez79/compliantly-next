@@ -223,7 +223,25 @@ export function AttestivFrameworksPage() {
   // frameworksHero.test.ts (W0-4 UI == signed source). Same function
   // used by Dashboard and the tests means hero values can't drift from
   // the underlying scoring output.
-  const hero = useMemo(() => deriveFrameworksHero(frameworks), [frameworks])
+  //
+  // Flatten coverage.regulation_total to the top level — the pure hero
+  // function reads regulation_total off each framework directly, which
+  // keeps the lib decoupled from the view's nested API shape. Missing
+  // coverage block ⇒ regulation_total undefined ⇒ hero falls back to
+  // its legacy scored-subset average.
+  const hero = useMemo(
+    () =>
+      deriveFrameworksHero(
+        frameworks.map((f) => ({
+          overall: f.overall,
+          status: f.status,
+          passing_controls: f.passing_controls,
+          total_controls: f.total_controls,
+          regulation_total: f.coverage?.regulation_total,
+        }))
+      ),
+    [frameworks]
+  )
 
   // Aggregate the coverage register so the hero's denominator is the
   // honest 682 auditable units, with covered = evidenced + attested.
@@ -503,9 +521,11 @@ export function AttestivFrameworksPage() {
             value={hero.evaluatedCount > 0 ? `${hero.avg}%` : '—'}
             percent={hero.avg}
             caption={
-              hero.evaluatedCount > 0
-                ? `${t('score of scored controls across', 'score of scored controls across')} ${hero.evaluatedCount} ${t('evaluated frameworks — see Regulation coverage for the full denominator', 'evaluated frameworks — see Regulation coverage for the full denominator')}`
-                : t('No scoring run yet', 'No scoring run yet')
+              hero.evaluatedCount === 0
+                ? t('No scoring run yet', 'No scoring run yet')
+                : hero.regulationTotal > 0
+                ? `${hero.passing} ${t('passing of', 'passing of')} ${hero.regulationTotal} ${t('auditable controls across', 'auditable controls across')} ${hero.evaluatedCount} ${t('frameworks · subset score', 'frameworks · subset score')} ${hero.scoredAvg}% ${t('of the', 'of the')} ${hero.total} ${t('measured', 'measured')}`
+                : `${t('score of scored controls across', 'score of scored controls across')} ${hero.evaluatedCount} ${t('evaluated frameworks — coverage register not loaded', 'evaluated frameworks — coverage register not loaded')}`
             }
             pills={
               <>
