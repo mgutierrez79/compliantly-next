@@ -46,6 +46,11 @@ type ExecFramework = {
   framework_id: string
   framework_name?: string
   score: number
+  // posture_pct = passing / regulation_total — the dashboard's
+  // framework-posture metric. The card leads with this so the exec summary
+  // and the main dashboard show the same number; `score` is the measured
+  // posture over the evaluated subset, shown as a secondary figure.
+  posture_pct?: number
   status: string
   yaml_version?: string
   yaml_sha256?: string
@@ -179,7 +184,16 @@ export function AttestivExecutiveSummaryPage() {
                   <CardTitle right={
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Badge tone={kpiTone(fw.status)}>{fw.status || '—'}</Badge>
-                      <span style={{ fontSize: 18, fontWeight: 600 }}>{(fw.score * 100).toFixed(1)}%</span>
+                      <span style={{ fontSize: 18, fontWeight: 600 }}>
+                        {typeof fw.posture_pct === 'number'
+                          ? `${Math.round(fw.posture_pct * 100)}%`
+                          : `${(fw.score * 100).toFixed(1)}%`}
+                      </span>
+                      {typeof fw.posture_pct === 'number' && (
+                        <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                          {t('measured', 'measured')} {(fw.score * 100).toFixed(1)}%
+                        </span>
+                      )}
                     </div>
                   }>
                     {fw.framework_name || fw.framework_id.toUpperCase()}
