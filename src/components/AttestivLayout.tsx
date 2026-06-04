@@ -157,7 +157,10 @@ const sections: Record<SectionKey, Section> = {
     key: 'management',
     navLabel: 'Management',
     items: [
-      { to: '/management/roi', label: 'Financial posture', icon: 'ti-coin' },
+      // Financial posture (ROI) hidden from the nav for now — re-enable
+      // by un-commenting this line. The /management/roi page + API stay
+      // intact, so flipping it back on is a one-line change.
+      // { to: '/management/roi', label: 'Financial posture', icon: 'ti-coin' },
       { to: '/management/board-pack', label: 'Board pack', icon: 'ti-presentation-analytics' },
       { to: '/management/sbom', label: 'Supply chain (SBOM)', icon: 'ti-package' },
       { to: '/management/ropa', label: 'GDPR register (ROPA)', icon: 'ti-file-shield' },
