@@ -19,6 +19,8 @@ export type EvidenceLogEntry = {
   frameworks?: string[]
   signature?: string | null
   report_signature?: string | null
+  signature_algorithm?: string | null
+  key_id?: string | null
   run_hash?: string | null
   status?: string
   finding_count?: number

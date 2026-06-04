@@ -34,6 +34,8 @@ type EvidenceLogEntry = {
   frameworks?: string[]
   signature?: string | null
   report_signature?: string | null
+  signature_algorithm?: string | null
+  key_id?: string | null
   run_hash?: string | null
   status?: string
   finding_count?: number
@@ -341,12 +343,22 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
 
   const dlq = isDLQ(entry)
   const id = entry.evidence_id || entry.run_id || ''
-  const signature = entry.signature || entry.report_signature || ''
-  // signed uses the same predicate the hero's contract test pins, so a
-  // row's badge ("Signed" / "Unsigned") can't disagree with the hero's
-  // aggregate count over the same data.
+  // Two integrity layers, surfaced honestly: `signature` is the real
+  // asymmetric Ed25519 manifest signature (joined in at read time);
+  // `report_signature` is the SHA256 hash-chain digest. Show which one a
+  // row actually carries instead of labelling everything "ed25519".
+  const ed = (entry.signature || '').trim()
+  const chain = (entry.report_signature || '').trim()
+  const algo = (entry.signature_algorithm || 'ed25519').trim()
+  // signed uses the same predicate the hero's contract test pins, so the
+  // pill ("Signed" / "Unsigned") can't disagree with the hero's aggregate
+  // count over the same data.
   const signed = evidenceHasSignature(entry)
-  const algoPrefix = signature ? 'ed25519' : 'no-sig'
+  const sigText = ed
+    ? `${algo}:${truncate(ed, 16)}`
+    : chain
+      ? `chain:${truncate(chain, 16)}`
+      : 'unsigned'
   const tags = entry.frameworks && entry.frameworks.length ? entry.frameworks.join(' · ') : ''
   return (
     <div
@@ -404,7 +416,7 @@ function EvidenceRow({ entry }: { entry: EvidenceLogEntry }) {
               marginTop: 2,
             }}
           >
-            {signature ? `${algoPrefix}:${truncate(signature, 16)}` : 'unsigned'}
+            {sigText}
             {tags ? ` · ${tags}` : ''}
           </div>
         )}
