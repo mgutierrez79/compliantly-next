@@ -189,6 +189,14 @@ type VeeamEnterpriseManagerConnectorConfig = {
   username: string
   password: string
   verify_tls: boolean
+  // Optional Veeam Backup & Replication REST API (port 9419) — needed for
+  // tape jobs + repository (Data Domain) immutability, which Enterprise
+  // Manager doesn't expose. Leave blank for an all-in-one install (the
+  // backend derives <EM-host>:9419 and reuses the EM credentials); set
+  // these when the B&R server is a DIFFERENT host or needs its own account.
+  bnr_url?: string
+  bnr_username?: string
+  bnr_password?: string
   backup_sessions_endpoint: string
   backup_task_sessions_endpoint: string
   restore_sessions_endpoint: string
@@ -5935,6 +5943,46 @@ export function ConnectorsPage() {
                   />
                   {t('Verify TLS certificates', 'Verify TLS certificates')}
                 </label>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>{t('B&R server URL (optional)', 'B&R server URL (optional)')}</Label>
+                </div>
+                <input
+                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                  value={veeamEnterpriseManager.bnr_url ?? ''}
+                  onChange={(e) => setVeeamEnterpriseManager({ ...veeamEnterpriseManager, bnr_url: e.target.value })}
+                  placeholder="https://vbr-server.acme.internal:9419"
+                />
+                <p className="text-xs text-slate-400">
+                  {t(
+                    'Veeam Backup & Replication REST API (9419) — required for tape jobs + Data Domain immutability, which Enterprise Manager does not expose. Leave blank if B&R is on the same host as EM (auto-detected). Set this when B&R is a separate server.',
+                    'Veeam Backup & Replication REST API (9419) — required for tape jobs + Data Domain immutability, which Enterprise Manager does not expose. Leave blank if B&R is on the same host as EM (auto-detected). Set this when B&R is a separate server.',
+                  )}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>{t('B&R username (optional)', 'B&R username (optional)')}</Label>
+                </div>
+                <input
+                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                  value={veeamEnterpriseManager.bnr_username ?? ''}
+                  onChange={(e) => setVeeamEnterpriseManager({ ...veeamEnterpriseManager, bnr_username: e.target.value })}
+                  placeholder="AUXIA\\svc-veeam (blank = reuse EM username)"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>{t('B&R password (optional)', 'B&R password (optional)')}</Label>
+                </div>
+                <input
+                  type="password"
+                  className="w-full rounded-md border border-[#274266] bg-[#0d1a2b] px-3 py-2 text-sm text-slate-50"
+                  value={veeamEnterpriseManager.bnr_password ?? ''}
+                  onChange={(e) => setVeeamEnterpriseManager({ ...veeamEnterpriseManager, bnr_password: e.target.value })}
+                  placeholder={t('blank = reuse EM password', 'blank = reuse EM password')}
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
