@@ -132,17 +132,21 @@ export function PolicyDocUploadWidget({
       const m: Manifest | undefined = upBody?.manifest
       if (!m) throw new Error('upload returned no manifest')
 
-      // Step 3 — link to control (idempotent server-side on dup).
-      const linkResp = await apiFetch(`/policy-docs/${encodeURIComponent(policyId)}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ framework_id: frameworkId, control_id: controlId }),
-      })
-      if (!linkResp.ok) {
-        const body = await linkResp.json().catch(() => ({}))
-        // Don't fail the whole flow on a duplicate link; surface a soft warning.
-        if (linkResp.status !== 409) {
-          throw new Error(body?.detail || `link: ${linkResp.status}`)
+      // Step 3 — link to control, ONLY when we have a target control. A
+      // standalone document upload (existing policy, no control context) has
+      // nothing to link — the document still uploads and can be validated.
+      if (frameworkId && controlId) {
+        const linkResp = await apiFetch(`/policy-docs/${encodeURIComponent(policyId)}/link`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ framework_id: frameworkId, control_id: controlId }),
+        })
+        if (!linkResp.ok) {
+          const body = await linkResp.json().catch(() => ({}))
+          // Don't fail the whole flow on a duplicate link; surface a soft warning.
+          if (linkResp.status !== 409) {
+            throw new Error(body?.detail || `link: ${linkResp.status}`)
+          }
         }
       }
 
@@ -158,7 +162,9 @@ export function PolicyDocUploadWidget({
   return (
     <Card>
       <CardTitle>
-        {tr('Upload policy doc for this control', 'Upload policy doc for this control')}
+        {existingPolicyId
+          ? tr('Upload / replace document', 'Upload / replace document')
+          : tr('Upload policy doc for this control', 'Upload policy doc for this control')}
       </CardTitle>
       <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
         {controlName ? (
