@@ -388,20 +388,14 @@ export function AttestivPolicyDetailPage() {
         {/* B4: re-upload a new version of the document attached to
             this policy. Bumps to v<N+1> server-side; original
             versions stay on disk for the auditor history. */}
-        {data?.links && data.links.length > 0 ? (
-          <div style={{ marginTop: 12 }} data-tour-id="policy-upload-dropzone">
-            <PolicyDocUploadWidget
-              frameworkId={data.links[0].framework_id}
-              controlId={data.links[0].control_id}
-              existingPolicyId={policy.id}
-              t={t}
-            />
-          </div>
-        ) : (
-          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-            {t('Link this policy to a control to enable document upload.', 'Link this policy to a control to enable document upload.')}
-          </div>
-        )}
+        <div style={{ marginTop: 12 }} data-tour-id="policy-upload-dropzone">
+          <PolicyDocUploadWidget
+            frameworkId={data?.links?.[0]?.framework_id ?? ''}
+            controlId={data?.links?.[0]?.control_id ?? ''}
+            existingPolicyId={policy.id}
+            t={t}
+          />
+        </div>
 
         <PolicyValidationPanel policyId={policy.id} />
 
