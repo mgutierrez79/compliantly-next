@@ -310,7 +310,7 @@ export function AttestivConnectorRegistry() {
               />
               {t('connectors.show_disabled')}
             </label>
-            <PrimaryButton onClick={() => router.push('/connectors/new')}>
+            <PrimaryButton onClick={() => router.push('/connectors/new')} data-tour-id="add-connector-btn">
               <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 12 }} /> {t('connectors.add_button')}
             </PrimaryButton>
           </div>

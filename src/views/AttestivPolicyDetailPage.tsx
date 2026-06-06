@@ -22,6 +22,7 @@ import {
   Topbar,
 } from '../components/AttestivUi'
 import { PolicyDocUploadWidget } from '../components/PolicyDocUploadWidget'
+import { PolicyValidationPanel } from '../components/PolicyValidationPanel'
 import { apiFetch } from '../lib/api'
 
 import { useI18n } from '../lib/i18n';
@@ -316,7 +317,7 @@ export function AttestivPolicyDetailPage() {
             this policy. Bumps to v<N+1> server-side; original
             versions stay on disk for the auditor history. */}
         {data?.links && data.links.length > 0 ? (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 12 }} data-tour-id="policy-upload-dropzone">
             <PolicyDocUploadWidget
               frameworkId={data.links[0].framework_id}
               controlId={data.links[0].control_id}
@@ -330,11 +331,13 @@ export function AttestivPolicyDetailPage() {
           </div>
         )}
 
+        <PolicyValidationPanel policyId={policy.id} />
+
         <Card style={{ marginTop: 12 }}>
           <CardTitle
             right={
               !approved ? (
-                <PrimaryButton onClick={approve} disabled={busy}>
+                <PrimaryButton onClick={approve} disabled={busy} data-tour-id="policy-approve-btn">
                   <i className="ti ti-stamp" aria-hidden="true" /> {t('Approve policy', 'Approve policy')}
                 </PrimaryButton>
               ) : null
