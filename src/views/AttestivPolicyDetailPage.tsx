@@ -25,6 +25,18 @@ import { PolicyDocUploadWidget } from '../components/PolicyDocUploadWidget'
 import { PolicyValidationPanel } from '../components/PolicyValidationPanel'
 import { apiFetch } from '../lib/api'
 import { loadSettings } from '../lib/settings'
+import { useRoles } from '../lib/roles'
+
+// Policy categories offered in the Edit card. Framework-scoring categories +
+// the content-validation rubric doc-types (so a mis-categorised policy can be
+// fixed in place — e.g. set it to business_continuity_plan to enable the
+// content check). Kept in sync with the create form in AttestivPoliciesPage.
+const POLICY_CATEGORIES = [
+  'ict_risk_management', 'ict_continuity', 'incident_classification', 'incident_response',
+  'risk_management', 'access_control', 'patch_management', 'backup', 'encryption', 'system_validation',
+  'business_continuity_plan', 'incident_response_plan', 'internal_audit', 'tlpt_result',
+  'firewall_rule_review', 'management_review', 'security_training', 'policy_acknowledgement',
+]
 
 // resolveDocHref routes the document link correctly. The backend stamps an
 // internal blob path on upload ("/v1/policy-docs/{id}/blob"); the browser only
@@ -86,6 +98,7 @@ export function AttestivPolicyDetailPage() {
   const router = useRouter()
   const params = useParams<{ id: string | string[] }>()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
+  const { isAdmin } = useRoles()
 
   const [data, setData] = useState<DetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,6 +109,7 @@ export function AttestivPolicyDetailPage() {
   const [title, setTitle] = useState('')
   const [version, setVersion] = useState('')
   const [status, setStatus] = useState('')
+  const [category, setCategory] = useState('')
   const [documentUrl, setDocumentUrl] = useState('')
   const [reviewDueDate, setReviewDueDate] = useState('')
 
@@ -118,6 +132,7 @@ export function AttestivPolicyDetailPage() {
       setTitle(body.policy.title)
       setVersion(body.policy.version)
       setStatus(body.policy.status)
+      setCategory(body.policy.category || '')
       setDocumentUrl(body.policy.document_url || '')
       setReviewDueDate(body.policy.review_due_date ? body.policy.review_due_date.slice(0, 10) : '')
     } catch (err: unknown) {
@@ -142,6 +157,7 @@ export function AttestivPolicyDetailPage() {
         title,
         version,
         status,
+        category: category || undefined,
         document_url: documentUrl || undefined,
         review_due_date: reviewDueDate || undefined,
       }
@@ -158,6 +174,48 @@ export function AttestivPolicyDetailPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save'
       setError(message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deletePolicy() {
+    if (!id) return
+    if (!window.confirm(t('Delete this draft policy and its uploaded document? This cannot be undone.', 'Delete this draft policy and its uploaded document? This cannot be undone.'))) return
+    setBusy(true)
+    setError(null)
+    try {
+      const response = await apiFetch(`/policy-docs/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+      }
+      router.push('/policies')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete')
+      setBusy(false)
+    }
+  }
+
+  async function archivePolicy() {
+    if (!id) return
+    const reason = window.prompt(t('Reason for archiving (recorded in the audit log):', 'Reason for archiving (recorded in the audit log):'))
+    if (reason === null) return
+    setBusy(true)
+    setError(null)
+    try {
+      const response = await apiFetch(`/policy-docs/${encodeURIComponent(id)}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body?.detail || `${response.status} ${response.statusText}`)
+      }
+      await load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to archive')
     } finally {
       setBusy(false)
     }
@@ -368,8 +426,15 @@ export function AttestivPolicyDetailPage() {
             </FormRow>
             <FormRow label={t('Status', 'Status')}>
               <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
-                {['draft', 'active', 'retired'].map((opt) => (
+                {['draft', 'active', 'retired', 'archived'].map((opt) => (
                   <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </FormRow>
+            <FormRow label={t('Category', 'Category')}>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
+                {(POLICY_CATEGORIES.includes(category) ? POLICY_CATEGORIES : [category, ...POLICY_CATEGORIES]).map((c) => (
+                  <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
                 ))}
               </select>
             </FormRow>
@@ -454,6 +519,37 @@ export function AttestivPolicyDetailPage() {
             </div>
           )}
         </Card>
+
+        {isAdmin ? (
+          <Card style={{ marginTop: 12, border: '1px solid var(--color-status-red-bg)' }}>
+            <CardTitle>{t('Danger zone', 'Danger zone')}</CardTitle>
+            {approved ? (
+              <div>
+                <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0 }}>
+                  {t(
+                    'This policy is approved — it is signed evidence and cannot be deleted. Archive it to remove it from active use while preserving the document and audit trail.',
+                    'This policy is approved — it is signed evidence and cannot be deleted. Archive it to remove it from active use while preserving the document and audit trail.'
+                  )}
+                </p>
+                <button type="button" onClick={archivePolicy} disabled={busy} style={archiveBtnStyle}>
+                  <i className="ti ti-archive" aria-hidden="true" /> {t('Archive policy', 'Archive policy')}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 0 }}>
+                  {t(
+                    'Permanently delete this draft policy, its control links, and its uploaded document. This cannot be undone.',
+                    'Permanently delete this draft policy, its control links, and its uploaded document. This cannot be undone.'
+                  )}
+                </p>
+                <button type="button" onClick={deletePolicy} disabled={busy} style={deleteBtnStyle}>
+                  <i className="ti ti-trash" aria-hidden="true" /> {t('Delete policy', 'Delete policy')}
+                </button>
+              </div>
+            )}
+          </Card>
+        ) : null}
       </div>
     </>
   );
@@ -498,4 +594,29 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--color-background-primary)',
   color: 'var(--color-text-primary)',
   fontFamily: 'inherit',
+}
+
+const dangerBtnBase: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '7px 14px',
+  fontSize: 12,
+  fontWeight: 600,
+  border: '1px solid',
+  borderRadius: 'var(--border-radius-md)',
+  cursor: 'pointer',
+  background: 'transparent',
+}
+
+const deleteBtnStyle: React.CSSProperties = {
+  ...dangerBtnBase,
+  color: 'var(--color-status-red-deep)',
+  borderColor: 'var(--color-status-red-mid)',
+}
+
+const archiveBtnStyle: React.CSSProperties = {
+  ...dangerBtnBase,
+  color: 'var(--color-status-amber-text)',
+  borderColor: 'var(--color-status-amber-mid)',
 }
