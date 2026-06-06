@@ -24,6 +24,7 @@ import { useI18n } from '../lib/i18n'
 import { loadSettings, saveSettings } from '../lib/settings'
 import { clearSessionMarker } from '../lib/session'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { GuidedTourProvider } from './GuidedTour'
 
 // translateNavLabel: small helper that reuses the literal English label
 // as the translation key. So `Overview` becomes `t('Overview',
@@ -565,6 +566,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
         title={label}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
+        data-tour-id={`nav-${item.key}`}
         onClick={() => router.push(sections[item.key].items[0].to)}
         className={`attestiv-rail-btn${active ? ' active' : ''}`}
       >
@@ -603,6 +605,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
   }
 
   return (
+    <GuidedTourProvider>
     <div className="attestiv-shell">
       <div className="attestiv-rail">
         <div className="attestiv-rail-logo">
@@ -645,6 +648,7 @@ export function AttestivLayout({ children }: { children: ReactNode }) {
       </aside>
       <main className="attestiv-main">{children}</main>
     </div>
+    </GuidedTourProvider>
   );
 }
 

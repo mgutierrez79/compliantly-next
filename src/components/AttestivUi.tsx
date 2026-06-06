@@ -495,16 +495,19 @@ export function PrimaryButton({
   onClick,
   disabled,
   type = 'button',
+  ...rest
 }: PropsWithChildren<{
   onClick?: () => void
   disabled?: boolean
   type?: 'button' | 'submit'
+  'data-tour-id'?: string
 }>) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
+      {...rest}
       style={{
         ...buttonBase,
         background: 'var(--color-brand-blue)',
