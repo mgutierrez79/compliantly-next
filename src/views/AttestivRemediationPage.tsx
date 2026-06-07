@@ -13,6 +13,7 @@
 // rows came from the scoring engine vs human entry.
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 
 import {
   Badge,
@@ -48,6 +49,17 @@ type Task = {
   resolution_notes?: string
   created_at?: string
   updated_at?: string
+  related_risks?: RelatedRisk[]
+}
+
+type RelatedRisk = {
+  risk_id: string
+  title?: string
+  framework_name?: string
+  score: number
+  likelihood?: string
+  impact?: string
+  status?: string
 }
 
 type RemediationSummary = {
@@ -514,6 +526,25 @@ function TaskRow({ task, onPatch }: { task: Task; onPatch: (updates: Record<stri
           </div>
           {task.resolution_notes ? (
             <DetailField label={t('Resolution notes', 'Resolution notes')}>{task.resolution_notes}</DetailField>
+          ) : null}
+          {task.related_risks && task.related_risks.length > 0 ? (
+            <DetailField label={t('Related risk', 'Related risk')}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {task.related_risks.map((rk) => (
+                  <Link
+                    key={rk.risk_id}
+                    href={`/risks/${encodeURIComponent(rk.risk_id)}`}
+                    style={{ color: 'var(--color-brand-blue)', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                  >
+                    <i className="ti ti-alert-triangle" aria-hidden="true" />
+                    <span>{rk.title || rk.risk_id}</span>
+                    <Badge tone={rk.score >= 12 ? 'red' : rk.score >= 6 ? 'amber' : 'gray'}>
+                      {t('score', 'score')} {rk.score}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            </DetailField>
           ) : null}
         </div>
       ) : null}
