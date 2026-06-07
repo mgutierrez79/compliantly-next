@@ -10,7 +10,7 @@
 // (likelihood × impact, 1..16); clicking a cell expands the risk
 // IDs that landed there with quick links to each detail page.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 
 import {
@@ -46,26 +46,54 @@ export function AttestivRiskHeatmapPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [rederiving, setRederiving] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const r = await apiFetch('/risks/heatmap')
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
-        const body = (await r.json()) as HeatmapResponse
-        if (!cancelled) setData(body)
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load heatmap')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const r = await apiFetch('/risks/heatmap')
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+      const body = (await r.json()) as HeatmapResponse
+      setData(body)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load heatmap')
+    } finally {
+      setLoading(false)
     }
-    void load()
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  // Re-derive axes: recompute likelihood (from how long each control has
+  // been failing) and impact (from control weight) across every open
+  // auto-risk, then reload. Admin-only on the backend; a non-admin gets a
+  // 403 surfaced as a notice. The scoring loop also runs this every tick,
+  // so this is the "fix the heatmap now" shortcut.
+  const rederive = useCallback(async () => {
+    setRederiving(true)
+    setNotice(null)
+    setError(null)
+    try {
+      const r = await apiFetch('/risks/rederive-axes', { method: 'POST' })
+      if (r.status === 401 || r.status === 403) {
+        setNotice(t('Re-deriving axes requires an admin role.', 'Re-deriving axes requires an admin role.'))
+        return
+      }
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+      const body = (await r.json()) as { scanned: number; updated: number; skipped_manual: number }
+      setNotice(
+        t('Re-derived', 'Re-derived') +
+          `: ${body.updated} ${t('updated', 'updated')} / ${body.scanned} ${t('open auto-risks', 'open auto-risks')}, ${body.skipped_manual} ${t('manual (skipped)', 'manual (skipped)')}.`,
+      )
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to re-derive axes')
+    } finally {
+      setRederiving(false)
+    }
+  }, [load, t])
 
   // cells keyed by "likelihood|impact" for O(1) lookup as we render.
   const cellMap = useMemo(() => {
@@ -79,9 +107,32 @@ export function AttestivRiskHeatmapPage() {
       <Topbar
         title={t('Risk heatmap', 'Risk heatmap')}
         left={data ? <Badge tone={data.total_open === 0 ? 'green' : 'amber'}>{data.total_open} {t('open', 'open')}</Badge> : null}
+        right={
+          <button
+            onClick={() => void rederive()}
+            disabled={rederiving}
+            title={t(
+              'Recompute likelihood (from how long each control has been failing) and impact (from control weight) across open auto-risks.',
+              'Recompute likelihood (from how long each control has been failing) and impact (from control weight) across open auto-risks.',
+            )}
+            style={{
+              fontSize: 12,
+              background: 'var(--color-brand-blue)',
+              color: '#fff',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: 'var(--border-radius-md)',
+              cursor: rederiving ? 'default' : 'pointer',
+              opacity: rederiving ? 0.6 : 1,
+            }}
+          >
+            {rederiving ? t('Re-deriving…', 'Re-deriving…') : t('Re-derive axes', 'Re-derive axes')}
+          </button>
+        }
       />
       <div className="attestiv-content">
         {error ? <Banner tone="error">{error}</Banner> : null}
+        {notice ? <Banner tone="info">{notice}</Banner> : null}
 
         <Banner tone="info" title={t('What this page is', 'What this page is')}>
           {t(
