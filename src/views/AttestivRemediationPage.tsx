@@ -423,6 +423,8 @@ function SelectChip({
 }
 
 function TaskRow({ task, onPatch }: { task: Task; onPatch: (updates: Record<string, unknown>) => void }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
   const status = (task.status || 'open').toLowerCase()
   const priority = (task.priority || 'medium').toLowerCase()
   const statusTone = STATUS_TONE[status] ?? 'gray'
@@ -430,56 +432,102 @@ function TaskRow({ task, onPatch }: { task: Task; onPatch: (updates: Record<stri
   const isAuto = (task.source || 'manual').toLowerCase() === 'auto'
   const days = daysUntil(task.due_date)
   const isOverdue = days !== null && days < 0 && (status === 'open' || status === 'in_progress')
+  const daysLabel = days !== null ? (days < 0 ? `${Math.abs(days)}d past` : `${days}d left`) : ''
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 110px 130px 130px 110px 120px',
-        gap: 10,
-        alignItems: 'center',
-        padding: '10px 0',
-        borderBottom: '0.5px solid var(--color-border-tertiary)',
-        fontSize: 12,
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, overflowWrap: 'anywhere' }} title={task.title}>
-            {task.title}
-          </span>
-          {isAuto ? <Badge tone="navy" icon="ti-rocket">auto</Badge> : null}
-          {isOverdue ? <Badge tone="red" icon="ti-clock-exclamation">overdue</Badge> : null}
+    <div style={{ padding: '10px 0', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 12 }}>
+      {/* Header: title gets the room it needs; the meta block wraps to its
+          own line on narrow widths instead of crushing the title. Clicking
+          the header (but not the interactive controls) expands the detail. */}
+      <div
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8, rowGap: 6, cursor: 'pointer' }}
+      >
+        <i
+          className={`ti ti-chevron-${open ? 'down' : 'right'}`}
+          aria-hidden="true"
+          style={{ marginTop: 3, color: 'var(--color-text-tertiary)', flex: '0 0 auto' }}
+        />
+        <div style={{ flex: '1 1 280px', minWidth: 220 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{task.title}</span>
+            {isAuto ? <Badge tone="navy" icon="ti-rocket">auto</Badge> : null}
+            {isOverdue ? <Badge tone="red" icon="ti-clock-exclamation">overdue</Badge> : null}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+            <code>{task.framework_id}/{task.control_id}</code>
+            {task.control_name ? ` · ${task.control_name}` : ''}
+            {task.source_finding_code ? ` · ${task.source_finding_code}` : ''}
+          </div>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-          <code>{task.framework_id}/{task.control_id}</code>
-          {task.control_name ? ` · ${task.control_name}` : ''}
-          {task.source_finding_code ? ` · ${task.source_finding_code}` : ''}
-        </div>
-      </div>
-      <div>
-        <Badge tone={priorityTone}>{priority}</Badge>
-      </div>
-      <div>
-        <select
-          value={status}
-          onChange={(e) => onPatch({ status: e.target.value })}
-          style={inlineSelectStyle(statusTone)}
+        {/* Inline controls — stopPropagation so changing status doesn't toggle. */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: '0 0 auto', justifyContent: 'flex-end' }}
         >
-          {STATUSES.map((opt) => (
-            <option key={opt} value={opt}>{opt.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
+          <Badge tone={priorityTone}>{priority}</Badge>
+          <select
+            value={status}
+            onChange={(e) => onPatch({ status: e.target.value })}
+            style={inlineSelectStyle(statusTone)}
+          >
+            {STATUSES.map((opt) => (
+              <option key={opt} value={opt}>{opt.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+          <span style={{ fontSize: 11, color: isOverdue ? 'var(--color-status-red-mid)' : 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+            {task.due_date ? task.due_date.slice(0, 10) : '—'}{daysLabel ? ` · ${daysLabel}` : ''}
+          </span>
+        </div>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        {task.assigned_to_user_id || 'unassigned'}
+
+      {open ? (
+        <div
+          style={{
+            marginTop: 8,
+            marginLeft: 22,
+            padding: '12px 14px',
+            background: 'var(--color-background-secondary)',
+            border: '0.5px solid var(--color-border-tertiary)',
+            borderRadius: 'var(--border-radius-md)',
+            display: 'grid',
+            gap: 10,
+          }}
+        >
+          {task.description ? <DetailField label={t('Description', 'Description')}>{task.description}</DetailField> : null}
+          <DetailField label={t('Control', 'Control')}>
+            <code>{task.framework_id}/{task.control_id}</code>
+            {task.control_name ? ` — ${task.control_name}` : ''}
+          </DetailField>
+          {task.source_finding_code ? (
+            <DetailField label={t('Finding', 'Finding')}><code>{task.source_finding_code}</code></DetailField>
+          ) : null}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+            <DetailField label={t('Priority', 'Priority')}>{priority}</DetailField>
+            <DetailField label={t('Status', 'Status')}>{status.replace(/_/g, ' ')}</DetailField>
+            <DetailField label={t('Source', 'Source')}>{(task.source || 'manual').toLowerCase()}</DetailField>
+            <DetailField label={t('Assignee', 'Assignee')}>{task.assigned_to_user_id || t('unassigned', 'unassigned')}</DetailField>
+            <DetailField label={t('Due date', 'Due date')}>{task.due_date ? task.due_date.slice(0, 10) : '—'}</DetailField>
+            <DetailField label={t('Created', 'Created')}>{task.created_at ? task.created_at.slice(0, 10) : '—'}</DetailField>
+            <DetailField label={t('Updated', 'Updated')}>{task.updated_at ? task.updated_at.slice(0, 10) : '—'}</DetailField>
+            {task.resolved_at ? <DetailField label={t('Resolved', 'Resolved')}>{task.resolved_at.slice(0, 10)}</DetailField> : null}
+          </div>
+          {task.resolution_notes ? (
+            <DetailField label={t('Resolution notes', 'Resolution notes')}>{task.resolution_notes}</DetailField>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: 2 }}>
+        {label}
       </div>
-      <div style={{ fontSize: 11, color: isOverdue ? 'var(--color-status-red-mid)' : 'var(--color-text-tertiary)' }}>
-        {task.due_date ? task.due_date.slice(0, 10) : '—'}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
-        {days !== null ? (days < 0 ? `${Math.abs(days)}d past` : `${days}d left`) : ''}
-      </div>
+      <div style={{ fontSize: 12, color: 'var(--color-text-primary)', overflowWrap: 'anywhere' }}>{children}</div>
     </div>
   )
 }
