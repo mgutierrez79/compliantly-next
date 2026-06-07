@@ -8,6 +8,7 @@
 // and editing them would defeat the auto-close logic.
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 
 import {
@@ -78,10 +79,21 @@ type Guidance = {
   remediation?: string[]
 }
 
+type RelatedRemediation = {
+  id: string
+  title: string
+  status: string
+  priority: string
+  framework_id?: string
+  control_id?: string
+  due_date?: string
+}
+
 type DetailResponse = {
   risk: Risk
   history: HistoryEntry[]
   guidance?: Guidance
+  related_remediation?: RelatedRemediation[]
 }
 
 const STATUS_TONE: Record<string, 'amber' | 'green' | 'gray' | 'navy' | 'red'> = {
@@ -280,6 +292,37 @@ export function AttestivRiskDetailPage() {
         </Card>
 
         {guidance ? <GuidanceSection guidance={guidance} /> : null}
+
+        {data.related_remediation && data.related_remediation.length > 0 ? (
+          <Card style={{ marginTop: 12 }}>
+            <CardTitle>{t('Remediation tasks', 'Remediation tasks')}</CardTitle>
+            <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 0, marginBottom: 10 }}>
+              {t('Open remediation work on this risk’s control.', 'Open remediation work on this risk’s control.')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {data.related_remediation.map((tk) => (
+                <Link
+                  key={tk.id}
+                  href="/remediation"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', color: 'var(--color-text-primary)', textDecoration: 'none', fontSize: 12 }}
+                >
+                  <Badge tone={tk.priority === 'critical' ? 'red' : tk.priority === 'high' ? 'amber' : tk.priority === 'medium' ? 'navy' : 'gray'}>
+                    {tk.priority}
+                  </Badge>
+                  <span style={{ flex: '1 1 240px', minWidth: 200 }}>{tk.title}</span>
+                  <Badge tone={tk.status === 'open' ? 'amber' : tk.status === 'in_progress' ? 'navy' : 'gray'}>
+                    {tk.status.replace(/_/g, ' ')}
+                  </Badge>
+                  {tk.due_date ? (
+                    <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+                      {t('due', 'due')} {tk.due_date.slice(0, 10)}
+                    </span>
+                  ) : null}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         <Card style={{ marginTop: 12 }}>
           <CardTitle>{t('Treatment', 'Treatment')}</CardTitle>
