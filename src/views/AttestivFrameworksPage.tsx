@@ -29,6 +29,7 @@ import {
   StatPill,
   Topbar,
 } from '../components/AttestivUi'
+import { useBackgroundTasks } from '../components/BackgroundTasks'
 import { apiFetch } from '../lib/api'
 import { isDemoMode } from '../lib/demoMode'
 import { deriveFrameworksHero } from '../lib/frameworksHero'
@@ -150,6 +151,7 @@ export function AttestivFrameworksPage() {
     t
   } = useI18n();
 
+  const { run: runTask, isRunning } = useBackgroundTasks()
   const [frameworks, setFrameworks] = useState<FrameworkPosture[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -431,40 +433,53 @@ export function AttestivFrameworksPage() {
   // refreshed cards; if they want a PDF, the per-card Generate button
   // already does that.
   async function reevaluate() {
-    if (reevalPhase !== 'idle') return
+    if (reevalPhase !== 'idle' || isRunning('framework-reevaluate')) return
     setError(null)
     setReevalDone(null)
     try {
-      setReevalPhase('refreshing')
-      // Body MUST be a JSON object — the backend handler uses readJSON
-      // which returns io.EOF on an empty body (renders as "EOF" in the
-      // UI). The ?refresh=true query string is not read; the Refresh
-      // flag has to come from the body.
-      const refreshResp = await apiFetch('/inventory/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: true }),
-      })
-      if (!refreshResp.ok) {
-        const text = await refreshResp.text().catch(() => '')
-        throw new Error(text || `refresh: ${refreshResp.status} ${refreshResp.statusText}`)
-      }
-      setReevalPhase('scoring')
-      const evalResp = await apiFetch('/scoring/evaluate', { method: 'POST' })
-      if (!evalResp.ok) {
-        const text = await evalResp.text().catch(() => '')
-        throw new Error(text || `evaluate: ${evalResp.status} ${evalResp.statusText}`)
-      }
-      const body = await evalResp.json().catch(() => ({}))
-      const count = typeof body?.frameworks_evaluated === 'number'
-        ? body.frameworks_evaluated
-        : Array.isArray(body?.results) ? body.results.length : 0
-      setReevalDone({ at: new Date().toISOString(), frameworks: count })
+      // Run as a GLOBAL background task so the "validating" indicator
+      // survives navigation and the button reflects "still running" if you
+      // come back — same pattern as the inventory Update button.
+      const result = await runTask(
+        'framework-reevaluate',
+        t('Validating frameworks…', 'Validating frameworks…'),
+        async () => {
+          try {
+            setReevalPhase('refreshing')
+            // Body MUST be a JSON object — the backend handler uses readJSON
+            // which returns io.EOF on an empty body (renders as "EOF" in the
+            // UI). The ?refresh=true query string is not read; the Refresh
+            // flag has to come from the body.
+            const refreshResp = await apiFetch('/inventory/import', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refresh: true }),
+            })
+            if (!refreshResp.ok) {
+              const text = await refreshResp.text().catch(() => '')
+              throw new Error(text || `refresh: ${refreshResp.status} ${refreshResp.statusText}`)
+            }
+            setReevalPhase('scoring')
+            const evalResp = await apiFetch('/scoring/evaluate', { method: 'POST' })
+            if (!evalResp.ok) {
+              const text = await evalResp.text().catch(() => '')
+              throw new Error(text || `evaluate: ${evalResp.status} ${evalResp.statusText}`)
+            }
+            const body = await evalResp.json().catch(() => ({}))
+            const count = typeof body?.frameworks_evaluated === 'number'
+              ? body.frameworks_evaluated
+              : Array.isArray(body?.results) ? body.results.length : 0
+            return { at: new Date().toISOString(), frameworks: count }
+          } finally {
+            setReevalPhase('idle')
+          }
+        },
+      )
+      if (result === undefined) return // a validation was already running
+      setReevalDone(result)
       setReloadKey((k) => k + 1)
     } catch (err: any) {
       setError(err?.message ?? 'Re-evaluation failed')
-    } finally {
-      setReevalPhase('idle')
     }
   }
 
@@ -483,7 +498,7 @@ export function AttestivFrameworksPage() {
             <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
               {overallTotals.passing}/{overallTotals.total} {t('frameworks ≥95%', 'frameworks ≥95%')}
             </span>
-            <PrimaryButton onClick={reevaluate} disabled={reevalPhase !== 'idle'}>
+            <PrimaryButton onClick={reevaluate} disabled={reevalPhase !== 'idle' || isRunning('framework-reevaluate')}>
               {reevalPhase === 'refreshing' ? (
                 <>
                   <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
@@ -493,6 +508,11 @@ export function AttestivFrameworksPage() {
                 <>
                   <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
                   {t('Scoring…', 'Scoring…')}
+                </>
+              ) : isRunning('framework-reevaluate') ? (
+                <>
+                  <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: 'attestiv-spin 1s linear infinite' }} />
+                  {t('Validating…', 'Validating…')}
                 </>
               ) : (
                 <>
