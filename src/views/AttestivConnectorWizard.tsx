@@ -197,6 +197,19 @@ const CONNECTORS: ConnectorKind[] = [
     pollDefault: 1800,
   },
   {
+    value: 'oracle_rman',
+    label: 'Oracle RMAN',
+    category: 'Backup',
+    endpointHint: 'oracle-db.acme.internal',
+    fields: [
+      { key: 'service_name', label: 'Service name / SID', required: true, hint: 'Oracle service name or SID, e.g. ORCL or PROD.' },
+      { key: 'port', label: 'Port', hint: 'Oracle listener port (default 1521).' },
+      { key: 'username', label: 'Username', required: true, hint: 'Read-only account with SELECT ANY DICTIONARY privilege.' },
+      { key: 'password', label: 'Password', type: 'password', required: true },
+    ],
+    pollDefault: 21600,
+  },
+  {
     value: 'glpi',
     label: 'GLPI',
     category: 'ITSM',
@@ -1199,6 +1212,10 @@ function CredentialsStep(props: {
         </FormField>
       ) : null}
       {props.fields.map((field) => {
+        const {
+          t
+        } = useI18n();
+
         const wasMasked = props.originallyMasked.has(field.key)
         const hint = wasMasked
           ? t(
