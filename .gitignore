@@ -27,3 +27,22 @@ Thumbs.db
 
 # TS incremental build cache
 tsconfig.tsbuildinfo
+
+# i18n translation-generation scratch (one-off batch artifacts + tooling)
+scripts/*-batch*.json
+scripts/*-out*.json
+scripts/*-translations*.json
+scripts/*-missing-keys.json
+scripts/de-*.json
+scripts/es-*.json
+scripts/fr-*.json
+scripts/lt-*
+scripts/build-lt*.js
+scripts/check-chars.js
+scripts/find-dquotes.js
+scripts/fix-lt-json.js
+scripts/validate-lt.js
+scripts/i18n-missing.json
+scripts/i18n-diagnose.mjs
+scripts/i18n-repair-json.mjs
+shots.mjs
