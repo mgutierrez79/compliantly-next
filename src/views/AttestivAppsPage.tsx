@@ -62,6 +62,10 @@ export function AttestivAppsPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
 
   async function deleteApp(applicationID: string) {
+    const {
+      t
+    } = useI18n();
+
     if (!confirm(t(`Delete application "${applicationID}"?`, `Delete application "${applicationID}"?`))) return
     setDeleting(applicationID)
     setError(null)

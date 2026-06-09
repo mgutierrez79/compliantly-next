@@ -250,7 +250,16 @@ export function AttestivSiteWizard() {
 
   const siteTypeOptions = useMemo(() => {
     const entries = Object.entries(SITE_TYPE_LABEL) as Array<[SiteType, string]>
-    return entries.map(([value, label]) => ({ value, label: t(label, label) }))
+    return entries.map(([value, label]) => {
+      const {
+        t
+      } = useI18n();
+
+      return ({
+        value,
+        label: t(label, label)
+      });
+    });
   }, [t])
 
   const drSiteOptions = useMemo(() => {
@@ -260,6 +269,10 @@ export function AttestivSiteWizard() {
   }, [existingSites, siteId])
 
   function isValid(): string | null {
+    const {
+      t
+    } = useI18n();
+
     if (!siteId.trim()) return t('site_id is required', 'site_id is required')
     if (!displayName.trim()) return t('Display name is required', 'Display name is required')
     if (!siteType) return t('Site type is required', 'Site type is required')
@@ -410,7 +423,7 @@ export function AttestivSiteWizard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={labelStyle}>{t('City', 'City')}</label>
-              <input style={inputStyle} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Paris" />
+              <input style={inputStyle} value={city} onChange={(e) => setCity(e.target.value)} placeholder={t('Paris', 'Paris')} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={labelStyle}>{t('Country (2-letter)', 'Country (2-letter)')}</label>
@@ -478,7 +491,10 @@ export function AttestivSiteWizard() {
               style={inputStyle}
               value={tierCertification}
               onChange={(e) => setTierCertification(e.target.value)}
-              placeholder="Tier III, Tier IV, uptime-institute-certified, …"
+              placeholder={t(
+                'Tier III, Tier IV, uptime-institute-certified, …',
+                'Tier III, Tier IV, uptime-institute-certified, …'
+              )}
             />
           </div>
 
@@ -508,7 +524,7 @@ export function AttestivSiteWizard() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, gridColumn: 'span 3' }}>
               <label style={labelStyle}>{t('Generator test frequency', 'Generator test frequency')}</label>
-              <input style={inputStyle} value={generatorTestFrequency} onChange={(e) => setGeneratorTestFrequency(e.target.value)} placeholder="monthly, quarterly, annual, …" />
+              <input style={inputStyle} value={generatorTestFrequency} onChange={(e) => setGeneratorTestFrequency(e.target.value)} placeholder={t('monthly, quarterly, annual, …', 'monthly, quarterly, annual, …')} />
             </div>
           </div>
 
@@ -518,7 +534,7 @@ export function AttestivSiteWizard() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={labelStyle}>{t('Redundancy', 'Redundancy')}</label>
-              <input style={inputStyle} value={coolingRedundancy} onChange={(e) => setCoolingRedundancy(e.target.value)} placeholder="N, N+1, 2N, …" />
+              <input style={inputStyle} value={coolingRedundancy} onChange={(e) => setCoolingRedundancy(e.target.value)} placeholder={t('N, N+1, 2N, …', 'N, N+1, 2N, …')} />
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, paddingTop: 18 }}>
               <input type="checkbox" checked={coolingMonitoring} onChange={(e) => setCoolingMonitoring(e.target.checked)} />
@@ -532,7 +548,7 @@ export function AttestivSiteWizard() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={labelStyle}>{t('Access control', 'Access control')}</label>
-              <input style={inputStyle} value={securityAccessControl} onChange={(e) => setSecurityAccessControl(e.target.value)} placeholder="badge, mantrap, biometric, …" />
+              <input style={inputStyle} value={securityAccessControl} onChange={(e) => setSecurityAccessControl(e.target.value)} placeholder={t('badge, mantrap, biometric, …', 'badge, mantrap, biometric, …')} />
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, paddingTop: 18 }}>
               <input type="checkbox" checked={securityCCTV} onChange={(e) => setSecurityCCTV(e.target.checked)} />
@@ -575,5 +591,5 @@ export function AttestivSiteWizard() {
         </Card>
       </div>
     </>
-  )
+  );
 }

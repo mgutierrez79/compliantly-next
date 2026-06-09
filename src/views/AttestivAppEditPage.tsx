@@ -137,6 +137,10 @@ export function AttestivAppEditPage() {
   }, [applicationId])
 
   async function submit(e: React.FormEvent) {
+    const {
+      t
+    } = useI18n();
+
     e.preventDefault()
     setError(null)
     const name = displayName.trim()
@@ -320,7 +324,7 @@ export function AttestivAppEditPage() {
                 onChange={(e) => setVmNames(e.target.value)}
                 required
                 style={inputStyle}
-                placeholder="VRWMSQLA01, VRWMSQLA02"
+                placeholder={t('VRWMSQLA01, VRWMSQLA02', 'VRWMSQLA01, VRWMSQLA02')}
               />
             </Field>
           </Card>
@@ -381,7 +385,7 @@ export function AttestivAppEditPage() {
                     value={gxpQualityOwner}
                     onChange={(e) => setGxpQualityOwner(e.target.value)}
                     style={inputStyle}
-                    placeholder="QA Director"
+                    placeholder={t('QA Director', 'QA Director')}
                   />
                 </Field>
               </div>
@@ -407,7 +411,7 @@ export function AttestivAppEditPage() {
         </form>
       </div>
     </>
-  )
+  );
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {

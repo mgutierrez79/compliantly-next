@@ -458,7 +458,7 @@ export function AttestivConnectorBulkRestconfPage() {
               <TextInput
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Cisco RESTCONF fleet"
+                placeholder={t('Cisco RESTCONF fleet', 'Cisco RESTCONF fleet')}
               />
             </FormField>
             <FormField label={t('Slug (row suffix)', 'Slug (row suffix)')}>
@@ -484,7 +484,7 @@ export function AttestivConnectorBulkRestconfPage() {
               <TextInput
                 value={excludeIds}
                 onChange={(e) => setExcludeIds(e.target.value)}
-                placeholder="comma or whitespace separated"
+                placeholder={t('comma or whitespace separated', 'comma or whitespace separated')}
               />
             </FormField>
             <FormField label={t('Verify TLS', 'Verify TLS')}>
@@ -542,7 +542,7 @@ export function AttestivConnectorBulkRestconfPage() {
         </Card>
       </div>
     </>
-  )
+  );
 }
 
 const headerRowStyle: React.CSSProperties = {

@@ -108,6 +108,10 @@ export function AttestivAuditPeriodReplayPage() {
   const [response, setResponse] = useState<Response | null>(null)
 
   async function replay() {
+    const {
+      t
+    } = useI18n();
+
     setError(null)
     setBusy(true)
     setResponse(null)

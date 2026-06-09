@@ -183,33 +183,39 @@ export function AttestivUsersAndRbacPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
-                    <tr key={user.subject} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                      <td style={{ padding: '10px 10px 10px 0' }}>
-                        <div style={{ fontWeight: 500 }}>{user.name || user.subject}</div>
-                        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{user.email || user.subject}</div>
-                      </td>
-                      <td style={{ padding: '10px' }}>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {user.roles.length > 0 ? (
-                            user.roles.map((role) => <Badge key={role} tone={ROLE_TONE[role]}>{role}</Badge>)
-                          ) : (
-                            <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px' }}>
-                        <Badge tone={user.status === 'active' || !user.status ? 'green' : 'gray'}>{user.status || 'active'}</Badge>
-                      </td>
-                      <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
-                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
-                      </td>
-                      <td style={{ padding: '10px 0 10px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <GhostButton onClick={() => { setNotice(null); setDialog({ mode: 'edit', user }) }}>{t('Edit', 'Edit')}</GhostButton>
-                        <GhostButton onClick={() => handleDelete(user)}>{t('Delete', 'Delete')}</GhostButton>
-                      </td>
-                    </tr>
-                  ))}
+                  {users.map(user => {
+                    const {
+                      t
+                    } = useI18n();
+
+                    return (
+                      <tr key={user.subject} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                        <td style={{ padding: '10px 10px 10px 0' }}>
+                          <div style={{ fontWeight: 500 }}>{user.name || user.subject}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{user.email || user.subject}</div>
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            {user.roles.length > 0 ? (
+                              user.roles.map((role) => <Badge key={role} tone={ROLE_TONE[role]}>{role}</Badge>)
+                            ) : (
+                              <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <Badge tone={user.status === 'active' || !user.status ? 'green' : 'gray'}>{user.status || 'active'}</Badge>
+                        </td>
+                        <td style={{ padding: '10px', color: 'var(--color-text-secondary)' }}>
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td style={{ padding: '10px 0 10px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <GhostButton onClick={() => { setNotice(null); setDialog({ mode: 'edit', user }) }}>{t('Edit', 'Edit')}</GhostButton>
+                          <GhostButton onClick={() => handleDelete(user)}>{t('Delete', 'Delete')}</GhostButton>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -228,7 +234,6 @@ export function AttestivUsersAndRbacPage() {
           </div>
         </Card>
       </div>
-
       {dialog ? (
         <UserDialog
           mode={dialog.mode}
@@ -239,7 +244,7 @@ export function AttestivUsersAndRbacPage() {
         />
       ) : null}
     </>
-  )
+  );
 }
 
 function Banner({ tone, children }: { tone: 'red' | 'blue'; children: ReactNode }) {

@@ -194,6 +194,10 @@ export function AttestivROPAPage() {
   }
 
   async function remove(id: string) {
+    const {
+      t
+    } = useI18n();
+
     if (!window.confirm(t('Delete this activity? This cannot be undone.', 'Delete this activity? This cannot be undone.'))) return
     try {
       const resp = await apiFetch(`/ropa/${encodeURIComponent(id)}`, {
@@ -304,6 +308,10 @@ export function AttestivROPAPage() {
               </thead>
               <tbody>
                 {items.map((a) => {
+                  const {
+                    t
+                  } = useI18n();
+
                   const overdue = !a.reviewed_at || new Date(a.reviewed_at).getTime() < Date.now() - 365 * 86400 * 1000
                   return (
                     <tr key={a.id} style={{ borderTop: '0.5px solid var(--color-border-tertiary)' }}>
@@ -313,7 +321,7 @@ export function AttestivROPAPage() {
                         </button>
                         {a.special_categories && a.special_categories.length > 0 ? (
                           <span style={{ marginLeft: 6 }}>
-                            <Badge tone="amber" icon="ti-shield-lock">Art.9</Badge>
+                            <Badge tone="amber" icon="ti-shield-lock">{t('Art.9', 'Art.9')}</Badge>
                           </span>
                         ) : null}
                       </td>
@@ -348,7 +356,7 @@ export function AttestivROPAPage() {
                         </GhostButton>
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -400,7 +408,7 @@ export function AttestivROPAPage() {
                 <TextArea
                   value={editor.purposes.join('\n')}
                   onChange={(v) => setEditor({ ...editor, purposes: linesToArray(v) })}
-                  placeholder="Respond to customer enquiries"
+                  placeholder={t('Respond to customer enquiries', 'Respond to customer enquiries')}
                 />
               </FormRow>
               <FormRow label={t('Legal bases *', 'Legal bases *')}>
@@ -426,7 +434,10 @@ export function AttestivROPAPage() {
                 <TextArea
                   value={editor.legal_notes || ''}
                   onChange={(v) => setEditor({ ...editor, legal_notes: v })}
-                  placeholder="Document Art.9(2) exception when special categories present"
+                  placeholder={t(
+                    'Document Art.9(2) exception when special categories present',
+                    'Document Art.9(2) exception when special categories present'
+                  )}
                 />
               </FormRow>
             </Section>
@@ -436,21 +447,21 @@ export function AttestivROPAPage() {
                 <TextArea
                   value={editor.data_subject_categories.join('\n')}
                   onChange={(v) => setEditor({ ...editor, data_subject_categories: linesToArray(v) })}
-                  placeholder="Customers"
+                  placeholder={t('Customers', 'Customers')}
                 />
               </FormRow>
               <FormRow label={t('Data categories * (one per line)', 'Data categories * (one per line)')}>
                 <TextArea
                   value={editor.data_categories.join('\n')}
                   onChange={(v) => setEditor({ ...editor, data_categories: linesToArray(v) })}
-                  placeholder="contact details"
+                  placeholder={t('contact details', 'contact details')}
                 />
               </FormRow>
               <FormRow label={t('Special categories (Art.9)', 'Special categories (Art.9)')}>
                 <TextArea
                   value={(editor.special_categories || []).join('\n')}
                   onChange={(v) => setEditor({ ...editor, special_categories: linesToArray(v) })}
-                  placeholder="health data, biometric data, …"
+                  placeholder={t('health data, biometric data, …', 'health data, biometric data, …')}
                 />
               </FormRow>
             </Section>
@@ -460,86 +471,92 @@ export function AttestivROPAPage() {
                 <TextArea
                   value={(editor.internal_recipients || []).join('\n')}
                   onChange={(v) => setEditor({ ...editor, internal_recipients: linesToArray(v) })}
-                  placeholder="Support team"
+                  placeholder={t('Support team', 'Support team')}
                 />
               </FormRow>
               <FormRow label={t('Third-party recipients (one per line)', 'Third-party recipients (one per line)')}>
                 <TextArea
                   value={(editor.third_party_recipients || []).join('\n')}
                   onChange={(v) => setEditor({ ...editor, third_party_recipients: linesToArray(v) })}
-                  placeholder="AWS, Zendesk"
+                  placeholder={t('AWS, Zendesk', 'AWS, Zendesk')}
                 />
               </FormRow>
             </Section>
 
             <Section title={t('International transfers (Art.30(1)(e))', 'International transfers (Art.30(1)(e))')}>
-              {(editor.international_transfers || []).map((tr, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr) auto', gap: 6, marginBottom: 6 }}>
-                  <TextInput
-                    value={tr.country}
-                    onChange={(e) =>
-                      setEditor({
-                        ...editor,
-                        international_transfers: (editor.international_transfers || []).map((x, j) =>
-                          j === i ? { ...x, country: e.target.value } : x,
-                        ),
-                      })
-                    }
-                    placeholder="Country"
-                  />
-                  <TextInput
-                    value={tr.recipient || ''}
-                    onChange={(e) =>
-                      setEditor({
-                        ...editor,
-                        international_transfers: (editor.international_transfers || []).map((x, j) =>
-                          j === i ? { ...x, recipient: e.target.value } : x,
-                        ),
-                      })
-                    }
-                    placeholder="Recipient"
-                  />
-                  <Select
-                    value={tr.safeguard_type}
-                    onChange={(e) =>
-                      setEditor({
-                        ...editor,
-                        international_transfers: (editor.international_transfers || []).map((x, j) =>
-                          j === i ? { ...x, safeguard_type: e.target.value } : x,
-                        ),
-                      })
-                    }
-                  >
-                    {SAFEGUARD_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </Select>
-                  <TextInput
-                    value={tr.safeguard_ref || ''}
-                    onChange={(e) =>
-                      setEditor({
-                        ...editor,
-                        international_transfers: (editor.international_transfers || []).map((x, j) =>
-                          j === i ? { ...x, safeguard_ref: e.target.value } : x,
-                        ),
-                      })
-                    }
-                    placeholder="Safeguard ref"
-                  />
-                  <GhostButton
-                    onClick={() =>
-                      setEditor({
-                        ...editor,
-                        international_transfers: (editor.international_transfers || []).filter((_, j) => j !== i),
-                      })
-                    }
-                  >
-                    <i className="ti ti-x" aria-hidden="true" />
-                  </GhostButton>
-                </div>
-              ))}
+              {(editor.international_transfers || []).map((tr, i) => {
+                const {
+                  t
+                } = useI18n();
+
+                return (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr) auto', gap: 6, marginBottom: 6 }}>
+                    <TextInput
+                      value={tr.country}
+                      onChange={(e) =>
+                        setEditor({
+                          ...editor,
+                          international_transfers: (editor.international_transfers || []).map((x, j) =>
+                            j === i ? { ...x, country: e.target.value } : x,
+                          ),
+                        })
+                      }
+                      placeholder={t('Country', 'Country')}
+                    />
+                    <TextInput
+                      value={tr.recipient || ''}
+                      onChange={(e) =>
+                        setEditor({
+                          ...editor,
+                          international_transfers: (editor.international_transfers || []).map((x, j) =>
+                            j === i ? { ...x, recipient: e.target.value } : x,
+                          ),
+                        })
+                      }
+                      placeholder={t('Recipient', 'Recipient')}
+                    />
+                    <Select
+                      value={tr.safeguard_type}
+                      onChange={(e) =>
+                        setEditor({
+                          ...editor,
+                          international_transfers: (editor.international_transfers || []).map((x, j) =>
+                            j === i ? { ...x, safeguard_type: e.target.value } : x,
+                          ),
+                        })
+                      }
+                    >
+                      {SAFEGUARD_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </Select>
+                    <TextInput
+                      value={tr.safeguard_ref || ''}
+                      onChange={(e) =>
+                        setEditor({
+                          ...editor,
+                          international_transfers: (editor.international_transfers || []).map((x, j) =>
+                            j === i ? { ...x, safeguard_ref: e.target.value } : x,
+                          ),
+                        })
+                      }
+                      placeholder={t('Safeguard ref', 'Safeguard ref')}
+                    />
+                    <GhostButton
+                      onClick={() =>
+                        setEditor({
+                          ...editor,
+                          international_transfers: (editor.international_transfers || []).filter((_, j) => j !== i),
+                        })
+                      }
+                    >
+                      <i className="ti ti-x" aria-hidden="true" />
+                    </GhostButton>
+                  </div>
+                );
+              })}
               <GhostButton
                 onClick={() =>
                   setEditor({
@@ -560,7 +577,10 @@ export function AttestivROPAPage() {
                 <TextArea
                   value={editor.retention_policy}
                   onChange={(v) => setEditor({ ...editor, retention_policy: v })}
-                  placeholder="Tickets retained 5 years from closure (statutory limitation)"
+                  placeholder={t(
+                    'Tickets retained 5 years from closure (statutory limitation)',
+                    'Tickets retained 5 years from closure (statutory limitation)'
+                  )}
                 />
               </FormRow>
               <FormRow label={t('Retention days (numeric)', 'Retention days (numeric)')}>
@@ -609,7 +629,7 @@ export function AttestivROPAPage() {
         ) : null}
       </div>
     </>
-  )
+  );
 }
 
 function linesToArray(value: string): string[] {

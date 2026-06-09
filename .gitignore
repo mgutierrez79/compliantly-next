@@ -24,3 +24,6 @@ secrets/
 Thumbs.db
 .vscode/
 .idea/
+
+# TS incremental build cache
+tsconfig.tsbuildinfo
