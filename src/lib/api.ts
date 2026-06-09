@@ -54,6 +54,30 @@ function joinUrl(base: string, path: string): string {
   return `${normalizedBase}${normalizedPath}`
 }
 
+// withLang makes the UI language authoritative for the backend by
+// pinning it as the `?lang=` query parameter on every API call. The
+// API renders a lot of user-facing text server-side (control names,
+// findings, scoring explanations, the audit/incident PDFs), resolved
+// from `?lang=` > `compliantly.lang` cookie > Accept-Language. On the
+// split FE/BE deploy the API lives on a different origin than the UI,
+// so the host-only `compliantly.lang` cookie never reaches it and the
+// backend falls through to the browser's Accept-Language — producing
+// a page whose chrome (frontend, localStorage) and data (backend,
+// Accept-Language) disagree, e.g. French chrome with Spanish content.
+// The query param is origin-independent and highest precedence, so it
+// keeps both layers in lockstep (including English). A caller that
+// already put an explicit ?lang= on the path wins — we don't override.
+function withLang(url: string, language: string): string {
+  if (!language) return url
+  try {
+    const u = new URL(url)
+    if (!u.searchParams.has('lang')) u.searchParams.set('lang', language)
+    return u.toString()
+  } catch {
+    return url
+  }
+}
+
 function isHtmlPayload(bodyText: string): boolean {
   const trimmed = bodyText.trim().toLowerCase()
   if (!trimmed) return false
@@ -122,7 +146,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const settings = loadSettings()
-  const url = joinUrl(settings.apiBaseUrl, `/v1${path.startsWith('/') ? path : `/${path}`}`)
+  const url = withLang(
+    joinUrl(settings.apiBaseUrl, `/v1${path.startsWith('/') ? path : `/${path}`}`),
+    settings.language,
+  )
   const started = nowMs()
   const method = String(init?.method ?? 'GET').toUpperCase()
   const canRetry = method === 'GET' || method === 'HEAD' || method === 'OPTIONS'
