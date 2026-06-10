@@ -174,8 +174,14 @@ export function AttestivRiskDetailPage() {
       // Pull the linked control's live evidence for the threshold/coverage
       // block + the failing-asset export. Best-effort: a failure here must
       // not break the risk page, so it's swallowed and the block just hides.
-      const fw = body.risk.source_framework_id
-      const ctrl = body.risk.source_control_id
+      //
+      // Prefer the guidance's RESOLVED IDs: the raw source_framework_id /
+      // source_control_id on the risk record don't reliably round-trip
+      // through the store (the auto-creator stamps the control by name), so
+      // guidance.framework_id / control_id — recovered by the backend's
+      // name-fallback resolver — are the dependable handles.
+      const fw = body.guidance?.framework_id || body.risk.source_framework_id
+      const ctrl = body.guidance?.control_id || body.risk.source_control_id
       if (fw && ctrl) {
         try {
           const evRes = await apiFetch(
