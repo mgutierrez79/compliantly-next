@@ -20,7 +20,7 @@
 //     letting the operator hand-edit asset_type/criticality would
 //     drift from upstream and confuse the auditor
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import {
@@ -76,6 +76,51 @@ type SiteOption = { site_id: string; display_name?: string }
 // an app either via its declared application_id or via its name
 // matching a component's vm_name in the app registry.
 type AppTierLink = { app_id: string; app_name: string; app_tier: string; criticality: string }
+
+// ─── sort + export helpers ──────────────────────────────────────────
+type SortKey = 'name' | 'asset_type' | 'criticality' | 'source' | 'datacenter_id' | 'switch_port'
+type SortState = { key: SortKey; dir: 'asc' | 'desc' }
+
+// Severity order (mirrors the backend criticalityRank) so a criticality
+// sort reads critical→high→medium→low, not alphabetical.
+const CRITICALITY_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, moderate: 2, low: 1 }
+
+// UTF-8 byte-order mark so Excel reads accented names correctly on open.
+const BOM = String.fromCharCode(0xfeff)
+
+// assetSource derives the connector label the Source column shows: the
+// first external_refs source (split on ':'), falling back to metadata.source.
+function assetSource(a: InventoryAsset): string {
+  for (const ref of a.external_refs ?? []) {
+    const s = (ref.source ?? '').split(':')[0].trim()
+    if (s) return s
+  }
+  const m = a.metadata?.['source']
+  return typeof m === 'string' ? m : ''
+}
+
+// Columns whose first click should land on the most-useful order:
+// criticality starts critical-first (desc by rank); text columns A→Z.
+function defaultDir(key: SortKey): 'asc' | 'desc' {
+  return key === 'criticality' ? 'desc' : 'asc'
+}
+
+function sortValue(a: InventoryAsset, key: SortKey): string | number {
+  switch (key) {
+    case 'name':
+      return String(a.name ?? '').toLowerCase()
+    case 'asset_type':
+      return String(a.asset_type ?? '').toLowerCase()
+    case 'criticality':
+      return CRITICALITY_RANK[String(a.criticality ?? '').trim().toLowerCase()] ?? 0
+    case 'source':
+      return assetSource(a).toLowerCase()
+    case 'datacenter_id':
+      return String(a.datacenter_id ?? '').toLowerCase()
+    case 'switch_port':
+      return String(a.switch_port ?? '').toLowerCase()
+  }
+}
 
 const TIER_TONE: Record<string, 'red' | 'amber' | 'navy' | 'gray'> = {
   tier_1: 'red',
@@ -139,6 +184,7 @@ export function InventoryPage() {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
+  const [sortState, setSortState] = useState<SortState | null>(null)
 
   // URL drives the filter so a sidebar link like
   // /inventory?asset_type=firewall lands on the right slice without
@@ -567,18 +613,98 @@ export function InventoryPage() {
     })
   }, [assets, assetTypeFilter, sourceFilter, criticalityFilter, search])
 
-  // Reset to the first page when the filter criteria (or page size)
+  // Client-side sort over the filtered set. The whole page is fetched up
+  // front and filtered locally, so sorting here (rather than re-querying)
+  // is instant and keeps the CSV export an exact match of what's on screen.
+  const sorted = useMemo(() => {
+    if (!sortState) return filtered
+    const { key, dir } = sortState
+    const arr = [...filtered]
+    arr.sort((a, b) => {
+      const va = sortValue(a, key)
+      const vb = sortValue(b, key)
+      let cmp: number
+      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb
+      else cmp = String(va).localeCompare(String(vb))
+      // Stable tiebreak on name so equal keys keep a predictable order.
+      if (cmp === 0) cmp = String(a.name ?? '').toLowerCase().localeCompare(String(b.name ?? '').toLowerCase())
+      return dir === 'asc' ? cmp : -cmp
+    })
+    return arr
+  }, [filtered, sortState])
+
+  function toggleSort(key: SortKey) {
+    setSortState((cur) => (cur?.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: defaultDir(key) }))
+  }
+
+  // Clickable sortable column header. Shows ↕ when inactive, ▲/▼ when it
+  // drives the current sort.
+  const sortableTh = (label: string, key: SortKey, style: CSSProperties) => {
+    const active = sortState?.key === key
+    const arrow = active ? (sortState?.dir === 'asc' ? '▲' : '▼') : '↕'
+    return (
+      <th
+        style={{ ...style, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+        onClick={() => toggleSort(key)}
+        aria-sort={active ? (sortState?.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+        title={t('Click to sort', 'Click to sort')}
+      >
+        {label}
+        <span style={{ marginLeft: 4, fontSize: '0.85em', color: active ? 'var(--color-status-blue-deep)' : 'var(--color-text-tertiary)' }}>{arrow}</span>
+      </th>
+    )
+  }
+
+  // Export the current filtered + sorted view to CSV, client-side, so the
+  // file is an exact copy of what's on screen (the backend list endpoint
+  // doesn't apply the criticality/source/search filters that run here).
+  // Columns mirror the table; a UTF-8 BOM keeps Excel happy with accents.
+  function exportCSV() {
+    const headers = ['Asset', 'Asset ID', 'Type', 'Criticality', 'Source', 'Site', 'Switch Port', 'In Scope', 'Present In', 'Tags']
+    const esc = (v: unknown) => {
+      const s = String(v ?? '')
+      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+    const lines = [headers.join(',')]
+    for (const a of sorted) {
+      lines.push(
+        [
+          a.name ?? '',
+          a.asset_id,
+          a.asset_type ?? '',
+          a.criticality ?? '',
+          assetSource(a),
+          a.datacenter_id ?? '',
+          a.switch_port ?? '',
+          a.framework_evaluation_enabled === false ? 'false' : 'true',
+          (a.present_in ?? []).join('; '),
+          (a.tags ?? []).join('; '),
+        ]
+          .map(esc)
+          .join(','),
+      )
+    }
+    const blob = new Blob([BOM + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'inventory.csv'
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 30_000)
+  }
+
+  // Reset to the first page when the filter criteria, sort, or page size
   // change — but NOT on a plain data refresh, so a scope toggle doesn't
   // bounce the operator back to page 1.
   useEffect(() => {
     setPage(0)
-  }, [assetTypeFilter, sourceFilter, criticalityFilter, search, pageSize])
+  }, [assetTypeFilter, sourceFilter, criticalityFilter, search, pageSize, sortState])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
   const currentPage = Math.min(page, pageCount - 1)
   const paged = useMemo(
-    () => filtered.slice(currentPage * pageSize, currentPage * pageSize + pageSize),
-    [filtered, currentPage, pageSize],
+    () => sorted.slice(currentPage * pageSize, currentPage * pageSize + pageSize),
+    [sorted, currentPage, pageSize],
   )
 
   const counts = useMemo(() => {
@@ -632,6 +758,10 @@ export function InventoryPage() {
                 onSource={(v) => pushFilter('source', v)}
                 onSearch={pushSearch}
               />
+              <GhostButton onClick={exportCSV} disabled={sorted.length === 0}>
+                <i className="ti ti-download" aria-hidden="true" />
+                {t('Export CSV', 'Export CSV')}
+              </GhostButton>
               <PrimaryButton onClick={refreshFromConnectors} disabled={importing}>
                 {importing ? (
                   <>
@@ -866,14 +996,14 @@ export function InventoryPage() {
                       }}
                     />
                   </th>
-                  <th style={{ padding: '6px 10px 6px 0' }}>{t('Asset', 'Asset')}</th>
+                  {sortableTh(t('Asset', 'Asset'), 'name', { padding: '6px 10px 6px 0' })}
                   <th style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--color-text-tertiary)' }} aria-label={t('Linked to', 'Linked to')}>↔</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Type', 'Type')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Criticality', 'Criticality')}</th>
+                  {sortableTh(t('Type', 'Type'), 'asset_type', { padding: '6px 10px' })}
+                  {sortableTh(t('Criticality', 'Criticality'), 'criticality', { padding: '6px 10px' })}
                   <th style={{ padding: '6px 10px' }}>{t('App tier', 'App tier')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Source', 'Source')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Site', 'Site')}</th>
-                  <th style={{ padding: '6px 10px' }}>{t('Switch port', 'Switch port')}</th>
+                  {sortableTh(t('Source', 'Source'), 'source', { padding: '6px 10px' })}
+                  {sortableTh(t('Site', 'Site'), 'datacenter_id', { padding: '6px 10px' })}
+                  {sortableTh(t('Switch port', 'Switch port'), 'switch_port', { padding: '6px 10px' })}
                   <th style={{ padding: '6px 0 6px 10px' }}>{t('Tags', 'Tags')}</th>
                 </tr>
               </thead>
