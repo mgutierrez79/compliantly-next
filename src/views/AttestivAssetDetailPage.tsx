@@ -18,6 +18,7 @@ import {
   Card,
   CardTitle,
   EmptyState,
+  Select,
   Skeleton,
   Topbar,
 } from '../components/AttestivUi'
@@ -32,6 +33,7 @@ type InventoryAsset = {
   datacenter_id?: string | null
   criticality?: string | null
   application_id?: string | null
+  provider_id?: string | null
   framework_evaluation_enabled?: boolean
   tags?: string[]
   external_refs?: Array<{ source?: string }>
@@ -133,6 +135,11 @@ export function AttestivAssetDetailPage({ assetID }: { assetID: string }) {
   const [loading, setLoading] = useState(true)
   const [evaluating, setEvaluating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // ICT provider attribution: the operator links this asset to a provider in
+  // the DORA Art.28 register (POST /v1/inventory/provider-attribution).
+  const [providers, setProviders] = useState<Array<{ id: string; provider_name: string }>>([])
+  const [providerSaving, setProviderSaving] = useState(false)
+  const [providerError, setProviderError] = useState<string | null>(null)
   // network_link enrichment: resolve each endpoint's friendly name +
   // type by fetching the inventory asset, and resolve each child
   // member by following metadata.member_asset_ids. Avoids the
@@ -307,6 +314,48 @@ export function AttestivAssetDetailPage({ assetID }: { assetID: string }) {
     }
   }, [assetID])
 
+  // Load the Art.28 third-party register once for the provider picker.
+  useEffect(() => {
+    let cancelled = false
+    apiFetch('/third-parties')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((body) => {
+        if (cancelled) return
+        const list: any[] = Array.isArray(body) ? body : (body?.items ?? body?.providers ?? [])
+        setProviders(
+          list
+            .map((p) => ({ id: String(p?.id ?? ''), provider_name: String(p?.provider_name ?? p?.id ?? '') }))
+            .filter((p) => p.id),
+        )
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function saveProvider(providerId: string) {
+    if (!asset) return
+    setProviderSaving(true)
+    setProviderError(null)
+    try {
+      const response = await apiFetch('/inventory/provider-attribution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset_ids: [asset.asset_id], provider_id: providerId }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(body?.detail || body?.error || `${response.status} ${response.statusText}`)
+      }
+      setAsset({ ...asset, provider_id: providerId || null })
+    } catch (err: any) {
+      setProviderError(err?.message ?? 'Save failed')
+    } finally {
+      setProviderSaving(false)
+    }
+  }
+
   async function evaluateScope() {
     if (!asset) return
     setEvaluating(true)
@@ -391,6 +440,48 @@ export function AttestivAssetDetailPage({ assetID }: { assetID: string }) {
                   value={(asset.external_refs ?? []).map((r) => r.source).filter(Boolean).join(', ') || '—'}
                 />
               </div>
+            </Card>
+
+            <Card>
+              <CardTitle>{t('Hosting / ICT provider', 'Hosting / ICT provider')}</CardTitle>
+              <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+                {t(
+                  'Link this asset to an ICT third-party provider in the DORA Art.28 register — its hosting/cloud provider. Feeds the provider dependency map and the Art.29 hosting-concentration control.',
+                  'Link this asset to an ICT third-party provider in the DORA Art.28 register — its hosting/cloud provider. Feeds the provider dependency map and the Art.29 hosting-concentration control.',
+                )}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+                <Select
+                  value={asset.provider_id ?? ''}
+                  disabled={providerSaving || providers.length === 0}
+                  onChange={(e) => saveProvider(e.target.value)}
+                  style={{ minWidth: 240 }}
+                  aria-label={t('Provider', 'Provider')}
+                >
+                  <option value="">{t('— none —', '— none —')}</option>
+                  {providers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.provider_name}
+                    </option>
+                  ))}
+                </Select>
+                {providerSaving ? (
+                  <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>{t('Saving…', 'Saving…')}</span>
+                ) : null}
+                {providers.length === 0 ? (
+                  <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>
+                    {t(
+                      'No providers registered yet — add them under Third parties.',
+                      'No providers registered yet — add them under Third parties.',
+                    )}
+                  </span>
+                ) : null}
+              </div>
+              {providerError ? (
+                <div style={{ marginTop: 8 }}>
+                  <Banner tone="error">{providerError}</Banner>
+                </div>
+              ) : null}
             </Card>
 
             {guest || hardware || powerState || vcenterHost ? (
