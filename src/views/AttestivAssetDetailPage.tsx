@@ -443,12 +443,21 @@ export function AttestivAssetDetailPage({ assetID }: { assetID: string }) {
             </Card>
 
             <Card>
-              <CardTitle>{t('Hosting / ICT provider', 'Hosting / ICT provider')}</CardTitle>
+              <CardTitle>
+                {asset.asset_type === 'network_link'
+                  ? t('Carrier', 'Carrier')
+                  : t('Hosting / ICT provider', 'Hosting / ICT provider')}
+              </CardTitle>
               <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
-                {t(
-                  'Link this asset to an ICT third-party provider in the DORA Art.28 register — its hosting/cloud provider. Feeds the provider dependency map and the Art.29 hosting-concentration control.',
-                  'Link this asset to an ICT third-party provider in the DORA Art.28 register — its hosting/cloud provider. Feeds the provider dependency map and the Art.29 hosting-concentration control.',
-                )}
+                {asset.asset_type === 'network_link'
+                  ? t(
+                      'Carrier for this inter-DC link as a whole. For per-cable carriers — e.g. two cables on different carriers — set them in the Carrier column of the Members table below.',
+                      'Carrier for this inter-DC link as a whole. For per-cable carriers — e.g. two cables on different carriers — set them in the Carrier column of the Members table below.',
+                    )
+                  : t(
+                      'Link this asset to an ICT third-party provider in the DORA Art.28 register — its hosting/cloud provider. Feeds the provider dependency map and the Art.29 hosting-concentration control.',
+                      'Link this asset to an ICT third-party provider in the DORA Art.28 register — its hosting/cloud provider. Feeds the provider dependency map and the Art.29 hosting-concentration control.',
+                    )}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
                 <Select
@@ -979,6 +988,50 @@ function NetworkLinkDetails({
   memberAssets: InventoryAsset[]
 }) {
   const { t } = useI18n()
+  // Per-member (per-cable) carrier attribution: each bundle member is its own
+  // inventory asset, so a bundle whose cables run over different carriers gets
+  // one picker per cable. Saves via the inventory provider-attribution endpoint.
+  const [providers, setProviders] = useState<Array<{ id: string; provider_name: string }>>([])
+  const [memberProviders, setMemberProviders] = useState<Record<string, string>>({})
+  const [savingMember, setSavingMember] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    apiFetch('/third-parties')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((body) => {
+        if (cancelled) return
+        const list: any[] = Array.isArray(body) ? body : (body?.items ?? body?.providers ?? [])
+        setProviders(
+          list
+            .map((p) => ({ id: String(p?.id ?? ''), provider_name: String(p?.provider_name ?? p?.id ?? '') }))
+            .filter((p) => p.id),
+        )
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  async function saveMemberProvider(memberID: string, providerID: string) {
+    if (!memberID) return
+    setSavingMember(memberID)
+    try {
+      const r = await apiFetch('/inventory/provider-attribution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset_ids: [memberID], provider_id: providerID }),
+      })
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}))
+        throw new Error(b?.detail || b?.error || `${r.status} ${r.statusText}`)
+      }
+      setMemberProviders((prev) => ({ ...prev, [memberID]: providerID }))
+    } catch {
+      /* a failed save just leaves the prior value; the table stays usable */
+    } finally {
+      setSavingMember(null)
+    }
+  }
   const metadata = asset.metadata ?? {}
   const label = String(metadata['link_type_label'] ?? '').trim()
   const correlation = String(metadata['correlation'] ?? '').trim()
@@ -1081,6 +1134,7 @@ function NetworkLinkDetails({
                   <th style={{ padding: '6px 8px' }}>{t('Parent B', 'Parent B')}</th>
                   <th style={{ padding: '6px 8px' }}>{t('Status', 'Status')}</th>
                   <th style={{ padding: '6px 8px' }}>{t('VLANs', 'VLANs')}</th>
+                  <th style={{ padding: '6px 8px' }}>{t('Carrier', 'Carrier')}</th>
                   <th style={{ padding: '6px 0 6px 8px' }}>{t('Asset', 'Asset')}</th>
                 </tr>
               </thead>
@@ -1110,6 +1164,26 @@ function NetworkLinkDetails({
                       <td style={{ padding: '8px', fontFamily: 'var(--font-mono)' }}>{parentB || '—'}</td>
                       <td style={{ padding: '8px' }}>{status ? <Badge tone={statusTone}>{status}</Badge> : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>}</td>
                       <td style={{ padding: '8px' }}>{vlanCell}</td>
+                      <td style={{ padding: '8px' }}>
+                        {memberID ? (
+                          <Select
+                            value={memberProviders[memberID] ?? enrichedMember?.provider_id ?? ''}
+                            disabled={savingMember === memberID || providers.length === 0}
+                            onChange={(e) => saveMemberProvider(memberID, e.target.value)}
+                            style={{ minWidth: 140, fontSize: 11 }}
+                            aria-label={t('Carrier', 'Carrier')}
+                          >
+                            <option value="">{t('— none —', '— none —')}</option>
+                            {providers.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.provider_name}
+                              </option>
+                            ))}
+                          </Select>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td style={{ padding: '8px 0 8px 8px' }}>
                         {memberID ? (
                           <a href={`/inventory/${encodeURIComponent(memberID)}`} style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>
