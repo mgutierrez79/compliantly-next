@@ -622,7 +622,13 @@ export function AttestivSiteDetailPage() {
                         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{link.type}</div>
                       ) : null}
                     </td>
-                    <td style={{ padding: '8px 10px' }}>{providerSelect('link', link.link_id ?? '', link.provider)}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      {link.target_site ? (
+                        providerSelect('link', link.link_id ?? '', link.provider)
+                      ) : (
+                        <span style={{ color: 'var(--color-text-secondary)' }}>{link.provider ?? '—'}</span>
+                      )}
+                    </td>
                     <td style={{ padding: '8px 10px' }}>
                       {link.target_site ? <code style={{ fontSize: 11 }}>{link.target_site}</code> : '—'}
                     </td>
