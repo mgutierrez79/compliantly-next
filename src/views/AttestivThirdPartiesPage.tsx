@@ -64,6 +64,22 @@ const STATUS_TONE: Record<string, 'amber' | 'green' | 'gray'> = {
 const CRITICALITIES = ['critical', 'important', 'standard'] as const
 const STATUSES = ['active', 'under_review', 'exited'] as const
 
+// A backend zero time.Time serializes as "0001-01-01T00:00:00Z" (Go's
+// omitempty doesn't drop struct zero values), so an unset date arrives
+// looking like a real one. isRealDate rejects that — and anything more
+// than 20 years old — since nothing in a DORA Art.28 register
+// legitimately predates the regulation that far. Mirrors the backend's
+// isPlausibleDate so the overdue badge matches the server's count.
+const TWENTY_YEARS_MS = 20 * 365.25 * 24 * 60 * 60 * 1000
+function isRealDate(s?: string): boolean {
+  if (!s) return false
+  const ms = new Date(s).getTime()
+  return !Number.isNaN(ms) && ms > Date.now() - TWENTY_YEARS_MS
+}
+function fmtDate(s?: string): string | null {
+  return isRealDate(s) ? s!.slice(0, 10) : null
+}
+
 export function AttestivThirdPartiesPage() {
   const {
     t
@@ -385,7 +401,15 @@ function ProviderRow({ provider, onOpen }: { provider: Provider; onOpen: () => v
   const status = (provider.status || 'active').toLowerCase()
   const critTone = CRITICALITY_TONE[criticality] ?? 'gray'
   const statusTone = STATUS_TONE[status] ?? 'gray'
-  const overdue = provider.next_assessment_due && new Date(provider.next_assessment_due).getTime() < Date.now()
+  // Mirrors the backend IsAssessmentOverdue: a scheduled date governs
+  // first (overdue once it passes); with no schedule, a critical/important
+  // provider that was never really assessed is overdue on its face.
+  const overdue =
+    status === 'active' &&
+    (isRealDate(provider.next_assessment_due)
+      ? new Date(provider.next_assessment_due!).getTime() < Date.now()
+      : (criticality === 'critical' || criticality === 'important') &&
+        !isRealDate(provider.last_assessment_date))
   return (
     <button
       type="button"
@@ -430,10 +454,10 @@ function ProviderRow({ provider, onOpen }: { provider: Provider; onOpen: () => v
         <Badge tone={statusTone}>{status.replace(/_/g, ' ')}</Badge>
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        {t('end:', 'end:')} {provider.contract_end_date ? provider.contract_end_date.slice(0, 10) : '—'}
+        {t('end:', 'end:')} {fmtDate(provider.contract_end_date) ?? '—'}
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        {t('last:', 'last:')} {provider.last_assessment_date ? provider.last_assessment_date.slice(0, 10) : '—'}
+        {t('last:', 'last:')} {fmtDate(provider.last_assessment_date) ?? t('never', 'never')}
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
         {provider.roi_included ? <Badge tone="navy">{t('RoI', 'RoI')}</Badge> : <span>—</span>}
